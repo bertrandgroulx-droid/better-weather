@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Skylark — a friendly weather app</title>
+<meta name="description" content="Skylark is a tiny, dependency-free weather app. Search any place and get current conditions plus a 7-day forecast, powered by the free Open-Meteo API." />
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root {
+    --bg-1: #1e3c72;
+    --bg-2: #2a5298;
+    --bg-3: #6dd5ed;
+    --card: rgba(255, 255, 255, 0.12);
+    --card-strong: rgba(255, 255, 255, 0.18);
+    --card-border: rgba(255, 255, 255, 0.22);
+    --text: #f7fbff;
+    --muted: #cfe0f0;
+    --accent: #ffd166;
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    background: linear-gradient(160deg, var(--bg-1), var(--bg-2) 55%, var(--bg-3));
+    background-attachment: fixed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(1rem, 4vw, 3rem) 1rem 3rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2rem, 6vw, 3rem);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    justify-content: center;
+  }
+
+  .tagline {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .search {
+    display: flex;
+    gap: 0.5rem;
+    width: min(560px, 100%);
+    margin: 0 auto;
+  }
+
+  .search input {
+    flex: 1;
+    padding: 0.85rem 1.1rem;
+    font-size: 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    background: var(--card-strong);
+    color: var(--text);
+    outline: none;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+
+  .search input::placeholder { color: var(--muted); }
+
+  .search input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.3);
+  }
+
+  .search button, .loc-btn {
+    padding: 0.85rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid var(--card-border);
+    background: var(--accent);
+    color: #1e3c72;
+    cursor: pointer;
+    transition: transform 0.12s, filter 0.12s;
+    white-space: nowrap;
+  }
+
+  .search button:hover, .loc-btn:hover { filter: brightness(1.05); }
+  .search button:active, .loc-btn:active { transform: scale(0.97); }
+
+  .loc-row {
+    width: min(560px, 100%);
+    margin: 0.6rem auto 0;
+    text-align: center;
+  }
+
+  .loc-btn {
+    background: var(--card-strong);
+    color: var(--text);
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 0.55rem 1rem;
+  }
+
+  main {
+    width: min(960px, 100%);
+    margin-top: 1.75rem;
+  }
+
+  .status {
+    text-align: center;
+    color: var(--muted);
+    padding: 2rem 1rem;
+    font-size: 1.05rem;
+  }
+
+  .status.error { color: #ffd6d6; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .current {
+    padding: clamp(1.25rem, 4vw, 2rem);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem 1.5rem;
+    align-items: center;
+  }
+
+  .current .place {
+    grid-column: 1 / -1;
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+
+  .current .place small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .current .icon { font-size: clamp(3.5rem, 12vw, 5.5rem); line-height: 1; }
+
+  .current .temp {
+    font-size: clamp(2.75rem, 11vw, 4rem);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .current .desc { color: var(--muted); font-size: 1.05rem; margin-top: 0.25rem; }
+
+  .metrics {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .metric {
+    background: var(--card-strong);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 0.7rem 0.9rem;
+  }
+
+  .metric .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric .value { font-size: 1.15rem; font-weight: 600; margin-top: 0.2rem; }
+
+  h2 { font-size: 1.1rem; margin: 1.75rem 0 0.75rem; }
+
+  .forecast {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .day {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 1rem 0.6rem;
+    text-align: center;
+  }
+
+  .day .name { font-weight: 600; font-size: 0.95rem; }
+  .day .ico { font-size: 2rem; margin: 0.45rem 0; }
+  .day .hi { font-weight: 700; }
+  .day .lo { color: var(--muted); }
+  .day .precip { font-size: 0.75rem; color: var(--accent); margin-top: 0.3rem; }
+
+  .units-toggle {
+    text-align: center;
+    margin-top: 1.5rem;
+  }
+
+  .units-toggle button {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .units-toggle button:hover { background: var(--card-strong); }
+
+  footer {
+    margin-top: auto;
+    padding-top: 2.5rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  footer a { color: var(--accent); }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 480px) {
+    .current { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🐦 Skylark</h1>
+    <p class="tagline">Search any place for the weather right now and the week ahead.</p>
+  </header>
+
+  <form class="search" id="search-form" autocomplete="off">
+    <input id="search-input" type="text" placeholder="Search a city, e.g. Lisbon" aria-label="Search a place" />
+    <button type="submit">Search</button>
+  </form>
+  <div class="loc-row">
+    <button type="button" class="loc-btn" id="geo-btn">📍 Use my location</button>
+  </div>
+
+  <main>
+    <div class="status" id="status">Try searching for a city to begin.</div>
+
+    <section id="result" class="hidden">
+      <div class="card current" id="current"></div>
+
+      <h2>7-day forecast</h2>
+      <div class="forecast" id="forecast"></div>
+
+      <div class="units-toggle">
+        <button type="button" id="units-btn"></button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Built with the free <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo API</a> — no API key required.
+  </footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const els = {
+    form: document.getElementById("search-form"),
+    input: document.getElementById("search-input"),
+    geoBtn: document.getElementById("geo-btn"),
+    status: document.getElementById("status"),
+    result: document.getElementById("result"),
+    current: document.getElementById("current"),
+    forecast: document.getElementById("forecast"),
+    unitsBtn: document.getElementById("units-btn"),
+  };
+
+  // Persisted unit preference: "metric" (°C, km/h) or "imperial" (°F, mph)
+  let units = localStorage.getItem("skylark-units") || "metric";
+  let lastLocation = null; // remember place so we can re-render on unit change
+
+  // WMO weather interpretation codes -> { emoji, text }
+  const WMO = {
+    0:  ["☀️", "Clear sky"],
+    1:  ["🌤️", "Mainly clear"],
+    2:  ["⛅", "Partly cloudy"],
+    3:  ["☁️", "Overcast"],
+    45: ["🌫️", "Fog"],
+    48: ["🌫️", "Rime fog"],
+    51: ["🌦️", "Light drizzle"],
+    53: ["🌦️", "Drizzle"],
+    55: ["🌧️", "Dense drizzle"],
+    56: ["🌧️", "Freezing drizzle"],
+    57: ["🌧️", "Freezing drizzle"],
+    61: ["🌦️", "Light rain"],
+    63: ["🌧️", "Rain"],
+    65: ["🌧️", "Heavy rain"],
+    66: ["🌧️", "Freezing rain"],
+    67: ["🌧️", "Freezing rain"],
+    71: ["🌨️", "Light snow"],
+    73: ["🌨️", "Snow"],
+    75: ["❄️", "Heavy snow"],
+    77: ["🌨️", "Snow grains"],
+    80: ["🌦️", "Light showers"],
+    81: ["🌧️", "Showers"],
+    82: ["⛈️", "Violent showers"],
+    85: ["🌨️", "Snow showers"],
+    86: ["❄️", "Heavy snow showers"],
+    95: ["⛈️", "Thunderstorm"],
+    96: ["⛈️", "Thunderstorm w/ hail"],
+    99: ["⛈️", "Thunderstorm w/ hail"],
+  };
+
+  function describe(code) {
+    return WMO[code] || ["❓", "Unknown"];
+  }
+
+  function setStatus(msg, isError) {
+    els.status.textContent = msg;
+    els.status.classList.toggle("error", !!isError);
+    els.status.classList.remove("hidden");
+    els.result.classList.add("hidden");
+  }
+
+  async function fetchJson(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Network request failed (" + res.status + ")");
+    return res.json();
+  }
+
+  async function geocode(query) {
+    const url = "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=" +
+      encodeURIComponent(query);
+    const data = await fetchJson(url);
+    if (!data.results || !data.results.length) return null;
+    const r = data.results[0];
+    return {
+      lat: r.latitude,
+      lon: r.longitude,
+      name: r.name,
+      admin: r.admin1,
+      country: r.country,
+    };
+  }
+
+  async function getWeather(loc) {
+    const tempUnit = units === "imperial" ? "fahrenheit" : "celsius";
+    const windUnit = units === "imperial" ? "mph" : "kmh";
+    const precipUnit = units === "imperial" ? "inch" : "mm";
+    const url = "https://api.open-meteo.com/v1/forecast" +
+      "?latitude=" + loc.lat + "&longitude=" + loc.lon +
+      "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+      "&temperature_unit=" + tempUnit +
+      "&wind_speed_unit=" + windUnit +
+      "&precipitation_unit=" + precipUnit +
+      "&timezone=auto&forecast_days=7";
+    return fetchJson(url);
+  }
+
+  function tempUnitLabel() { return units === "imperial" ? "°F" : "°C"; }
+  function windUnitLabel() { return units === "imperial" ? "mph" : "km/h"; }
+
+  function placeLabel(loc) {
+    return [loc.name, loc.admin, loc.country].filter(Boolean).join(", ");
+  }
+
+  function renderCurrent(loc, data) {
+    const c = data.current;
+    const [emoji, text] = describe(c.weather_code);
+    els.current.innerHTML =
+      '<div class="place">' + escapeHtml(loc.name) +
+        '<small>' + escapeHtml([loc.admin, loc.country].filter(Boolean).join(", ")) + '</small></div>' +
+      '<div class="icon">' + emoji + '</div>' +
+      '<div>' +
+        '<div class="temp">' + Math.round(c.temperature_2m) + tempUnitLabel() + '</div>' +
+        '<div class="desc">' + text + ' · feels like ' + Math.round(c.apparent_temperature) + tempUnitLabel() + '</div>' +
+      '</div>' +
+      '<div class="metrics">' +
+        metric("Humidity", c.relative_humidity_2m + "%") +
+        metric("Wind", Math.round(c.wind_speed_10m) + " " + windUnitLabel()) +
+        metric("Conditions", text) +
+      '</div>';
+  }
+
+  function metric(label, value) {
+    return '<div class="metric"><div class="label">' + label +
+      '</div><div class="value">' + escapeHtml(String(value)) + '</div></div>';
+  }
+
+  function renderForecast(data) {
+    const d = data.daily;
+    const precipUnit = units === "imperial" ? '"' : "mm";
+    let html = "";
+    for (let i = 0; i < d.time.length; i++) {
+      const [emoji] = describe(d.weather_code[i]);
+      const date = new Date(d.time[i] + "T00:00:00");
+      const name = i === 0 ? "Today" : date.toLocaleDateString(undefined, { weekday: "short" });
+      const pop = d.precipitation_probability_max[i];
+      html +=
+        '<div class="day">' +
+          '<div class="name">' + name + '</div>' +
+          '<div class="ico">' + emoji + '</div>' +
+          '<div class="hi">' + Math.round(d.temperature_2m_max[i]) + tempUnitLabel() + '</div>' +
+          '<div class="lo">' + Math.round(d.temperature_2m_min[i]) + tempUnitLabel() + '</div>' +
+          (pop != null ? '<div class="precip">💧 ' + pop + '%</div>' : '') +
+        '</div>';
+    }
+    els.forecast.innerHTML = html;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  async function showWeather(loc) {
+    setStatus("Loading weather for " + placeLabel(loc) + "…");
+    try {
+      const data = await getWeather(loc);
+      lastLocation = loc;
+      renderCurrent(loc, data);
+      renderForecast(data);
+      els.status.classList.add("hidden");
+      els.result.classList.remove("hidden");
+    } catch (err) {
+      setStatus("Couldn't load the weather. " + err.message, true);
+    }
+  }
+
+  async function searchPlace(query) {
+    if (!query.trim()) return;
+    setStatus('Searching for "' + query + '"…');
+    try {
+      const loc = await geocode(query);
+      if (!loc) {
+        setStatus('No place found for "' + query + '". Try another spelling.', true);
+        return;
+      }
+      await showWeather(loc);
+    } catch (err) {
+      setStatus("Search failed. " + err.message, true);
+    }
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setStatus("Geolocation isn't available in this browser.", true);
+      return;
+    }
+    setStatus("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        showWeather({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          name: "Your location",
+          admin: "",
+          country: "",
+        });
+      },
+      function () {
+        setStatus("Couldn't get your location. Try searching instead.", true);
+      },
+      { timeout: 10000 }
+    );
+  }
+
+  function updateUnitsBtn() {
+    els.unitsBtn.textContent = units === "imperial"
+      ? "Switch to °C / km/h"
+      : "Switch to °F / mph";
+  }
+
+  els.form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    searchPlace(els.input.value);
+  });
+
+  els.geoBtn.addEventListener("click", useMyLocation);
+
+  els.unitsBtn.addEventListener("click", function () {
+    units = units === "imperial" ? "metric" : "imperial";
+    localStorage.setItem("skylark-units", units);
+    updateUnitsBtn();
+    if (lastLocation) showWeather(lastLocation);
+  });
+
+  updateUnitsBtn();
+})();
+</script>
+</body>
+</html>
