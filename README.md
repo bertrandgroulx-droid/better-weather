@@ -11,6 +11,9 @@ hourly forecast, and a 14-day outlook. Powered by the free
 
 - 🔎 **Search anywhere** — type a city name; geocoding finds it for you.
 - 📍 **Use my location** — loads your local weather automatically on first visit.
+- 📝 **Plain-English summary** — a friendly at-a-glance sentence or two ("Right
+  now it's 18°C and partly cloudy… keep an umbrella handy, a 40% chance of
+  rain"), covering conditions, feels-like, the day's range, rain, wind and UV.
 - 🌡️ **Rich current conditions** — temperature, "feels like", humidity, wind
   speed/direction/gusts, pressure, cloud cover, UV index, and sunrise/sunset.
 - 📈 **24-hour hourly charts** — temperature (line) with precipitation chance

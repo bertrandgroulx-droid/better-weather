@@ -134,6 +134,11 @@
   .now .desc { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
   .hilo { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
   .hilo b { color: var(--text); }
+  .summary {
+    font-size: 0.9rem; line-height: 1.5;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 11px; margin-bottom: 10px;
+  }
   .metrics {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -340,6 +345,48 @@
 
   function placeLabel(loc){ return [loc.name, loc.admin, loc.country].filter(Boolean).join(", "); }
 
+  // Build a friendly plain-English summary of the day from the forecast.
+  function summarize(d){
+    var c = d.current, dd = d.daily;
+    var w = wmo(c.weather_code);
+    var actual = c.temperature_2m, feels = c.apparent_temperature;
+    var hi = dd.temperature_2m_max[0], lo = dd.temperature_2m_min[0];
+    var pop = dd.precipitation_probability_max[0];
+    var uv = dd.uv_index_max[0];
+    var actualC = toC(actual);
+    var feelsGap = units === "imperial" ? 5 : 3;   // °F vs °C threshold
+    var breezy = units === "imperial" ? 12 : 20;
+    var windy = units === "imperial" ? 25 : 40;
+    var parts = [];
+
+    parts.push("Right now it's " + Math.round(actual) + tU() + " and " + w[1].toLowerCase() + ".");
+
+    if(Math.abs(feels - actual) >= feelsGap){
+      parts.push("It feels " + (feels > actual ? "warmer" : "colder") +
+        ", more like " + Math.round(feels) + tU() + ".");
+    }
+
+    parts.push("Today reaches about " + Math.round(hi) + tU() +
+      " with a low near " + Math.round(lo) + tU() + ".");
+
+    if(pop != null){
+      if(pop >= 70) parts.push("High chance of precipitation (" + pop + "%) — take an umbrella.");
+      else if(pop >= 35) parts.push("Keep an umbrella handy; a " + pop + "% chance of rain.");
+      else if(pop >= 10) parts.push("Rain is unlikely (" + pop + "%).");
+      else parts.push("No rain expected.");
+    }
+
+    if(c.wind_speed_10m >= windy) parts.push("It's quite windy at " + Math.round(c.wind_speed_10m) + " " + wU() + ".");
+    else if(c.wind_speed_10m >= breezy) parts.push("There's a noticeable breeze (" + Math.round(c.wind_speed_10m) + " " + wU() + ").");
+
+    if(uv != null && uv >= 6 && c.is_day) parts.push("UV is high (" + Math.round(uv) + ") — wear sunscreen. 🧴");
+
+    if(actualC >= 32) parts.push("Stay hydrated and seek shade. 🥵");
+    else if(actualC <= 0) parts.push("It's freezing — dress in warm layers. 🧣");
+
+    return parts.join(" ");
+  }
+
   function renderCurrent(loc, d){
     var c = d.current;
     var w = wmo(c.weather_code);
@@ -358,6 +405,7 @@
         '<div class="desc">' + w[1] + ' · feels ' + Math.round(c.apparent_temperature) + tU() + '</div></div></div>' +
       '<div class="hilo">Today <b>' + Math.round(d.daily.temperature_2m_max[0]) + tU() + '</b> / ' +
         Math.round(d.daily.temperature_2m_min[0]) + tU() + '</div>' +
+      '<div class="summary">' + esc(summarize(d)) + '</div>' +
       '<div class="metrics">' +
         m("Humidity", c.relative_humidity_2m + "%") +
         m("Wind", '<span class="arrow" style="transform:rotate(' + (dir + 180) + 'deg)">↑</span> ' +
