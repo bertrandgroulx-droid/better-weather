@@ -26,6 +26,11 @@ through — including recent history. Powered by the free
   behind "Today", out to ~16 days ahead. Each day shows day/night icons,
   high/low, precipitation chance, and the precip "water" fill.
 - 🟡 **Scroll indicators** — a position bar under each strip shows where you are.
+- 🗺️ **Animated radar tab** — a bottom tab switches to a full-screen map with an
+  animated precipitation radar (rain and snow) you can play/scrub through the
+  recent past and short-term nowcast, centered on your location. Uses the free,
+  keyless [RainViewer](https://www.rainviewer.com/) radar tiles on a
+  [Leaflet](https://leafletjs.com/) map with [CARTO](https://carto.com/) basemap.
 - 🎨 **No build step, no dependencies, no chart library** — it's just one
   `index.html` with hand-built CSS/SVG.
 - 📲 **Add to Home Screen** — ships an `apple-touch-icon` and a web manifest, so
