@@ -301,7 +301,7 @@
   <!-- bottom tab bar -->
   <nav class="tabbar">
     <button class="tab active" id="tabWeather" type="button"><span class="ic">🌤️</span><span class="lb">Weather</span></button>
-    <button class="tab" id="tabRadar" type="button"><span class="ic">🗺️</span><span class="lb">Radar</span></button>
+    <button class="tab" id="tabRadar" type="button"><span class="ic">🗺️</span><span class="lb">Map</span></button>
   </nav>
 
   <!-- search modal -->
@@ -767,8 +767,9 @@
     }).catch(function () { els.frameTime.textContent = "Radar unavailable"; });
   }
 
-  // colour scheme 4, options "1_1" = smoothed + snow shown separately
-  function frameUrl(fr) { return rvHost + fr.path + "/256/{z}/{x}/{y}/4/1_1.png"; }
+  // colour scheme 2 (RainViewer's standard green->yellow->orange->red ramp, the
+  // one their own example uses); options "1_1" = smoothed + snow shown separately
+  function frameUrl(fr) { return rvHost + fr.path + "/256/{z}/{x}/{y}/2/1_1.png"; }
 
   function showFrame(i) {
     if (!frames.length) return;
