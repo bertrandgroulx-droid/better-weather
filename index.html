@@ -233,7 +233,11 @@
     border-radius: 10px; padding: 6px 9px; font-size: 0.72rem; color: var(--text);
     display: flex; flex-direction: column; gap: 3px;
   }
-  .radar-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .radar-legend .lg-item { display: flex; align-items: center; }
+  .radar-legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; }
+  .radar-legend .lg-grad { width: 108px; height: 9px; border-radius: 5px;
+    background: linear-gradient(90deg, #4fbf4f, #e6d24a, #f0982e, #e23b3b, #9b3bd0); }
+  .radar-legend .lg-ends { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
 
   /* ---------------- bottom tab bar ---------------- */
   .tabbar { display: flex; gap: 8px; flex: none; }
@@ -284,9 +288,9 @@
   <div id="radar" class="hidden">
     <div id="map"></div>
     <div class="radar-legend">
-      <span><i style="background:#5ea0ff"></i>Snow</span>
-      <span><i style="background:#3fd23f"></i>Light rain</span>
-      <span><i style="background:#ff5a3c"></i>Heavy rain</span>
+      <div class="lg-item"><i class="sw" style="background:#7fc4ff"></i>Snow</div>
+      <div class="lg-grad"></div>
+      <div class="lg-ends"><span>Light</span><span>Heavy</span></div>
     </div>
     <div class="radar-ctrl">
       <input id="frameSlider" type="range" min="0" max="0" value="0" aria-label="Radar time" />
