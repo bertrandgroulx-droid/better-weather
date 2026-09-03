@@ -773,7 +773,9 @@
     var fr = frames[i];
     if (!radarLayer) {
       radarLayer = L.tileLayer(frameUrl(fr), {
-        opacity: 0.72, tileSize: 256, maxNativeZoom: 12, maxZoom: 20,
+        // RainViewer's free tiles top out at zoom 7; upscale beyond that so we
+        // never request unsupported zooms (which return a placeholder tile).
+        opacity: 0.72, tileSize: 256, maxNativeZoom: 7, maxZoom: 20,
         updateWhenZooming: false, keepBuffer: 1,
         attribution: "Radar &copy; RainViewer"
       }).addTo(map);
