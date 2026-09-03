@@ -348,6 +348,7 @@
 
   var units = localStorage.getItem("bw-units") || "metric"; // "metric" | "imperial"
   var lastLoc = null;
+  var lastTz = null; // IANA timezone of the active location (for the map clock)
   var searchTimer = null;
   var currentTab = "weather";
   var loaded = false;
@@ -674,6 +675,8 @@
       getArchive(loc).catch(function () { return null; })
     ]).then(function (res) {
       var d = res[0];
+      lastTz = d.timezone || null;               // location's timezone
+      if (frames.length) frameLabel(animPos);    // refresh the map clock in it
       mergeArchive(d, res[1]);
       showResult(); // unhide first so the strips have layout to measure
       renderSummary(loc, d);
@@ -917,8 +920,9 @@
 
   function frameLabel(i) {
     els.frameSlider.value = i;
-    var d = new Date(frames[i].time * 1000);
-    var t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    var opts = { hour: "numeric", minute: "2-digit" };
+    if (lastTz) opts.timeZone = lastTz; // show the active location's local time
+    var t = new Date(frames[i].time * 1000).toLocaleTimeString([], opts);
     // RainViewer's free feed no longer includes future frames, so the newest
     // frame is "now"; anything beyond past would be a nowcast if present.
     els.frameTime.textContent =
