@@ -233,10 +233,9 @@
     border-radius: 10px; padding: 6px 9px; font-size: 0.72rem; color: var(--text);
     display: flex; flex-direction: column; gap: 3px;
   }
-  .radar-legend .lg-item { display: flex; align-items: center; }
-  .radar-legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; }
-  .radar-legend .lg-grad { width: 108px; height: 9px; border-radius: 5px;
-    background: linear-gradient(90deg, #4fbf4f, #e6d24a, #f0982e, #e23b3b, #9b3bd0); }
+  .radar-legend .lg-title { font-size: 0.66rem; color: var(--muted); margin-bottom: 2px; }
+  .radar-legend .lg-grad { width: 116px; height: 9px; border-radius: 5px;
+    background: linear-gradient(90deg, #7ec8f5, #3f8fd8, #f2e400, #f59a0b, #e0140a); }
   .radar-legend .lg-ends { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
 
   /* ---------------- bottom tab bar ---------------- */
@@ -288,7 +287,7 @@
   <div id="radar" class="hidden">
     <div id="map"></div>
     <div class="radar-legend">
-      <div class="lg-item"><i class="sw" style="background:#7fc4ff"></i>Snow</div>
+      <div class="lg-title">Precipitation</div>
       <div class="lg-grad"></div>
       <div class="lg-ends"><span>Light</span><span>Heavy</span></div>
     </div>
@@ -767,9 +766,10 @@
     }).catch(function () { els.frameTime.textContent = "Radar unavailable"; });
   }
 
-  // colour scheme 2 (RainViewer's standard green->yellow->orange->red ramp, the
-  // one their own example uses); options "1_1" = smoothed + snow shown separately
-  function frameUrl(fr) { return rvHost + fr.path + "/256/{z}/{x}/{y}/2/1_1.png"; }
+  // colour scheme 2 (blue = light precipitation -> yellow -> orange -> red = heavy);
+  // options "1_0" = smoothed, snow NOT shown as a separate colour (in this scheme
+  // snow and light rain are both blue, which misreads as "snow everywhere")
+  function frameUrl(fr) { return rvHost + fr.path + "/256/{z}/{x}/{y}/2/1_0.png"; }
 
   function showFrame(i) {
     if (!frames.length) return;
