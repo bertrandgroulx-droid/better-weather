@@ -76,17 +76,18 @@
   .summary {
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 12px 14px;
-    display: grid; grid-template-columns: auto 1fr; gap: 6px 16px;
-    align-items: start; flex: none;
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 30px;
+    align-items: stretch; flex: none;
   }
   .sum-left { display: flex; flex-direction: column; }
   .sum-hero { display: flex; align-items: center; gap: 6px; }
   .sum-hero .ico { font-size: 2.8rem; line-height: 1; }
   .sum-hero .temp { font-size: 2.9rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
-  .sum-metrics { margin-top: 8px; font-size: 0.82rem; line-height: 1.5; color: var(--text); }
+  /* push the metrics to the bottom so the Wind line aligns with the Sunset line */
+  .sum-metrics { margin-top: auto; padding-top: 8px; font-size: 0.82rem; line-height: 1.5; color: var(--text); }
   .sum-metrics b { font-weight: 700; }
   .sum-metrics .k { color: var(--muted); }
-  .sum-right { font-size: 0.86rem; line-height: 1.45; }
+  .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; }
   .sum-right .cond { font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
   .sum-right .row { color: var(--text); }
   .sum-right .row .k { color: var(--muted); }
