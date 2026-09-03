@@ -771,10 +771,17 @@
   // snow and light rain are both blue, which misreads as "snow everywhere")
   function frameUrl(fr) { return rvHost + fr.path + "/256/{z}/{x}/{y}/2/1_0.png"; }
 
-  function showFrame(i) {
-    if (!frames.length) return;
-    i = (i % frames.length + frames.length) % frames.length;
-    animPos = i;
+  function frameLabel(i) {
+    els.frameSlider.value = i;
+    var d = new Date(frames[i].time * 1000);
+    var t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    // RainViewer's free feed no longer includes future frames, so the newest
+    // frame is "now"; anything beyond past would be a nowcast if present.
+    els.frameTime.textContent =
+      i === frames.length - 1 ? t + " · now" : (i >= pastCount ? t + " · forecast" : t);
+  }
+
+  function loadFrame(i) {
     var fr = frames[i];
     if (!radarLayer) {
       radarLayer = L.tileLayer(frameUrl(fr), {
@@ -787,10 +794,30 @@
     } else {
       radarLayer.setUrl(frameUrl(fr));
     }
-    els.frameSlider.value = i;
-    var d = new Date(fr.time * 1000);
-    var t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    els.frameTime.textContent = (i >= pastCount ? t + " · forecast" : t);
+  }
+
+  function showFrame(i) {
+    if (!frames.length) return;
+    i = (i % frames.length + frames.length) % frames.length;
+    animPos = i;
+    frameLabel(i);
+    loadFrame(i);
+  }
+
+  // Throttle tile loads while dragging so scrubbing stays smooth and we don't
+  // hammer the rate-limited tile server. The label tracks instantly; tiles
+  // load at most a few times a second, and the final frame loads on release.
+  var scrubTimer = null, scrubPending = null;
+  function scrubTo(i) {
+    if (!frames.length) return;
+    animPos = i;
+    frameLabel(i);
+    scrubPending = i;
+    if (scrubTimer) return;
+    scrubTimer = setTimeout(function () {
+      scrubTimer = null;
+      if (scrubPending != null) { loadFrame(scrubPending); scrubPending = null; }
+    }, 200);
   }
 
   function selectTab(name) {
@@ -826,7 +853,8 @@
   els.unitF.addEventListener("click", function () { setUnits("imperial"); });
   els.tabWeather.addEventListener("click", function () { selectTab("weather"); });
   els.tabRadar.addEventListener("click", function () { selectTab("radar"); });
-  els.frameSlider.addEventListener("input", function () { showFrame(+els.frameSlider.value); });
+  els.frameSlider.addEventListener("input", function () { scrubTo(+els.frameSlider.value); });
+  els.frameSlider.addEventListener("change", function () { showFrame(+els.frameSlider.value); });
   bindThumb(els.hourly, els.hThumb);
   bindThumb(els.daily, els.dThumb);
   window.addEventListener("resize", function () {
