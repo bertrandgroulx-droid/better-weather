@@ -1,28 +1,32 @@
 # ⛅ Better Weather
 
-**A single-screen weather dashboard. Everything at a glance.**
+**A phone-first weather app that fits on one screen.**
 
-Better Weather is a single-file, dependency-free web app. Search any city (or use
-your device location) and see — all on one screen — current conditions, a 24-hour
-hourly forecast, and a 14-day outlook. Powered by the free
+Better Weather is a single-file, dependency-free web app designed for a phone in
+portrait. It fits the whole picture on one screen: a condensed current summary up
+top, then horizontally scrollable **Hourly** and **Daily** strips you can swipe
+through — including recent history. Powered by the free
 [Open-Meteo API](https://open-meteo.com/) — **no API key required**.
 
 ## Features
 
-- 🔎 **Search anywhere** — type a city name; geocoding finds it for you.
-- 📍 **Use my location** — loads your local weather automatically on first visit.
-- 📝 **Plain-English summary** — a friendly at-a-glance sentence or two ("Right
-  now it's 18°C and partly cloudy… keep an umbrella handy, a 40% chance of
-  rain"), covering conditions, feels-like, the day's range, rain, wind and UV.
-- 🌡️ **Rich current conditions** — temperature, "feels like", humidity, wind
-  speed/direction/gusts, pressure, cloud cover, UV index, and sunrise/sunset.
-- 📈 **24-hour hourly charts** — temperature (line) with precipitation chance
-  (bars) and a separate wind speed + gusts chart.
-- 📅 **14-day outlook** — daily high/low temperature range bars (color-coded by
-  temperature) plus precipitation chance.
-- 🔁 **Metric or imperial** — toggle °C/km/h ↔ °F/mph; your choice is remembered.
-- 🎨 **No build step, no dependencies, no chart library** — charts are drawn with
-  hand-built inline SVG/CSS. It's just one `index.html`.
+- 📱 **Phone-first, single screen** — everything fits in portrait; the two
+  forecast strips scroll sideways rather than pushing the page down.
+- 🔎 **Search in a modal** — tap the city pill to open a search dialog with live
+  city results, or "Use my current location".
+- 🔁 **°C / °F toggle** — switch units in the top bar; your choice is remembered.
+- 🧾 **Daily summary** — big current temperature and condition, "feels like",
+  today's high/low **with the time they occur**, POP, precipitation total, wind
+  high/low, and sunrise/sunset.
+- ⏱️ **Hourly strip** — swipe left/right through every available hour, with
+  **24 hours of history** behind "Now". Each hour shows the icon, temperature,
+  feels-like, precipitation chance, and a rising "water" fill for the amount.
+- 📅 **Daily strip** — swipe through the full range, with **7 days of history**
+  behind "Today", out to ~16 days ahead. Each day shows day/night icons,
+  high/low, precipitation chance, and the precip "water" fill.
+- 🟡 **Scroll indicators** — a position bar under each strip shows where you are.
+- 🎨 **No build step, no dependencies, no chart library** — it's just one
+  `index.html` with hand-built CSS/SVG.
 
 ## Run it locally
 
