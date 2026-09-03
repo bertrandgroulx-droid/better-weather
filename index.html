@@ -112,28 +112,33 @@
     scrollbar-width: none;
   }
   .scroller::-webkit-scrollbar { display: none; }
-  #hourly { height: 164px; }
-  #daily  { height: 188px; }
+  #hourly { height: 172px; }
+  #daily  { height: 196px; }
 
   .cell {
     position: relative; overflow: hidden;
     flex: 0 0 calc(100% / 6); height: 100%;
     background: transparent; border: none; border-radius: 0;
     display: flex; flex-direction: column; align-items: center;
-    padding: 5px 2px; gap: 1px;
+    padding: 4px 1px 5px; gap: 0;
     text-align: center;
   }
   .cell.now, .cell.today { background: rgba(255,209,102,0.13); border-radius: 10px; }
+  /* subtle divider + weekday label at the start of each day (hourly) */
+  .cell.daystart { box-shadow: inset 1px 0 0 var(--border); }
   .cell > * { position: relative; z-index: 1; }
-  .cell .lbl { font-size: 0.76rem; color: var(--muted); font-weight: 600; }
+  .cell .dow { font-size: 0.64rem; height: 0.92rem; line-height: 0.92rem; font-weight: 700;
+    color: var(--muted); letter-spacing: 0.02em; }
+  .cell.now .dow { color: var(--accent); }
+  .cell .lbl { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
   .cell.now .lbl, .cell.today .lbl { color: var(--accent); }
-  .cell .ic { font-size: 1.35rem; line-height: 1.05; }
-  .cell .ic.sm { font-size: 1.05rem; }
-  .cell .big { font-size: 1.15rem; font-weight: 800; line-height: 1.05; }
-  .cell .sub { font-size: 0.6rem; color: var(--muted); }
-  .cell .pop { font-size: 0.66rem; color: var(--precip); white-space: nowrap; }
+  .cell .ic { font-size: 1.75rem; line-height: 1.1; }
+  .cell .ic.sm { font-size: 1.35rem; }
+  .cell .big { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
+  .cell .sub { font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
+  .cell .pop { font-size: 0.76rem; color: var(--precip); white-space: nowrap; }
   .cell .spacer { flex: 1; min-height: 2px; }
-  .cell .pamt { font-size: 0.6rem; color: #cfeaff; white-space: nowrap; }
+  .cell .pamt { font-size: 0.66rem; color: #cfeaff; white-space: nowrap; }
 
   /* precip water fill */
   .water { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0;
@@ -396,19 +401,26 @@
 
   function renderHourly(d) {
     var h = d.hourly, now = d.current.time;
-    // Window: 24h of history through the end of the forecast.
+    // Window: up to 48h of history and 72h into the future.
     var nowIdx = h.time.indexOf(now);
     if (nowIdx < 0) nowIdx = h.time.findIndex(function (x) { return x >= now; });
     if (nowIdx < 0) nowIdx = 0;
-    var start = Math.max(0, nowIdx - 24);
+    var start = Math.max(0, nowIdx - 48);
+    var end = Math.min(h.time.length, nowIdx + 73);
     var cap = precipCapH();
-    var html = "";
-    for (var i = start; i < h.time.length; i++) {
+    var html = "", prevDay = null;
+    for (var i = start; i < end; i++) {
       var isNow = i === nowIdx;
       var amt = h.precipitation[i];
+      var day = h.time[i].slice(0, 10);
+      var boundary = (i === start) || (day !== prevDay);
+      prevDay = day;
+      var dow = isNow ? "Today"
+        : (boundary ? new Date(h.time[i] + ":00").toLocaleDateString(undefined, { weekday: "short" }) : "");
       html +=
-        '<div class="cell' + (isNow ? " now" : "") + '">' +
+        '<div class="cell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '">' +
           waterHtml(amt, cap) +
+          '<div class="dow">' + dow + '</div>' +
           '<div class="lbl">' + (isNow ? "Now" : fmtHour(h.time[i])) + '</div>' +
           '<div class="ic">' + icon(h.weather_code[i], h.is_day[i]) + '</div>' +
           '<div class="big">' + Math.round(h.temperature_2m[i]) + '°</div>' +
