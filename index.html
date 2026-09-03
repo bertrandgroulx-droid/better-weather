@@ -708,7 +708,7 @@
   // ================= radar map (Leaflet + Mapbox + RainViewer) =================
   var map = null, mapInited = false, locMarker = null;
   var rvHost = "", frames = [], pastCount = 0, animPos = 0;
-  var radarLayers = {};
+  var radarLayer = null; // a single radar layer whose URL we swap per frame
 
   function recenterMap(loc) {
     if (map && loc) {
@@ -757,33 +757,29 @@
       pastCount = past.length;
       if (!frames.length) { els.frameTime.textContent = "No radar data"; return; }
       els.frameSlider.max = frames.length - 1;
-      frames.forEach(frameLayer); // preload every frame so scrubbing is snappy
       animPos = Math.max(0, pastCount - 1); // start at the latest observed frame ("now")
       els.frameSlider.value = animPos;
       showFrame(animPos);
     }).catch(function () { els.frameTime.textContent = "Radar unavailable"; });
   }
 
-  function frameLayer(fr) {
-    if (!radarLayers[fr.path]) {
-      // size 256, colour scheme 4, options "1_1" = smoothed + snow shown separately
-      radarLayers[fr.path] = L.tileLayer(
-        rvHost + fr.path + "/256/{z}/{x}/{y}/4/1_1.png",
-        { opacity: 0, tileSize: 256, maxNativeZoom: 12, maxZoom: 20,
-          attribution: "Radar &copy; RainViewer" });
-      radarLayers[fr.path].addTo(map);
-    }
-    return radarLayers[fr.path];
-  }
+  // colour scheme 4, options "1_1" = smoothed + snow shown separately
+  function frameUrl(fr) { return rvHost + fr.path + "/256/{z}/{x}/{y}/4/1_1.png"; }
 
   function showFrame(i) {
     if (!frames.length) return;
     i = (i % frames.length + frames.length) % frames.length;
-    var prev = frames[animPos];
     animPos = i;
     var fr = frames[i];
-    frameLayer(fr).setOpacity(0.72);
-    if (prev && prev !== fr && radarLayers[prev.path]) radarLayers[prev.path].setOpacity(0);
+    if (!radarLayer) {
+      radarLayer = L.tileLayer(frameUrl(fr), {
+        opacity: 0.72, tileSize: 256, maxNativeZoom: 12, maxZoom: 20,
+        updateWhenZooming: false, keepBuffer: 1,
+        attribution: "Radar &copy; RainViewer"
+      }).addTo(map);
+    } else {
+      radarLayer.setUrl(frameUrl(fr));
+    }
     els.frameSlider.value = i;
     var d = new Date(fr.time * 1000);
     var t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
