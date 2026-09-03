@@ -289,7 +289,6 @@
       <span><i style="background:#ff5a3c"></i>Heavy rain</span>
     </div>
     <div class="radar-ctrl">
-      <button id="playBtn" type="button" aria-label="Play or pause">▶</button>
       <input id="frameSlider" type="range" min="0" max="0" value="0" aria-label="Radar time" />
       <span class="t" id="frameTime">—</span>
     </div>
@@ -325,7 +324,7 @@
     unitC: $("unitC"), unitF: $("unitF"),
     backdrop: $("backdrop"), searchInput: $("searchInput"),
     closeModal: $("closeModal"), results: $("results"),
-    radar: $("radar"), playBtn: $("playBtn"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
+    radar: $("radar"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
     tabWeather: $("tabWeather"), tabRadar: $("tabRadar"),
   };
 
@@ -686,7 +685,7 @@
 
   // ================= radar map (Leaflet + RainViewer) =================
   var map = null, mapInited = false, locMarker = null;
-  var rvHost = "", frames = [], pastCount = 0, animPos = 0, playTimer = null;
+  var rvHost = "", frames = [], pastCount = 0, animPos = 0;
   var radarLayers = {};
 
   function recenterMap(loc) {
@@ -725,10 +724,10 @@
       pastCount = past.length;
       if (!frames.length) { els.frameTime.textContent = "No radar data"; return; }
       els.frameSlider.max = frames.length - 1;
+      frames.forEach(frameLayer); // preload every frame so scrubbing is snappy
       animPos = Math.max(0, pastCount - 1); // start at the latest observed frame ("now")
       els.frameSlider.value = animPos;
       showFrame(animPos);
-      stopPlay(); // default to paused on "now"
     }).catch(function () { els.frameTime.textContent = "Radar unavailable"; });
   }
 
@@ -752,21 +751,10 @@
     var fr = frames[i];
     frameLayer(fr).setOpacity(0.72);
     if (prev && prev !== fr && radarLayers[prev.path]) radarLayers[prev.path].setOpacity(0);
-    frameLayer(frames[(i + 1) % frames.length]); // preload next
     els.frameSlider.value = i;
     var d = new Date(fr.time * 1000);
     var t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     els.frameTime.textContent = (i >= pastCount ? t + " · forecast" : t);
-  }
-
-  function play() {
-    stopPlay();
-    els.playBtn.textContent = "⏸";
-    playTimer = setInterval(function () { showFrame(animPos + 1); }, 650);
-  }
-  function stopPlay() {
-    if (playTimer) { clearInterval(playTimer); playTimer = null; }
-    els.playBtn.textContent = "▶";
   }
 
   function selectTab(name) {
@@ -780,7 +768,6 @@
       els.status.classList.add("hidden");
       initRadar();
     } else {
-      stopPlay();
       if (loaded) els.result.classList.remove("hidden");
       else els.status.classList.remove("hidden");
     }
@@ -803,8 +790,7 @@
   els.unitF.addEventListener("click", function () { setUnits("imperial"); });
   els.tabWeather.addEventListener("click", function () { selectTab("weather"); });
   els.tabRadar.addEventListener("click", function () { selectTab("radar"); });
-  els.playBtn.addEventListener("click", function () { if (playTimer) stopPlay(); else play(); });
-  els.frameSlider.addEventListener("input", function () { stopPlay(); showFrame(+els.frameSlider.value); });
+  els.frameSlider.addEventListener("input", function () { showFrame(+els.frameSlider.value); });
   bindThumb(els.hourly, els.hThumb);
   bindThumb(els.daily, els.dThumb);
   window.addEventListener("resize", function () {
