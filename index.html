@@ -33,8 +33,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: calc(env(safe-area-inset-top) + 8px) 8px calc(env(safe-area-inset-bottom) + 8px);
+    gap: 18px;
+    padding: calc(env(safe-area-inset-top) + 8px) 8px calc(env(safe-area-inset-bottom) + 10px);
   }
   body.night { --bg-1: #050f1e; --bg-2: #0a1f38; --bg-3: #0f2c48; }
 
@@ -92,40 +92,48 @@
   .sum-right .row .k { color: var(--muted); }
 
   /* ---------------- scrolling sections ---------------- */
-  .section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .result {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .content {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    justify-content: space-evenly;
+  }
+  .section { display: flex; flex-direction: column; }
   .section > h2 {
-    margin: 0 0 4px; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em;
+    margin: 0 0 6px; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em;
   }
   .scroller {
-    flex: 1; min-height: 0;
-    display: flex; gap: 6px;
+    display: flex; gap: 0;
     overflow-x: auto; overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding-bottom: 2px;
   }
   .scroller::-webkit-scrollbar { display: none; }
+  #hourly { height: 164px; }
+  #daily  { height: 188px; }
 
   .cell {
     position: relative; overflow: hidden;
-    flex: 0 0 auto; width: 74px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px;
+    flex: 0 0 calc(100% / 6); height: 100%;
+    background: transparent; border: none; border-radius: 0;
     display: flex; flex-direction: column; align-items: center;
-    padding: 8px 4px; gap: 2px;
+    padding: 5px 2px; gap: 1px;
     text-align: center;
   }
-  .cell.now, .cell.today { border-color: var(--accent); background: rgba(255,209,102,0.10); }
+  .cell.now, .cell.today { background: rgba(255,209,102,0.13); border-radius: 10px; }
   .cell > * { position: relative; z-index: 1; }
-  .cell .lbl { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .cell .lbl { font-size: 0.76rem; color: var(--muted); font-weight: 600; }
   .cell.now .lbl, .cell.today .lbl { color: var(--accent); }
-  .cell .ic { font-size: 1.5rem; line-height: 1.1; }
-  .cell .ic.sm { font-size: 1.15rem; }
-  .cell .big { font-size: 1.25rem; font-weight: 800; line-height: 1.1; }
-  .cell .sub { font-size: 0.68rem; color: var(--muted); }
-  .cell .pop { font-size: 0.72rem; color: var(--precip); white-space: nowrap; margin-top: 1px; }
-  .cell .spacer { flex: 1; }
-  .cell .pamt { font-size: 0.64rem; color: #cfeaffff; white-space: nowrap; }
+  .cell .ic { font-size: 1.35rem; line-height: 1.05; }
+  .cell .ic.sm { font-size: 1.05rem; }
+  .cell .big { font-size: 1.15rem; font-weight: 800; line-height: 1.05; }
+  .cell .sub { font-size: 0.6rem; color: var(--muted); }
+  .cell .pop { font-size: 0.66rem; color: var(--precip); white-space: nowrap; }
+  .cell .spacer { flex: 1; min-height: 2px; }
+  .cell .pamt { font-size: 0.6rem; color: #cfeaff; white-space: nowrap; }
 
   /* precip water fill */
   .water { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0;
@@ -134,8 +142,12 @@
     fill: rgba(76,201,240,0.55); }
 
   /* scroll-position indicator */
-  .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 6px; position: relative; }
+  .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 8px; position: relative; }
   .thumb { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); min-width: 24px; }
+  /* fixed "Now" / "Today" reference marker on the track */
+  .marker { position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--bg-1);
+    transform: translate(-50%, -50%); z-index: 2; pointer-events: none; }
 
   /* ---------------- status ---------------- */
   .status { margin: auto; text-align: center; color: var(--muted); padding: 1.5rem; }
@@ -188,19 +200,23 @@
 
   <div class="status" id="status">Loading your weather…</div>
 
-  <section class="summary hidden" id="summary"></section>
+  <div class="result hidden" id="result">
+    <section class="summary" id="summary"></section>
 
-  <section class="section hidden" id="hourlySec">
-    <h2>Hourly</h2>
-    <div class="scroller" id="hourly"></div>
-    <div class="track"><div class="thumb" id="hThumb"></div></div>
-  </section>
+    <div class="content" id="content">
+      <section class="section" id="hourlySec">
+        <h2>Hourly</h2>
+        <div class="scroller" id="hourly"></div>
+        <div class="track"><div class="thumb" id="hThumb"></div><div class="marker" id="hMarker"></div></div>
+      </section>
 
-  <section class="section hidden" id="dailySec">
-    <h2>Daily</h2>
-    <div class="scroller" id="daily"></div>
-    <div class="track"><div class="thumb" id="dThumb"></div></div>
-  </section>
+      <section class="section" id="dailySec">
+        <h2>Daily</h2>
+        <div class="scroller" id="daily"></div>
+        <div class="track"><div class="thumb" id="dThumb"></div><div class="marker" id="dMarker"></div></div>
+      </section>
+    </div>
+  </div>
 
   <!-- search modal -->
   <div class="backdrop hidden" id="backdrop">
@@ -219,9 +235,9 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var els = {
-    status: $("status"), summary: $("summary"),
-    hourlySec: $("hourlySec"), hourly: $("hourly"), hThumb: $("hThumb"),
-    dailySec: $("dailySec"), daily: $("daily"), dThumb: $("dThumb"),
+    status: $("status"), result: $("result"), summary: $("summary"),
+    hourlySec: $("hourlySec"), hourly: $("hourly"), hThumb: $("hThumb"), hMarker: $("hMarker"),
+    dailySec: $("dailySec"), daily: $("daily"), dThumb: $("dThumb"), dMarker: $("dMarker"),
     cityPill: $("cityPill"), cityName: $("cityName"),
     unitC: $("unitC"), unitF: $("unitF"),
     backdrop: $("backdrop"), searchInput: $("searchInput"),
@@ -447,6 +463,15 @@
     thumb.style.left = (lr * (100 - wPct)) + "%";
   }
 
+  // Place the fixed Now/Today marker at that cell's position within the whole track.
+  function positionMarker(scroller, marker, cls) {
+    var el = scroller.querySelector("." + cls);
+    if (!el || scroller.scrollWidth <= 0) { marker.style.display = "none"; return; }
+    var center = el.offsetLeft + el.offsetWidth / 2;
+    marker.style.display = "block";
+    marker.style.left = (center / scroller.scrollWidth * 100) + "%";
+  }
+
   function bindThumb(scroller, thumb) {
     scroller.addEventListener("scroll", function () { updateThumb(scroller, thumb); }, { passive: true });
   }
@@ -457,15 +482,11 @@
     els.status.textContent = msg;
     els.status.classList.toggle("error", !!err);
     els.status.classList.remove("hidden");
-    els.summary.classList.add("hidden");
-    els.hourlySec.classList.add("hidden");
-    els.dailySec.classList.add("hidden");
+    els.result.classList.add("hidden");
   }
   function showResult() {
     els.status.classList.add("hidden");
-    els.summary.classList.remove("hidden");
-    els.hourlySec.classList.remove("hidden");
-    els.dailySec.classList.remove("hidden");
+    els.result.classList.remove("hidden");
   }
 
   function show(loc) {
@@ -483,6 +504,8 @@
         scrollToClass(els.daily, "today");
         updateThumb(els.hourly, els.hThumb);
         updateThumb(els.daily, els.dThumb);
+        positionMarker(els.hourly, els.hMarker, "now");
+        positionMarker(els.daily, els.dMarker, "today");
       });
     }).catch(function (err) {
       setStatus("Couldn't load the weather. " + err.message, true);
@@ -581,6 +604,8 @@
   window.addEventListener("resize", function () {
     updateThumb(els.hourly, els.hThumb);
     updateThumb(els.daily, els.dThumb);
+    positionMarker(els.hourly, els.hMarker, "now");
+    positionMarker(els.daily, els.dMarker, "today");
   });
 
   // ---- init ----
