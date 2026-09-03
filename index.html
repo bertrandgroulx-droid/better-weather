@@ -437,6 +437,48 @@
     return fetchJson(url);
   }
 
+  // ERA5 reanalysis (observation-assimilated) for the past week. It lags a few
+  // days, so only the older history days come back populated; the rest fall
+  // back to the forecast model's analysis.
+  function getArchive(loc) {
+    var tu = units === "imperial" ? "fahrenheit" : "celsius";
+    var wu = units === "imperial" ? "mph" : "kmh";
+    var pu = units === "imperial" ? "inch" : "mm";
+    var d0 = new Date(), d1 = new Date();
+    d0.setDate(d0.getDate() - 8);
+    d1.setDate(d1.getDate() - 1);
+    var iso = function (dt) { return dt.toISOString().slice(0, 10); };
+    var url = "https://archive-api.open-meteo.com/v1/archive" +
+      "?latitude=" + loc.lat + "&longitude=" + loc.lon +
+      "&start_date=" + iso(d0) + "&end_date=" + iso(d1) +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,sunrise,sunset" +
+      "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
+      "&timezone=auto";
+    return fetchJson(url);
+  }
+
+  // Override the "measured" daily fields with reanalysis where available.
+  // Precipitation probability isn't a reanalysis quantity, so the model
+  // analysis value is kept for it.
+  function mergeArchive(d, arch) {
+    if (!arch || !arch.daily || !arch.daily.time) return;
+    var a = arch.daily, idx = {};
+    for (var i = 0; i < a.time.length; i++) idx[a.time[i]] = i;
+    var dd = d.daily, today = d.current.time.slice(0, 10);
+    for (var j = 0; j < dd.time.length; j++) {
+      if (dd.time[j] >= today) continue;          // past days only
+      var k = idx[dd.time[j]];
+      if (k == null || a.temperature_2m_max[k] == null) continue; // not in ERA5 yet
+      dd.temperature_2m_max[j] = a.temperature_2m_max[k];
+      dd.temperature_2m_min[j] = a.temperature_2m_min[k];
+      if (a.precipitation_sum[k] != null) dd.precipitation_sum[j] = a.precipitation_sum[k];
+      if (a.weather_code && a.weather_code[k] != null) dd.weather_code[j] = a.weather_code[k];
+      if (a.wind_speed_10m_max && a.wind_speed_10m_max[k] != null) dd.wind_speed_10m_max[j] = a.wind_speed_10m_max[k];
+      if (a.sunrise && a.sunrise[k]) dd.sunrise[j] = a.sunrise[k];
+      if (a.sunset && a.sunset[k]) dd.sunset[j] = a.sunset[k];
+    }
+  }
+
   // ================= rendering =================
 
   function todayIndex(d) {
@@ -625,7 +667,14 @@
     els.cityName.textContent = loc.name;
     recenterMap(loc);
     setStatus("Loading weather for " + loc.name + "…");
-    return getWeather(loc).then(function (d) {
+    // Fetch the forecast and the ERA5 archive together; the archive is optional
+    // and only improves the older history days.
+    return Promise.all([
+      getWeather(loc),
+      getArchive(loc).catch(function () { return null; })
+    ]).then(function (res) {
+      var d = res[0];
+      mergeArchive(d, res[1]);
       showResult(); // unhide first so the strips have layout to measure
       renderSummary(loc, d);
       renderHourly(d);
