@@ -289,7 +289,7 @@
       <span><i style="background:#ff5a3c"></i>Heavy rain</span>
     </div>
     <div class="radar-ctrl">
-      <button id="playBtn" type="button" aria-label="Play or pause">⏸</button>
+      <button id="playBtn" type="button" aria-label="Play or pause">▶</button>
       <input id="frameSlider" type="range" min="0" max="0" value="0" aria-label="Radar time" />
       <span class="t" id="frameTime">—</span>
     </div>
@@ -705,10 +705,9 @@
     }
     mapInited = true;
     var center = lastLoc ? [lastLoc.lat, lastLoc.lon] : [51.05, -114.07];
-    map = L.map("map", { zoomControl: true, attributionControl: true }).setView(center, 7);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19, subdomains: "abcd",
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
+    map = L.map("map", { zoomControl: true, attributionControl: true, maxZoom: 16 }).setView(center, 7);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 16, attribution: 'Tiles &copy; Esri'
     }).addTo(map);
     locMarker = L.circleMarker(center, {
       radius: 6, color: "#0b1f3a", weight: 2, fillColor: "#ffd166", fillOpacity: 1
@@ -726,10 +725,10 @@
       pastCount = past.length;
       if (!frames.length) { els.frameTime.textContent = "No radar data"; return; }
       els.frameSlider.max = frames.length - 1;
-      animPos = Math.max(0, pastCount - 1); // start at the latest observed frame
+      animPos = Math.max(0, pastCount - 1); // start at the latest observed frame ("now")
       els.frameSlider.value = animPos;
       showFrame(animPos);
-      play();
+      stopPlay(); // default to paused on "now"
     }).catch(function () { els.frameTime.textContent = "Radar unavailable"; });
   }
 
