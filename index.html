@@ -21,6 +21,10 @@
 <meta name="apple-mobile-web-app-title" content="Better Weather" />
 <meta name="theme-color" content="#0b1f3a" />
 
+<!-- Leaflet (for the animated radar map) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
 <style>
   :root {
     --bg-1: #0b1f3a;
@@ -208,6 +212,39 @@
   .results .sub { color: var(--muted); font-size: 0.82rem; }
   .results .geo { color: var(--accent); }
   .results .empty { color: var(--muted); padding: 0.7rem 0.6rem; }
+
+  /* ---------------- radar tab ---------------- */
+  #radar { position: relative; flex: 1; min-height: 0; }
+  #map { position: absolute; inset: 0; background: #0b1f3a; }
+  #map .maperr { color: var(--muted); text-align: center; padding: 40% 1rem 0; }
+  .leaflet-container { background: #0b1f3a; font-family: inherit; }
+  .radar-ctrl {
+    position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(11, 31, 58, 0.82); border: 1px solid var(--border);
+    border-radius: 12px; padding: 8px 12px;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  }
+  .radar-ctrl input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .radar-ctrl .t { font-size: 0.78rem; color: var(--text); min-width: 118px; text-align: right; white-space: nowrap; }
+  .radar-legend {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    background: rgba(11, 31, 58, 0.82); border: 1px solid var(--border);
+    border-radius: 10px; padding: 6px 9px; font-size: 0.72rem; color: var(--text);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .radar-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  /* ---------------- bottom tab bar ---------------- */
+  .tabbar { display: flex; gap: 8px; flex: none; }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 12px;
+    color: var(--muted); font-family: inherit; font-weight: 600; padding: 5px 0; cursor: pointer;
+  }
+  .tab .ic { font-size: 1.2rem; line-height: 1.1; }
+  .tab .lb { font-size: 0.72rem; }
+  .tab.active { color: #0b1f3a; background: var(--accent); border-color: transparent; }
 </style>
 </head>
 <body>
@@ -243,6 +280,26 @@
     </div>
   </div>
 
+  <!-- radar view -->
+  <div id="radar" class="hidden">
+    <div id="map"></div>
+    <div class="radar-legend">
+      <span><i style="background:#5ea0ff"></i>Snow</span>
+      <span><i style="background:#3fd23f"></i>Light rain</span>
+      <span><i style="background:#ff5a3c"></i>Heavy rain</span>
+    </div>
+    <div class="radar-ctrl">
+      <input id="frameSlider" type="range" min="0" max="0" value="0" aria-label="Radar time" />
+      <span class="t" id="frameTime">—</span>
+    </div>
+  </div>
+
+  <!-- bottom tab bar -->
+  <nav class="tabbar">
+    <button class="tab active" id="tabWeather" type="button"><span class="ic">🌤️</span><span class="lb">Weather</span></button>
+    <button class="tab" id="tabRadar" type="button"><span class="ic">🗺️</span><span class="lb">Radar</span></button>
+  </nav>
+
   <!-- search modal -->
   <div class="backdrop hidden" id="backdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Search for a city">
@@ -267,11 +324,20 @@
     unitC: $("unitC"), unitF: $("unitF"),
     backdrop: $("backdrop"), searchInput: $("searchInput"),
     closeModal: $("closeModal"), results: $("results"),
+    radar: $("radar"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
+    tabWeather: $("tabWeather"), tabRadar: $("tabRadar"),
   };
+
+  // ===== Paste your Mapbox public token (starts with pk.) between the quotes.
+  //       Restrict it to your site's URL in the Mapbox dashboard first.
+  //       Leave blank to use the OpenStreetMap fallback. =====
+  var MAPBOX_TOKEN = "";
 
   var units = localStorage.getItem("bw-units") || "metric"; // "metric" | "imperial"
   var lastLoc = null;
   var searchTimer = null;
+  var currentTab = "weather";
+  var loaded = false;
 
   // ---- weather code → [emoji, label] ----
   var WMO = {
@@ -528,17 +594,23 @@
   function setStatus(msg, err) {
     els.status.textContent = msg;
     els.status.classList.toggle("error", !!err);
-    els.status.classList.remove("hidden");
-    els.result.classList.add("hidden");
+    if (currentTab === "weather") {
+      els.status.classList.remove("hidden");
+      els.result.classList.add("hidden");
+    }
   }
   function showResult() {
-    els.status.classList.add("hidden");
-    els.result.classList.remove("hidden");
+    loaded = true;
+    if (currentTab === "weather") {
+      els.status.classList.add("hidden");
+      els.result.classList.remove("hidden");
+    }
   }
 
   function show(loc) {
     lastLoc = loc;
     els.cityName.textContent = loc.name;
+    recenterMap(loc);
     setStatus("Loading weather for " + loc.name + "…");
     return getWeather(loc).then(function (d) {
       showResult(); // unhide first so the strips have layout to measure
@@ -631,6 +703,107 @@
     if (lastLoc) show(lastLoc);
   }
 
+  // ================= radar map (Leaflet + Mapbox + RainViewer) =================
+  var map = null, mapInited = false, locMarker = null;
+  var rvHost = "", frames = [], pastCount = 0, animPos = 0;
+  var radarLayers = {};
+
+  function recenterMap(loc) {
+    if (map && loc) {
+      map.setView([loc.lat, loc.lon], map.getZoom());
+      if (locMarker) locMarker.setLatLng([loc.lat, loc.lon]);
+    }
+  }
+
+  function addBasemap() {
+    if (MAPBOX_TOKEN) {
+      L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
+        id: "mapbox/dark-v11", tileSize: 512, zoomOffset: -1, maxZoom: 20,
+        accessToken: MAPBOX_TOKEN, attribution: '&copy; Mapbox &copy; OpenStreetMap'
+      }).addTo(map);
+    } else {
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+    }
+  }
+
+  function initRadar() {
+    if (mapInited) { setTimeout(function () { map.invalidateSize(); }, 60); recenterMap(lastLoc); return; }
+    if (!window.L) {
+      document.getElementById("map").innerHTML =
+        '<div class="maperr">The map library couldn\'t load. Check your connection and reopen this tab.</div>';
+      return;
+    }
+    mapInited = true;
+    var center = lastLoc ? [lastLoc.lat, lastLoc.lon] : [51.05, -114.07];
+    map = L.map("map", { zoomControl: true, attributionControl: true, maxZoom: 20 }).setView(center, 9);
+    addBasemap();
+    locMarker = L.circleMarker(center, {
+      radius: 8, color: "#ffffff", weight: 3, fillColor: "#fb8500", fillOpacity: 1
+    }).addTo(map);
+    setTimeout(function () { map.invalidateSize(); }, 60);
+    loadRadarFrames();
+  }
+
+  function loadRadarFrames() {
+    fetchJson("https://api.rainviewer.com/public/weather-maps.json").then(function (api) {
+      rvHost = api.host;
+      var past = (api.radar && api.radar.past) || [];
+      var now = (api.radar && api.radar.nowcast) || [];
+      frames = past.concat(now);
+      pastCount = past.length;
+      if (!frames.length) { els.frameTime.textContent = "No radar data"; return; }
+      els.frameSlider.max = frames.length - 1;
+      frames.forEach(frameLayer); // preload every frame so scrubbing is snappy
+      animPos = Math.max(0, pastCount - 1); // start at the latest observed frame ("now")
+      els.frameSlider.value = animPos;
+      showFrame(animPos);
+    }).catch(function () { els.frameTime.textContent = "Radar unavailable"; });
+  }
+
+  function frameLayer(fr) {
+    if (!radarLayers[fr.path]) {
+      // size 256, colour scheme 4, options "1_1" = smoothed + snow shown separately
+      radarLayers[fr.path] = L.tileLayer(
+        rvHost + fr.path + "/256/{z}/{x}/{y}/4/1_1.png",
+        { opacity: 0, tileSize: 256, maxNativeZoom: 12, maxZoom: 20,
+          attribution: "Radar &copy; RainViewer" });
+      radarLayers[fr.path].addTo(map);
+    }
+    return radarLayers[fr.path];
+  }
+
+  function showFrame(i) {
+    if (!frames.length) return;
+    i = (i % frames.length + frames.length) % frames.length;
+    var prev = frames[animPos];
+    animPos = i;
+    var fr = frames[i];
+    frameLayer(fr).setOpacity(0.72);
+    if (prev && prev !== fr && radarLayers[prev.path]) radarLayers[prev.path].setOpacity(0);
+    els.frameSlider.value = i;
+    var d = new Date(fr.time * 1000);
+    var t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    els.frameTime.textContent = (i >= pastCount ? t + " · forecast" : t);
+  }
+
+  function selectTab(name) {
+    currentTab = name;
+    var radar = name === "radar";
+    els.tabRadar.classList.toggle("active", radar);
+    els.tabWeather.classList.toggle("active", !radar);
+    els.radar.classList.toggle("hidden", !radar);
+    if (radar) {
+      els.result.classList.add("hidden");
+      els.status.classList.add("hidden");
+      initRadar();
+    } else {
+      if (loaded) els.result.classList.remove("hidden");
+      else els.status.classList.remove("hidden");
+    }
+  }
+
   // ---- events ----
   els.cityPill.addEventListener("click", openModal);
   els.closeModal.addEventListener("click", closeModal);
@@ -646,6 +819,9 @@
   els.results.addEventListener("click", onResultsClick);
   els.unitC.addEventListener("click", function () { setUnits("metric"); });
   els.unitF.addEventListener("click", function () { setUnits("imperial"); });
+  els.tabWeather.addEventListener("click", function () { selectTab("weather"); });
+  els.tabRadar.addEventListener("click", function () { selectTab("radar"); });
+  els.frameSlider.addEventListener("input", function () { showFrame(+els.frameSlider.value); });
   bindThumb(els.hourly, els.hThumb);
   bindThumb(els.daily, els.dThumb);
   window.addEventListener("resize", function () {
@@ -653,6 +829,7 @@
     updateThumb(els.daily, els.dThumb);
     positionMarker(els.hourly, els.hMarker, "now");
     positionMarker(els.daily, els.dMarker, "today");
+    if (map && currentTab === "radar") map.invalidateSize();
   });
 
   // ---- init ----

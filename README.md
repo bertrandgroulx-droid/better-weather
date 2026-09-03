@@ -26,6 +26,15 @@ through — including recent history. Powered by the free
   behind "Today", out to ~16 days ahead. Each day shows day/night icons,
   high/low, precipitation chance, and the precip "water" fill.
 - 🟡 **Scroll indicators** — a position bar under each strip shows where you are.
+- 🗺️ **Animated radar tab** — a bottom tab opens a full-screen zoomable map with
+  animated precipitation radar (rain and snow) you scrub through the recent past
+  and short-term nowcast, centered on your location. Radar tiles are the free,
+  keyless [RainViewer](https://www.rainviewer.com/) feed on a
+  [Leaflet](https://leafletjs.com/) map. The basemap uses
+  [Mapbox](https://www.mapbox.com/) (dark style) — set your token in the
+  `MAPBOX_TOKEN` constant near the top of the script; leave it blank to fall
+  back to OpenStreetMap. Restrict the token to your site's URL in the Mapbox
+  dashboard, since it's visible in the page.
 - 🎨 **No build step, no dependencies, no chart library** — it's just one
   `index.html` with hand-built CSS/SVG.
 - 📲 **Add to Home Screen** — ships an `apple-touch-icon` and a web manifest, so
