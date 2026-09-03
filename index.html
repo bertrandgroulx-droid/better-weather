@@ -37,15 +37,19 @@
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; margin: 0; }
+  html, body { margin: 0; }
 
   body {
     font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
     color: var(--text);
     background: linear-gradient(160deg, var(--bg-1), var(--bg-2) 55%, var(--bg-3));
     background-attachment: fixed;
-    height: 100dvh;
-    overflow: hidden;
+    /* Size to the SMALL viewport (browser chrome visible) so the top is never
+       hidden behind a mobile address bar; fall back to vh on old browsers.
+       Allow vertical scroll as a safety net instead of hard-clipping. */
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 18px;
