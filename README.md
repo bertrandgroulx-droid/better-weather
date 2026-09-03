@@ -28,6 +28,9 @@ through — including recent history. Powered by the free
 - 🟡 **Scroll indicators** — a position bar under each strip shows where you are.
 - 🎨 **No build step, no dependencies, no chart library** — it's just one
   `index.html` with hand-built CSS/SVG.
+- 📲 **Add to Home Screen** — ships an `apple-touch-icon` and a web manifest, so
+  on iOS (Share → *Add to Home Screen*) it gets a custom icon and launches
+  full-screen; installable on Android too.
 
 ## Run it locally
 
