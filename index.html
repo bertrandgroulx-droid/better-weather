@@ -213,8 +213,11 @@
   .results .geo { color: var(--accent); }
   .results .empty { color: var(--muted); padding: 0.7rem 0.6rem; }
   .results .rc-head { color: var(--muted); font-size: 0.68rem; text-transform: uppercase;
-    letter-spacing: 0.06em; padding: 0.6rem 0.6rem 0.2rem; cursor: default; }
+    letter-spacing: 0.06em; padding: 0.6rem 0.6rem 0.2rem; cursor: default;
+    display: flex; justify-content: space-between; align-items: center; }
   .results .rc-head:hover { background: none; }
+  .results .rc-clear { color: var(--accent); text-transform: none; letter-spacing: 0;
+    font-size: 0.7rem; cursor: pointer; padding: 2px 4px; }
 
   /* ---------------- radar tab ---------------- */
   #radar { position: relative; flex: 1; min-height: 0; }
@@ -748,7 +751,7 @@
     var recents = getRecents();
     var html = GEO_LI;
     if (recents.length) {
-      html += '<li class="rc-head">Recent</li>';
+      html += '<li class="rc-head">Recent<span class="rc-clear" data-clear="1">Clear</span></li>';
       recents.forEach(function (loc, i) { html += itemHtml(loc, i); });
     }
     els.results.innerHTML = html;
@@ -772,7 +775,10 @@
     }, 250);
   }
 
+  function clearRecents() { try { localStorage.removeItem("bw-recents"); } catch (e) { /* ignore */ } }
+
   function onResultsClick(e) {
+    if (e.target.dataset && e.target.dataset.clear) { clearRecents(); renderRecents(); return; }
     var li = e.target.closest("li");
     if (!li) return;
     if (li.dataset.geo) { closeModal(); useLocation(); return; }
