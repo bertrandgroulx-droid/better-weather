@@ -37,8 +37,10 @@ through — including recent history. Powered by the free
   `MAPBOX_TOKEN` constant near the top of the script; leave it blank to fall
   back to OpenStreetMap. Restrict the token to your site's URL in the Mapbox
   dashboard, since it's visible in the page.
-- 🎨 **No build step, no dependencies, no chart library** — it's just one
-  `index.html` with hand-built CSS/SVG.
+- 🎨 **No build step** — plain static files served as-is: `index.html` holds the
+  forecast app (CSS + inline script), and the radar map lives in a separate
+  `radar.js` module (`createRadar(ctx)` factory). Tunables live in a single
+  `CONFIG` block near the top of the script.
 - 📲 **Add to Home Screen** — ships an `apple-touch-icon` and a web manifest, so
   on iOS (Share → *Add to Home Screen*) it gets a custom icon and launches
   full-screen; installable on Android too.
