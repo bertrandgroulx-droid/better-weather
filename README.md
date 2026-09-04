@@ -13,7 +13,9 @@ through — including recent history. Powered by the free
 - 📱 **Phone-first, single screen** — everything fits in portrait; the two
   forecast strips scroll sideways rather than pushing the page down.
 - 🔎 **Search in a modal** — tap the city pill to open a search dialog with live
-  city results, or "Use my current location".
+  results for cities, addresses and points of interest (via Mapbox geocoding,
+  falling back to Open-Meteo's city geocoder when no token is set), or "Use my
+  current location". Recent searches are remembered and shown when you reopen it.
 - 🔁 **°C / °F toggle** — switch units in the top bar; your choice is remembered.
 - 🧾 **Daily summary** — big current temperature and condition, "feels like",
   today's high/low **with the time they occur**, POP, precipitation total, wind

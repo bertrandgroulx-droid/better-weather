@@ -212,6 +212,9 @@
   .results .sub { color: var(--muted); font-size: 0.82rem; }
   .results .geo { color: var(--accent); }
   .results .empty { color: var(--muted); padding: 0.7rem 0.6rem; }
+  .results .rc-head { color: var(--muted); font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 0.6rem 0.6rem 0.2rem; cursor: default; }
+  .results .rc-head:hover { background: none; }
 
   /* ---------------- radar tab ---------------- */
   #radar { position: relative; flex: 1; min-height: 0; }
@@ -315,7 +318,7 @@
   <div class="backdrop hidden" id="backdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Search for a city">
       <div class="modal-head">
-        <input id="searchInput" type="text" placeholder="Search a city…" autocomplete="off" />
+        <input id="searchInput" type="text" placeholder="Search a city or address…" autocomplete="off" />
         <button class="close" id="closeModal" type="button" aria-label="Close">✕</button>
       </div>
       <ul class="results" id="results"></ul>
@@ -412,16 +415,45 @@
     });
   }
 
-  // ---- geocoding ----
-  function geocode(q, count) {
-    var url = "https://geocoding-api.open-meteo.com/v1/search?count=" + (count || 1) +
+  // ---- geocoding (loc = { name, sub, lat, lon }) ----
+  function omToLoc(r) {
+    return { name: r.name, sub: [r.admin1, r.country].filter(Boolean).join(", "),
+      lat: r.latitude, lon: r.longitude };
+  }
+  // Mapbox handles street addresses, POIs and cities; Open-Meteo (cities only)
+  // is the fallback if no token is set.
+  function mapboxGeocode(q, count) {
+    var url = "https://api.mapbox.com/search/geocode/v6/forward?q=" + encodeURIComponent(q) +
+      "&limit=" + (count || 6) + "&language=en&access_token=" + encodeURIComponent(MAPBOX_TOKEN);
+    return fetchJson(url).then(function (d) {
+      return (d.features || []).map(function (f) {
+        var p = f.properties || {}, c = (f.geometry && f.geometry.coordinates) || [];
+        return { name: p.name || p.name_preferred || q, sub: p.place_formatted || "",
+          lat: c[1], lon: c[0] };
+      }).filter(function (loc) { return loc.lat != null && loc.lon != null; });
+    });
+  }
+  function openMeteoGeocode(q, count) {
+    var url = "https://geocoding-api.open-meteo.com/v1/search?count=" + (count || 6) +
       "&language=en&format=json&name=" + encodeURIComponent(q);
-    return fetchJson(url).then(function (d) { return d.results || []; });
+    return fetchJson(url).then(function (d) { return (d.results || []).map(omToLoc); });
   }
-  function toLoc(r) {
-    return { lat: r.latitude, lon: r.longitude, name: r.name, admin: r.admin1, country: r.country };
+  function forwardGeocode(q, count) {
+    return MAPBOX_TOKEN ? mapboxGeocode(q, count) : openMeteoGeocode(q, count);
   }
-  function placeSub(loc) { return [loc.admin, loc.country].filter(Boolean).join(", "); }
+
+  // ---- recent searches (localStorage) ----
+  function getRecents() {
+    try { return JSON.parse(localStorage.getItem("bw-recents") || "[]"); } catch (e) { return []; }
+  }
+  function saveRecent(loc) {
+    try {
+      var key = function (x) { return (x.name + "|" + (x.sub || "")).toLowerCase(); };
+      var list = getRecents().filter(function (r) { return key(r) !== key(loc); });
+      list.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon });
+      localStorage.setItem("bw-recents", JSON.stringify(list.slice(0, 6)));
+    } catch (e) { /* storage may be unavailable */ }
+  }
 
   // ---- forecast (with 7 days history + 16 days ahead) ----
   function getWeather(loc) {
@@ -697,26 +729,36 @@
   }
 
   // ---- search modal ----
+  var GEO_LI = '<li class="geo" data-geo="1">📍 Use my current location</li>';
+
+  function itemHtml(loc, i) {
+    return '<li data-i="' + i + '">' + esc(loc.name) +
+      (loc.sub ? ' <span class="sub">' + esc(loc.sub) + '</span>' : '') + '</li>';
+  }
+
   function openModal() {
     els.backdrop.classList.remove("hidden");
     els.searchInput.value = "";
-    els.results.innerHTML =
-      '<li class="geo" data-geo="1">📍 Use my current location</li>';
+    renderRecents();
     setTimeout(function () { els.searchInput.focus(); }, 30);
   }
   function closeModal() { els.backdrop.classList.add("hidden"); }
 
-  function renderResults(list) {
-    var html = '<li class="geo" data-geo="1">📍 Use my current location</li>';
-    if (!list.length) {
-      html += '<li class="empty">No matches — try another spelling.</li>';
-    } else {
-      list.forEach(function (r, i) {
-        var loc = toLoc(r);
-        html += '<li data-i="' + i + '">' + esc(loc.name) +
-          ' <span class="sub">' + esc(placeSub(loc)) + '</span></li>';
-      });
+  function renderRecents() {
+    var recents = getRecents();
+    var html = GEO_LI;
+    if (recents.length) {
+      html += '<li class="rc-head">Recent</li>';
+      recents.forEach(function (loc, i) { html += itemHtml(loc, i); });
     }
+    els.results.innerHTML = html;
+    els.results._list = recents;
+  }
+
+  function renderResults(list) {
+    var html = GEO_LI;
+    if (!list.length) html += '<li class="empty">No matches — try another spelling.</li>';
+    else list.forEach(function (loc, i) { html += itemHtml(loc, i); });
     els.results.innerHTML = html;
     els.results._list = list;
   }
@@ -724,9 +766,9 @@
   function onSearchInput() {
     clearTimeout(searchTimer);
     var q = els.searchInput.value.trim();
-    if (q.length < 2) { renderResults([]); els.results.querySelector(".empty") && (els.results.querySelector(".empty").textContent = "Keep typing…"); return; }
+    if (q.length < 2) { renderRecents(); return; }
     searchTimer = setTimeout(function () {
-      geocode(q, 8).then(renderResults).catch(function () { renderResults([]); });
+      forwardGeocode(q, 6).then(renderResults).catch(function () { renderResults([]); });
     }, 250);
   }
 
@@ -735,9 +777,10 @@
     if (!li) return;
     if (li.dataset.geo) { closeModal(); useLocation(); return; }
     if (li.dataset.i != null) {
-      var r = els.results._list[+li.dataset.i];
+      var loc = els.results._list[+li.dataset.i];
       closeModal();
-      show(toLoc(r));
+      saveRecent(loc);
+      show(loc);
     }
   }
 
@@ -745,11 +788,11 @@
     if (!navigator.geolocation) { fallbackCity(); return; }
     setStatus("Finding your location…");
     navigator.geolocation.getCurrentPosition(function (p) {
-      var loc = { lat: p.coords.latitude, lon: p.coords.longitude, name: "My location", admin: "", country: "" };
+      var loc = { lat: p.coords.latitude, lon: p.coords.longitude, name: "My location", sub: "" };
       // Best-effort reverse geocode for a friendly name.
       fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + loc.lat +
         "&longitude=" + loc.lon + "&language=en&format=json")
-        .then(function (d) { if (d.results && d.results[0]) loc = toLoc(d.results[0]); })
+        .then(function (d) { if (d.results && d.results[0]) loc = omToLoc(d.results[0]); })
         .catch(function () {})
         .then(function () { show(loc); });
     }, function () { fallbackCity(); }, { timeout: 9000, maximumAge: 600000 });
@@ -757,7 +800,7 @@
 
   function fallbackCity() {
     // Default to Calgary if we can't use location.
-    show({ lat: 51.05, lon: -114.07, name: "Calgary", admin: "Alberta", country: "Canada" });
+    show({ lat: 51.05, lon: -114.07, name: "Calgary", sub: "Alberta, Canada" });
   }
 
   function setUnits(u) {
