@@ -265,10 +265,10 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand"><span class="logo">⛅</span><span class="name">Better Weather</span></div>
+    <div class="brand"><span class="logo" aria-hidden="true">⛅</span><span class="name">Better Weather</span></div>
     <button class="city-pill" id="cityPill" type="button">
       <span class="nm" id="cityName">Loading…</span>
-      <span class="mag">🔍</span>
+      <span class="mag" aria-hidden="true">🔍</span>
     </button>
     <div class="units" role="group" aria-label="Temperature units">
       <button type="button" id="unitC">°C</button>
@@ -312,9 +312,9 @@
   </div>
 
   <!-- bottom tab bar -->
-  <nav class="tabbar">
-    <button class="tab active" id="tabWeather" type="button"><span class="ic">🌤️</span><span class="lb">Weather</span></button>
-    <button class="tab" id="tabRadar" type="button"><span class="ic">🗺️</span><span class="lb">Map</span></button>
+  <nav class="tabbar" role="tablist" aria-label="Views">
+    <button class="tab active" id="tabWeather" type="button" role="tab" aria-selected="true" aria-controls="result"><span class="ic" aria-hidden="true">🌤️</span><span class="lb">Weather</span></button>
+    <button class="tab" id="tabRadar" type="button" role="tab" aria-selected="false" aria-controls="radar"><span class="ic" aria-hidden="true">🗺️</span><span class="lb">Map</span></button>
   </nav>
 
   <!-- search modal -->
@@ -469,7 +469,8 @@
     } catch (e) { /* storage may be unavailable */ }
   }
 
-  // ---- forecast (with 7 days history + 16 days ahead) ----
+  // ---- forecast (daily spans the past/forecast days; hourly is limited to the
+  //      window the strip actually shows, to avoid over-fetching) ----
   function getWeather(loc) {
     var tu = units === "imperial" ? "fahrenheit" : "celsius";
     var wu = units === "imperial" ? "mph" : "kmh";
@@ -480,7 +481,8 @@
       "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,is_day" +
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
-      "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays;
+      "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
+      "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFuture;
     return fetchJson(url);
   }
 
@@ -839,6 +841,8 @@
     var isMap = name === "radar";
     els.tabRadar.classList.toggle("active", isMap);
     els.tabWeather.classList.toggle("active", !isMap);
+    els.tabRadar.setAttribute("aria-selected", isMap ? "true" : "false");
+    els.tabWeather.setAttribute("aria-selected", isMap ? "false" : "true");
     els.radar.classList.toggle("hidden", !isMap);
     if (isMap) {
       els.result.classList.add("hidden");

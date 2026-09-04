@@ -28,7 +28,7 @@ window.createRadar = function (ctx) {
   // ---- state ----
   var map = null, mapInited = false, locMarker = null, modelCircle = null;
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
-  var warmed = {}, warmImgs = [], warmTimer = null;
+  var warmed = {}, warmedCount = 0, warmImgs = [], warmTimer = null;
   var scrubTimer = null, scrubPending = null;
 
   // ---- model-grid circle ----
@@ -145,6 +145,7 @@ window.createRadar = function (ctx) {
   // single radar layer can swap frames instantly (no on-the-spot fetch).
   function warmCache() {
     if (!map || !rvHost || !frames.length) return;
+    if (warmedCount > 4000) { warmed = {}; warmedCount = 0; } // bound the dedupe set
     var z = Math.min(Math.round(map.getZoom()), RADAR.maxNativeZoom);
     var n = Math.pow(2, z);
     var b = map.getBounds();
@@ -159,7 +160,7 @@ window.createRadar = function (ctx) {
           var url = rvHost + frames[f].path + "/256/" + z + "/" + xx + "/" + y +
             "/" + RADAR.colorScheme + "/" + RADAR.snow + ".png";
           if (warmed[url]) continue;
-          warmed[url] = true;
+          warmed[url] = true; warmedCount++;
           var img = new Image();
           img.decoding = "async";
           img.src = url; // browser caches the response

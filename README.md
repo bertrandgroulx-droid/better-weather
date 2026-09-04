@@ -54,6 +54,37 @@ python3 -m http.server 8000
 # then visit http://localhost:8000
 ```
 
+## Services & keys
+
+The app is client-side only but talks to several external services. Good to know
+what can break and where:
+
+| Service | Used for | Key? | Notes |
+|---|---|---|---|
+| [Open-Meteo Forecast](https://open-meteo.com/) | Current + hourly + daily forecast | none | Free, no key |
+| [Open-Meteo Archive](https://open-meteo.com/en/docs/historical-weather-api) | ERA5 reanalysis for older history days | none | ~5-day latency |
+| [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api) | City search fallback | none | Used only if no Mapbox token |
+| [Mapbox](https://www.mapbox.com/) | Map dark basemap **and** address/POI geocoding | **`pk.` token** | Free tier; token is in `MAPBOX_TOKEN` (base64) and must be **URL-restricted** to your site |
+| [RainViewer](https://www.rainviewer.com/) | Animated precipitation radar tiles | none | Free tier: ~2h past, no future, zoom ≤ 7, rate-limited |
+| [Leaflet](https://leafletjs.com/) (cdnjs) | Map rendering library | none | Loaded from CDN in `<head>` |
+| [OpenStreetMap tiles](https://www.openstreetmap.org/) | Basemap fallback when no Mapbox token | none | Light theme |
+
+The Mapbox token is a **public** token (safe to expose) but should be locked to
+your domain in the Mapbox dashboard. To change it, base64-encode the new token
+and replace the value in the `MAPBOX_TOKEN` line, or set a plain `pk.…` string.
+
+## Testing
+
+A headless smoke test (Playwright, with the network mocked) checks that the
+forecast renders, the tabs switch, and search + recents work:
+
+```sh
+npm install
+npm test
+```
+
+It also runs in CI on every push/PR (`.github/workflows/ci.yml`).
+
 ## Deploying with GitHub Pages
 
 This repo ships a GitHub Actions workflow (`.github/workflows/pages.yml`) that
