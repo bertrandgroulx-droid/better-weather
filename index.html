@@ -163,15 +163,15 @@
   .cell .ic.sm { font-size: 1.35rem; }
   .cell .big { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
   .cell .sub { font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
-  .cell .pop { font-size: 0.76rem; color: var(--precip); white-space: nowrap; }
-  .cell .spacer { flex: 1; min-height: 2px; }
-  .cell .pamt { font-size: 0.66rem; color: #cfeaff; white-space: nowrap; }
+  /* precip amount sits on the water; POP goes at the very bottom in brackets */
+  .cell .pamt { position: absolute; left: 0; right: 0; bottom: 15px; z-index: 1;
+    font-size: 0.64rem; color: #eaf6ff; white-space: nowrap; }
+  .cell .popbot { position: absolute; left: 0; right: 0; bottom: 2px; z-index: 1;
+    font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
 
-  /* precip water fill */
-  .water { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0;
-    background: linear-gradient(to bottom, rgba(76,201,240,0.55), rgba(28,126,214,0.45)); }
-  .water svg { position: absolute; top: -6px; left: 0; width: 100%; height: 8px; display: block;
-    fill: rgba(76,201,240,0.55); }
+  /* precip water fill — height = amount, tone (flat per cell) = POP bucket */
+  .water { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 0; }
+  .water svg { position: absolute; top: -6px; left: 0; width: 100%; height: 8px; display: block; }
 
   /* scroll-position indicator */
   .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 8px; position: relative; }
@@ -672,13 +672,21 @@
     return top + t * (0.9 - top);
   }
 
-  function waterHtml(amount, scale) {
+  // Flat tone per POP bucket (<33% / 33–67% / >67%) so the shade reflects
+  // probability consistently regardless of the fill height.
+  var WATER_TONE = [
+    "rgba(120,178,216,0.32)", // low
+    "rgba(76,201,240,0.58)",  // mid
+    "rgba(48,176,240,0.92)"   // high
+  ];
+  function waterHtml(amount, scale, pop) {
     var frac = waterFrac(amount, scale[0], scale[1]);
     if (frac <= 0) return "";
+    var col = WATER_TONE[pop == null ? 1 : (pop < 33 ? 0 : (pop <= 67 ? 1 : 2))];
     var pct = (frac * 100).toFixed(1);
-    return '<div class="water" style="height:' + pct + '%">' +
+    return '<div class="water" style="height:' + pct + '%;background:' + col + '">' +
       '<svg viewBox="0 0 100 8" preserveAspectRatio="none">' +
-      '<path d="M0,5 Q25,0 50,4 T100,3 V8 H0 Z"/></svg></div>';
+      '<path d="M0,5 Q25,0 50,4 T100,3 V8 H0 Z" fill="' + col + '"/></svg></div>';
   }
 
   function renderHourly(d) {
@@ -699,17 +707,17 @@
       prevDay = day;
       var dow = isNow ? "Today"
         : (boundary ? new Date(h.time[i] + ":00").toLocaleDateString(undefined, { weekday: "short" }) : "");
+      var pop = h.precipitation_probability[i] == null ? 0 : h.precipitation_probability[i];
       html +=
         '<div class="cell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '">' +
-          waterHtml(amt, scale) +
+          waterHtml(amt, scale, pop) +
           '<div class="dow">' + dow + '</div>' +
           '<div class="lbl">' + (isNow ? "Now" : fmtHour(h.time[i])) + '</div>' +
           '<div class="ic">' + icon(h.weather_code[i], h.is_day[i]) + '</div>' +
           '<div class="big">' + Math.round(h.temperature_2m[i]) + '°</div>' +
           '<div class="sub">Feels ' + Math.round(h.apparent_temperature[i]) + '°</div>' +
-          '<div class="pop">💧' + (h.precipitation_probability[i] == null ? 0 : h.precipitation_probability[i]) + '%</div>' +
-          '<div class="spacer"></div>' +
           (amt > 0 ? '<div class="pamt">' + precipLabel(amt, false) + '</div>' : '') +
+          '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';
     }
     els.hourly.innerHTML = html;
@@ -725,17 +733,17 @@
         : date.toLocaleDateString(undefined, { weekday: "short" }) + " " + date.getDate();
       var amt = dd.precipitation_sum[i];
       var code = dd.weather_code[i];
+      var pop = dd.precipitation_probability_max[i] == null ? 0 : dd.precipitation_probability_max[i];
       html +=
         '<div class="cell' + (isToday ? " today" : "") + '">' +
-          waterHtml(amt, scale) +
+          waterHtml(amt, scale, pop) +
           '<div class="lbl">' + name + '</div>' +
           '<div class="ic">' + wmo(code)[0] + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
           '<div class="ic sm">' + icon(code, 0) + '</div>' +
           '<div class="big" style="font-weight:600">' + Math.round(dd.temperature_2m_min[i]) + '°</div>' +
-          '<div class="pop">💧' + (dd.precipitation_probability_max[i] == null ? 0 : dd.precipitation_probability_max[i]) + '%</div>' +
-          '<div class="spacer"></div>' +
           (amt > 0 ? '<div class="pamt">' + precipLabel(amt, true) + '</div>' : '') +
+          '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';
     }
     els.daily.innerHTML = html;
