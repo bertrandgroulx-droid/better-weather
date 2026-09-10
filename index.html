@@ -154,10 +154,8 @@
   /* subtle divider + weekday label at the start of each day (hourly) */
   .cell.daystart { box-shadow: inset 1px 0 0 var(--border); }
   .cell > * { position: relative; z-index: 1; }
-  .cell .dow { font-size: 0.64rem; height: 0.92rem; line-height: 0.92rem; font-weight: 700;
-    color: var(--muted); letter-spacing: 0.02em; }
-  .cell.now .dow { color: var(--accent); }
   .cell .lbl { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+  .cell .lbl.day { color: var(--text); font-weight: 700; } /* day name at midnight */
   .cell.now .lbl, .cell.today .lbl { color: var(--accent); }
   .cell .ic { font-size: 1.75rem; line-height: 1.1; }
   .cell .ic.sm { font-size: 1.35rem; }
@@ -705,14 +703,14 @@
       var day = h.time[i].slice(0, 10);
       var boundary = (i === start) || (day !== prevDay);
       prevDay = day;
-      var dow = isNow ? "Today"
-        : (boundary ? new Date(h.time[i] + ":00").toLocaleDateString(undefined, { weekday: "short" }) : "");
       var pop = h.precipitation_probability[i] == null ? 0 : h.precipitation_probability[i];
+      // At midnight, show the day name in place of "12 am" (no separate row).
+      var ht = new Date(h.time[i] + ":00"), midnight = ht.getHours() === 0;
+      var label = isNow ? "Now" : (midnight ? ht.toLocaleDateString(undefined, { weekday: "short" }) : fmtHour(h.time[i]));
       html +=
         '<div class="cell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '">' +
           waterHtml(amt, scale, pop) +
-          '<div class="dow">' + dow + '</div>' +
-          '<div class="lbl">' + (isNow ? "Now" : fmtHour(h.time[i])) + '</div>' +
+          '<div class="lbl' + (midnight && !isNow ? " day" : "") + '">' + label + '</div>' +
           '<div class="ic">' + icon(h.weather_code[i], h.is_day[i]) + '</div>' +
           '<div class="big">' + Math.round(h.temperature_2m[i]) + '°</div>' +
           '<div class="sub">Feels ' + Math.round(h.apparent_temperature[i]) + '°</div>' +
