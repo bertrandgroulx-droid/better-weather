@@ -97,6 +97,13 @@ async function run() {
   assert(await page.$eval("#radar", (e) => !e.classList.contains("hidden")), "radar shown");
   assert(await page.$eval("#result", (e) => e.classList.contains("hidden")), "weather hidden on map");
   assert((await page.getAttribute("#tabRadar", "aria-selected")) === "true", "aria-selected on map tab");
+  // Search dialog opens cleanly over the map: overlays hidden, dialog stacked above them.
+  await page.click("#cityPill");
+  assert(await page.$eval("body", (b) => b.classList.contains("searching")), "searching class set over map");
+  assert(await page.$eval(".radar-legend", (e) => getComputedStyle(e).display === "none").catch(() => true), "map legend hidden while searching");
+  assert(await page.$eval(".backdrop", (e) => parseInt(getComputedStyle(e).zIndex, 10) > 1000), "dialog stacked above map controls");
+  await page.click("#closeModal");
+  assert(!(await page.$eval("body", (b) => b.classList.contains("searching"))), "searching class cleared on close");
   await page.click("#tabWeather");
   assert(await page.$eval("#result", (e) => !e.classList.contains("hidden")), "weather restored");
 
