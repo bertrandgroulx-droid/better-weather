@@ -117,6 +117,8 @@
   .sum-right .cond { font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
   .sum-right .row { color: var(--text); }
   .sum-right .row .k { color: var(--muted); }
+  /* de-emphasize the clock times next to H/L and sunrise/sunset */
+  .sum-right .row .t { color: var(--muted); font-weight: 400; }
 
   /* ---------------- scrolling sections ---------------- */
   .result {
@@ -669,11 +671,11 @@
       '<div class="sum-right">' +
         '<div class="cond">' + w[1] + '</div>' +
         '<div class="row"><span class="k">Feels</span> ' + Math.round(c.apparent_temperature) + tU() + '</div>' +
-        '<div class="row"><span class="k">H:</span> ' + hi + '°' + hiTime + '</div>' +
-        '<div class="row"><span class="k">L:</span> ' + lo + '°' + loTime + '</div>' +
+        '<div class="row"><span class="k">H:</span> ' + hi + '°<span class="t">' + hiTime + '</span></div>' +
+        '<div class="row"><span class="k">L:</span> ' + lo + '°<span class="t">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
-          '<div class="row"><span class="k">Sunrise</span> ' + sr + '</div>' +
-          '<div class="row"><span class="k">Sunset</span> ' + ss + '</div>' +
+          '<div class="row"><span class="k">Sunrise</span> <span class="t">' + sr + '</span></div>' +
+          '<div class="row"><span class="k">Sunset</span> <span class="t">' + ss + '</span></div>' +
         '</div>' +
       '</div>';
   }
