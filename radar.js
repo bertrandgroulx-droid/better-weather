@@ -24,9 +24,13 @@ window.createRadar = function (ctx) {
   var slider = document.getElementById("frameSlider");
   var timeEl = document.getElementById("frameTime");
   var modelEl = document.getElementById("radarModel");
+  var pickEl = document.getElementById("radarPick");
+  var pickGo = document.getElementById("radarPickGo");
+  var pickX = document.getElementById("radarPickX");
 
   // ---- state ----
   var map = null, mapInited = false, locMarker = null, modelCircle = null;
+  var pickMarker = null, pendingPick = null;
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
   var warmed = {}, warmedCount = 0, warmImgs = [], warmTimer = null;
   var scrubTimer = null, scrubPending = null;
@@ -71,10 +75,27 @@ window.createRadar = function (ctx) {
 
   function recenterMap(loc) {
     if (map && loc) {
+      clearPick(); // any new location supersedes a pending map pick
       map.setView([loc.lat, loc.lon], map.getZoom());
       if (locMarker) locMarker.setLatLng([loc.lat, loc.lon]);
       drawModelCircle(loc);
     }
+  }
+
+  // ---- tap-to-pick a forecast location on the map ----
+  var pickIcon = L ? L.divIcon({ className: "pick-pin", html: "📍", iconSize: [30, 30], iconAnchor: [15, 28] }) : null;
+  function onMapClick(e) {
+    pendingPick = e.latlng;
+    if (!pickMarker) pickMarker = L.marker(e.latlng, { icon: pickIcon, interactive: false, keyboard: false }).addTo(map);
+    else pickMarker.setLatLng(e.latlng);
+    if (pickEl) pickEl.classList.remove("hidden");
+    document.body.classList.add("picking"); // free the top-right corner for the confirm bar
+  }
+  function clearPick() {
+    pendingPick = null;
+    if (pickMarker) { map.removeLayer(pickMarker); pickMarker = null; }
+    if (pickEl) pickEl.classList.add("hidden");
+    document.body.classList.remove("picking");
   }
 
   // ---- map / basemap ----
@@ -109,6 +130,12 @@ window.createRadar = function (ctx) {
     }).addTo(map);
     drawModelCircle({ lat: center[0], lon: center[1] });
     map.on("moveend", warmCacheSoon); // re-warm the cache after zoom/pan
+    map.on("click", onMapClick);      // tap the map to pick a forecast location
+    if (pickGo) pickGo.addEventListener("click", function () {
+      if (pendingPick && ctx.onPick) ctx.onPick(pendingPick.lat, pendingPick.lng);
+      clearPick(); // recenter follows once the forecast resolves
+    });
+    if (pickX) pickX.addEventListener("click", clearPick);
     setTimeout(function () { map.invalidateSize(); }, 60);
     loadRadarFrames();
   }
@@ -232,6 +259,7 @@ window.createRadar = function (ctx) {
     setTz: function (t) { tz = t || null; if (frames.length) frameLabel(animPos); },
     onScrub: scrubTo,
     onCommit: showFrame,
+    clearPick: function () { if (map) clearPick(); },
     onResize: function () { if (map) map.invalidateSize(); }
   };
 };

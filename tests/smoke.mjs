@@ -97,6 +97,8 @@ async function run() {
   assert(await page.$eval("#radar", (e) => !e.classList.contains("hidden")), "radar shown");
   assert(await page.$eval("#result", (e) => e.classList.contains("hidden")), "weather hidden on map");
   assert((await page.getAttribute("#tabRadar", "aria-selected")) === "true", "aria-selected on map tab");
+  // Tap-to-pick confirm bar exists and starts hidden (map itself can't init headlessly).
+  assert(await page.$eval("#radarPick", (e) => e.classList.contains("hidden")), "pick bar hidden until a point is tapped");
   // Search dialog opens cleanly over the map: overlays hidden, dialog stacked above them.
   await page.click("#cityPill");
   assert(await page.$eval("body", (b) => b.classList.contains("searching")), "searching class set over map");

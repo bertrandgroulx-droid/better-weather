@@ -247,9 +247,26 @@
     -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   }
   .radar-model:empty { display: none; }
+  /* "tap the map to pick a location" confirm bar */
+  .radar-pick {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .radar-pick button {
+    font-family: inherit; font-size: 0.82rem; border: 1px solid var(--border);
+    border-radius: 999px; background: rgba(11, 31, 58, 0.92); color: var(--text);
+    padding: 7px 14px; cursor: pointer;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  }
+  .radar-pick #radarPickGo { font-weight: 600; }
+  .radar-pick #radarPickX { padding: 7px 11px; color: var(--muted); }
+  .pick-pin { font-size: 24px; line-height: 1; text-align: center; }
+  /* while a pin is pending, hide the legend so the confirm bar has the top row */
+  body.picking .radar-legend { display: none; }
   /* hide the map overlays while the search dialog is open */
   body.searching .radar-ctrl,
   body.searching .radar-model,
+  body.searching .radar-pick,
   body.searching .radar-legend { display: none; }
   .radar-ctrl input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
   .radar-ctrl .t { font-size: 0.78rem; color: var(--text); min-width: 118px; text-align: right; white-space: nowrap; }
@@ -318,6 +335,10 @@
       <div class="lg-ends"><span>Light</span><span>Heavy</span></div>
     </div>
     <div class="radar-model" id="radarModel"></div>
+    <div class="radar-pick hidden" id="radarPick">
+      <button id="radarPickGo" type="button">📍 Forecast here</button>
+      <button id="radarPickX" type="button" aria-label="Cancel">✕</button>
+    </div>
     <div class="radar-ctrl">
       <input id="frameSlider" type="range" min="0" max="0" value="0" aria-label="Radar time" />
       <span class="t" id="frameTime">—</span>
@@ -966,7 +987,18 @@
     fetchJson: fetchJson,
     token: MAPBOX_TOKEN,
     getLastLoc: function () { return lastLoc; },
-    CONFIG: CONFIG
+    CONFIG: CONFIG,
+    // A point tapped on the map becomes the forecast location. Reverse-geocode
+    // for a friendly name, falling back to the coordinates.
+    onPick: function (lat, lon) {
+      var loc = { lat: lat, lon: lon, sub: "",
+        name: lat.toFixed(3) + "°, " + lon.toFixed(3) + "°" };
+      fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + lat +
+        "&longitude=" + lon + "&language=en&format=json")
+        .then(function (d) { if (d.results && d.results[0]) loc = omToLoc(d.results[0]); })
+        .catch(function () {})
+        .then(function () { saveRecent(loc); show(loc); });
+    }
   });
 
   function selectTab(name) {
@@ -982,6 +1014,7 @@
       els.status.classList.add("hidden");
       radar.open();
     } else {
+      radar.clearPick(); // drop any pending map pin when leaving the map
       if (loaded) els.result.classList.remove("hidden");
       else els.status.classList.remove("hidden");
     }
