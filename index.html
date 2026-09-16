@@ -159,6 +159,8 @@
   .cell.now .lbl, .cell.today .lbl { color: var(--accent); }
   .cell .ic { font-size: 1.75rem; line-height: 1.1; }
   .cell .ic.sm { font-size: 1.35rem; }
+  /* custom fog glyph scales to whatever icon slot holds it */
+  .fog { width: 1em; height: 1em; vertical-align: -0.12em; }
   .cell .big { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
   .cell .sub { font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
   /* precip amount sits on the water; POP goes at the very bottom in brackets */
@@ -390,6 +392,20 @@
       if (code === 2) return "☁️";
     }
     return wmo(code)[0];
+  }
+  // Custom fog glyph — the 🌫️ emoji renders as a low-contrast grey box on many
+  // devices, so draw it inline instead (cloud over drifting mist lines).
+  function fogSVG() {
+    return '<svg class="fog" viewBox="0 0 32 32" aria-hidden="true">' +
+      '<path d="M8.5 19.5 h14.4 a4.8 4.8 0 0 0 0.5 -9.55 a6.6 6.6 0 0 0 -12.5 -1.55 A5 5 0 0 0 8.5 19.5 Z" fill="#cdd9ea"/>' +
+      '<g stroke="#9fb6d0" stroke-width="2.1" stroke-linecap="round" fill="none">' +
+      '<path d="M7 24 q3 -1.5 6 0 t6 0 t6 0"/>' +
+      '<path d="M9.5 27.6 q3 -1.5 6 0 t6 0"/>' +
+      '</g></svg>';
+  }
+  // Icon for a condition, using the custom fog glyph for fog / rime fog (45, 48).
+  function condIcon(code, isDay) {
+    return (code === 45 || code === 48) ? fogSVG() : icon(code, isDay);
   }
 
   // ---- units ----
@@ -640,7 +656,7 @@
 
     els.summary.innerHTML =
       '<div class="sum-left">' +
-        '<div class="sum-hero"><span class="ico">' + w[0] + '</span>' +
+        '<div class="sum-hero"><span class="ico">' + condIcon(c.weather_code, 1) + '</span>' +
           '<span class="temp">' + Math.round(c.temperature_2m) + tU() + '</span></div>' +
         '<div class="sum-metrics">' +
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
@@ -711,7 +727,7 @@
         '<div class="cell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '">' +
           waterHtml(amt, scale, pop) +
           '<div class="lbl' + (midnight && !isNow ? " day" : "") + '">' + label + '</div>' +
-          '<div class="ic">' + icon(h.weather_code[i], h.is_day[i]) + '</div>' +
+          '<div class="ic">' + condIcon(h.weather_code[i], h.is_day[i]) + '</div>' +
           '<div class="big">' + Math.round(h.temperature_2m[i]) + '°</div>' +
           '<div class="sub">Feels ' + Math.round(h.apparent_temperature[i]) + '°</div>' +
           (amt > 0 ? '<div class="pamt">' + precipLabel(amt, false) + '</div>' : '') +
@@ -736,9 +752,9 @@
         '<div class="cell' + (isToday ? " today" : "") + '">' +
           waterHtml(amt, scale, pop) +
           '<div class="lbl">' + name + '</div>' +
-          '<div class="ic">' + wmo(code)[0] + '</div>' +
+          '<div class="ic">' + condIcon(code, 1) + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
-          '<div class="ic sm">' + icon(code, 0) + '</div>' +
+          '<div class="ic sm">' + condIcon(code, 0) + '</div>' +
           '<div class="big" style="font-weight:600">' + Math.round(dd.temperature_2m_min[i]) + '°</div>' +
           (amt > 0 ? '<div class="pamt">' + precipLabel(amt, true) + '</div>' : '') +
           '<div class="popbot">(' + pop + '%)</div>' +

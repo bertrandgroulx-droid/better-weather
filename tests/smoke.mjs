@@ -35,7 +35,8 @@ function buildForecast() {
   for (let i = 0; i < 7 + 16; i++) {
     const d = new Date(startD.getTime() + i * 86400e3);
     D.time.push(fmtDate(d));
-    D.weather_code.push([2, 3, 61, 2][i % 4]);
+    // Force today (index 7) to fog so the custom fog glyph is exercised.
+    D.weather_code.push(i === 7 ? 45 : [2, 3, 61, 2][i % 4]);
     D.temperature_2m_max.push(18 - (i % 5));
     D.temperature_2m_min.push(7 + (i % 4));
     D.precipitation_sum.push([2, 0, 1, 7][i % 4]);
@@ -85,6 +86,7 @@ async function run() {
   assert(hourly > 100 && hourly < 130, `hourly cells ~121, got ${hourly}`);
   assert(daily === 23, `daily cells 23, got ${daily}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
+  assert(await page.$("#daily .cell.today .fog"), "custom fog glyph renders for fog codes");
 
   // 2) Tabs switch
   await page.click("#tabRadar");
