@@ -249,7 +249,7 @@
   .radar-model:empty { display: none; }
   /* "tap the map to pick a location" confirm bar */
   .radar-pick {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
+    position: absolute; top: 10px; left: 10px; z-index: 1000; /* left/top set from JS to track the pin */
     display: flex; gap: 8px; align-items: center;
   }
   .radar-pick button {

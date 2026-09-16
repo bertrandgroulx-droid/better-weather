@@ -90,12 +90,29 @@ window.createRadar = function (ctx) {
     else pickMarker.setLatLng(e.latlng);
     if (pickEl) pickEl.classList.remove("hidden");
     document.body.classList.add("picking"); // free the top-right corner for the confirm bar
+    positionPick();
   }
   function clearPick() {
     pendingPick = null;
     if (pickMarker) { map.removeLayer(pickMarker); pickMarker = null; }
     if (pickEl) pickEl.classList.add("hidden");
     document.body.classList.remove("picking");
+  }
+  // Place the confirm bar just above the dropped pin (or below if there's no
+  // room), clamped to the map, and keep it there as the map pans/zooms.
+  function positionPick() {
+    if (!map || !pendingPick || !pickEl || pickEl.classList.contains("hidden")) return;
+    var mapEl = document.getElementById("map");
+    var pt = map.latLngToContainerPoint(pendingPick);
+    var bw = pickEl.offsetWidth, bh = pickEl.offsetHeight;
+    var mw = mapEl.clientWidth, mh = mapEl.clientHeight;
+    var gap = 12, pinUp = 32; // pin height above its tip
+    var top = pt.y - pinUp - gap - bh;   // above the pin
+    if (top < 6) top = pt.y + gap;       // not enough headroom → sit below the tip
+    top = Math.max(6, Math.min(top, mh - bh - 6));
+    var left = Math.max(6, Math.min(pt.x - bw / 2, mw - bw - 6));
+    pickEl.style.left = left + "px";
+    pickEl.style.top = top + "px";
   }
 
   // ---- map / basemap ----
@@ -131,6 +148,7 @@ window.createRadar = function (ctx) {
     drawModelCircle({ lat: center[0], lon: center[1] });
     map.on("moveend", warmCacheSoon); // re-warm the cache after zoom/pan
     map.on("click", onMapClick);      // tap the map to pick a forecast location
+    map.on("move zoom", positionPick); // keep the confirm bar anchored to the pin
     if (pickGo) pickGo.addEventListener("click", function () {
       if (pendingPick && ctx.onPick) ctx.onPick(pendingPick.lat, pendingPick.lng);
       clearPick(); // recenter follows once the forecast resolves
