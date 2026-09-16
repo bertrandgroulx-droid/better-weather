@@ -26,7 +26,9 @@ function buildForecast() {
     H.apparent_temperature.push(14 + (hr % 8));
     H.precipitation_probability.push(hr % 100);
     H.precipitation.push(hr % 5 === 0 ? 0.4 : 0);
-    H.weather_code.push(hr >= 7 && hr <= 19 ? 2 : 1);
+    // Foggy overnight, clear-ish by day: the daily icon should ignore the
+    // overnight fog and never mark a covered day foggy.
+    H.weather_code.push(hr >= 7 && hr <= 19 ? 2 : 45);
     H.wind_speed_10m.push(10 + (hr % 5));
     H.is_day.push(hr >= 7 && hr <= 19 ? 1 : 0);
   }
@@ -35,8 +37,9 @@ function buildForecast() {
   for (let i = 0; i < 7 + 16; i++) {
     const d = new Date(startD.getTime() + i * 86400e3);
     D.time.push(fmtDate(d));
-    // Force today (index 7) to fog so the custom fog glyph is exercised.
-    D.weather_code.push(i === 7 ? 45 : [2, 3, 61, 2][i % 4]);
+    // A far-out day (beyond the hourly window) is fog: its icon comes from the
+    // daily code (fallback path) and should render the custom fog glyph.
+    D.weather_code.push(i === 20 ? 45 : [2, 3, 61, 2][i % 4]);
     D.temperature_2m_max.push(18 - (i % 5));
     D.temperature_2m_min.push(7 + (i % 4));
     D.precipitation_sum.push([2, 0, 1, 7][i % 4]);
@@ -86,7 +89,8 @@ async function run() {
   assert(hourly > 100 && hourly < 130, `hourly cells ~121, got ${hourly}`);
   assert(daily === 23, `daily cells 23, got ${daily}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
-  assert(await page.$("#daily .cell.today .fog"), "custom fog glyph renders for fog codes");
+  assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
+  assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
 
   // 2) Tabs switch
   await page.click("#tabRadar");

@@ -737,8 +737,27 @@
     els.hourly.innerHTML = html;
   }
 
+  // Dominant *daylight* condition per date, from the hourly codes (is_day === 1).
+  // Lets the daily icon reflect the hours you actually see rather than the raw
+  // whole-day code — e.g. overnight fog before a clear day won't read as foggy.
+  // Only days the hourly window covers get an entry; others fall back to the
+  // daily weather_code.
+  function daylightCodeByDate(d) {
+    var h = d.hourly, m = {};
+    if (!h || !h.time) return m;
+    for (var i = 0; i < h.time.length; i++) {
+      if (h.is_day[i] !== 1) continue;
+      var c = h.weather_code[i];
+      if (c == null) continue;
+      var day = h.time[i].slice(0, 10);
+      if (m[day] == null || c > m[day]) m[day] = c; // higher code ≈ more significant
+    }
+    return m;
+  }
+
   function renderDaily(d) {
     var dd = d.daily, ti = todayIndex(d), scale = precipScaleD();
+    var dayCode = daylightCodeByDate(d);
     var html = "";
     for (var i = 0; i < dd.time.length; i++) {
       var isToday = i === ti;
@@ -746,7 +765,7 @@
       var name = isToday ? "Today"
         : date.toLocaleDateString(undefined, { weekday: "short" }) + " " + date.getDate();
       var amt = dd.precipitation_sum[i];
-      var code = dd.weather_code[i];
+      var code = dayCode[dd.time[i]] != null ? dayCode[dd.time[i]] : dd.weather_code[i];
       var pop = dd.precipitation_probability_max[i] == null ? 0 : dd.precipitation_probability_max[i];
       html +=
         '<div class="cell' + (isToday ? " today" : "") + '">' +
