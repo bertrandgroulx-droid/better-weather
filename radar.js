@@ -119,16 +119,19 @@ window.createRadar = function (ctx) {
 
   // ---- map / basemap ----
   function addBasemap() {
-    if (ctx.token) {
-      L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
-        id: "mapbox/dark-v11", tileSize: 512, zoomOffset: -1, maxZoom: RADAR.maxZoom,
-        accessToken: ctx.token, attribution: '&copy; Mapbox &copy; OpenStreetMap'
-      }).addTo(map);
-    } else {
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-    }
+    var layer = ctx.token
+      ? L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
+          id: "mapbox/dark-v11", tileSize: 512, zoomOffset: -1, maxZoom: RADAR.maxZoom,
+          accessToken: ctx.token, attribution: '&copy; Mapbox &copy; OpenStreetMap'
+        })
+      : L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+        });
+    // Zooming in past the radar's max native zoom refetches only the basemap,
+    // so track its tiles too — that's the load the user waits on when zooming.
+    layer.on("loading", onTilesLoading);
+    layer.on("load", onTilesLoaded);
+    layer.addTo(map);
   }
 
   function initRadar() {
