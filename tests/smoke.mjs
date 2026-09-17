@@ -96,6 +96,7 @@ async function run() {
   assert(daily === 23, `daily cells 23, got ${daily}`);
   assert(forecastHits >= 2, `transient 503 should be retried, forecast requests = ${forecastHits}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
+  assert((await page.$eval("#summary .fcast", (e) => e.textContent.trim().length)) > 0, "precip outlook subtitle renders");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
 
