@@ -27,10 +27,12 @@ window.createRadar = function (ctx) {
   var pickEl = document.getElementById("radarPick");
   var pickGo = document.getElementById("radarPickGo");
   var pickX = document.getElementById("radarPickX");
+  var busyEl = document.getElementById("radarBusy");
 
   // ---- state ----
   var map = null, mapInited = false, locMarker = null, modelCircle = null;
   var pickMarker = null, pendingPick = null;
+  var tileBusy = 0, busyTimer = null, busyMax = null;
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
   var warmed = {}, warmedCount = 0, warmImgs = [], warmTimer = null;
   var scrubTimer = null, scrubPending = null;
@@ -220,6 +222,17 @@ window.createRadar = function (ctx) {
     warmTimer = setTimeout(warmCache, RADAR.warmDelayMs);
   }
 
+  // ---- "updating radar…" indicator ----
+  // Show it only if a tile load runs longer than a moment, so quick (cached)
+  // loads don't flash the spinner. Tracks the radar layer's loading/load events.
+  function showBusy() {
+    if (busyEl) busyEl.classList.remove("hidden");
+    clearTimeout(busyMax); busyMax = setTimeout(function () { tileBusy = 0; hideBusy(); }, 12000); // never stick
+  }
+  function hideBusy() { clearTimeout(busyTimer); clearTimeout(busyMax); busyTimer = null; if (busyEl) busyEl.classList.add("hidden"); }
+  function onTilesLoading() { tileBusy++; if (!busyTimer) busyTimer = setTimeout(function () { busyTimer = null; if (tileBusy > 0) showBusy(); }, 300); }
+  function onTilesLoaded() { tileBusy = Math.max(0, tileBusy - 1); if (tileBusy === 0) hideBusy(); }
+
   // ---- rendering a frame ----
   function frameUrl(fr) {
     return rvHost + fr.path + "/256/{z}/{x}/{y}/" + RADAR.colorScheme + "/" + RADAR.snow + ".png";
@@ -241,7 +254,10 @@ window.createRadar = function (ctx) {
         maxNativeZoom: RADAR.maxNativeZoom, maxZoom: RADAR.maxZoom,
         updateWhenZooming: false, keepBuffer: 1,
         attribution: "Radar &copy; RainViewer"
-      }).addTo(map);
+      });
+      radarLayer.on("loading", onTilesLoading);
+      radarLayer.on("load", onTilesLoaded);
+      radarLayer.addTo(map);
     } else {
       radarLayer.setUrl(frameUrl(fr));
     }

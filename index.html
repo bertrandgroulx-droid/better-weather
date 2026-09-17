@@ -282,6 +282,22 @@
     background: linear-gradient(90deg, #7ec8f5, #3f8fd8, #f2e400, #f59a0b, #e0140a); }
   .radar-legend .lg-ends { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
 
+  /* "Updating radar…" indicator while tiles load (top-left, under the zoom control) */
+  .radar-busy {
+    position: absolute; top: 80px; left: 10px; z-index: 1000;
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(11, 31, 58, 0.9); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; font-size: 0.74rem; color: var(--text);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  }
+  .radar-busy .rb-dot {
+    width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: var(--accent);
+    animation: rb-spin 0.7s linear infinite;
+  }
+  @keyframes rb-spin { to { transform: rotate(360deg); } }
+  body.searching .radar-busy, body.picking .radar-busy { display: none !important; }
+
   /* ---------------- bottom tab bar ---------------- */
   .tabbar { display: flex; gap: 8px; flex: none; }
   .tab {
@@ -334,6 +350,9 @@
       <div class="lg-title">Precipitation</div>
       <div class="lg-grad"></div>
       <div class="lg-ends"><span>Light</span><span>Heavy</span></div>
+    </div>
+    <div class="radar-busy hidden" id="radarBusy" role="status" aria-live="polite">
+      <span class="rb-dot" aria-hidden="true"></span>Updating radar…
     </div>
     <div class="radar-model" id="radarModel"></div>
     <div class="radar-pick hidden" id="radarPick">
