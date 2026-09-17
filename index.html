@@ -188,8 +188,8 @@
     transform: translate(-50%, -50%); z-index: 2; pointer-events: none; }
 
   /* ---------------- status ---------------- */
-  .status { margin: auto; text-align: center; color: var(--muted); padding: 1.5rem; }
-  .status.error { color: #ffc9c9; }
+  .status { margin: auto; text-align: center; color: var(--muted); padding: 1.5rem; white-space: pre-line; }
+  .status.error { color: #ffc9c9; cursor: pointer; }
   .hidden { display: none !important; }
 
   /* ---------------- search modal ---------------- */
@@ -473,9 +473,24 @@
 
   function fetchJson(url) {
     return fetch(url).then(function (r) {
-      if (!r.ok) throw new Error("request failed (" + r.status + ")");
+      if (!r.ok) { var e = new Error("request failed (" + r.status + ")"); e.status = r.status; throw e; }
       return r.json();
     });
+  }
+  // Retry transient failures (network drop, or 408/425/429/5xx) with backoff.
+  // Non-transient errors (e.g. 400/404) fail fast.
+  var RETRY_STATUS = { 408: 1, 425: 1, 429: 1, 500: 1, 502: 1, 503: 1, 504: 1 };
+  function fetchJsonRetry(url, tries) {
+    tries = tries || 3;
+    function attempt(n) {
+      return fetchJson(url).catch(function (e) {
+        var transient = (e.status == null) || RETRY_STATUS[e.status]; // no status = network error
+        if (n >= tries || !transient) throw e;
+        return new Promise(function (res) { setTimeout(res, 600 * Math.pow(2, n - 1)); })
+          .then(function () { return attempt(n + 1); });
+      });
+    }
+    return attempt(1);
   }
 
   // ---- geocoding (loc = { name, sub, lat, lon }) ----
@@ -532,7 +547,7 @@
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
       "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFuture;
-    return fetchJson(url);
+    return fetchJsonRetry(url);
   }
 
   // ERA5 reanalysis (observation-assimilated) for the past week. It lags a few
@@ -552,7 +567,7 @@
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto";
-    return fetchJson(url);
+    return fetchJsonRetry(url, 2);
   }
 
   // Override the "measured" daily fields with reanalysis where available.
@@ -889,7 +904,7 @@
         positionMarker(els.daily, els.dMarker, "today");
       });
     }).catch(function (err) {
-      setStatus("Couldn't load the weather. " + err.message, true);
+      setStatus("Couldn't load the weather — " + err.message + ".\nTap to retry.", true);
     });
   }
 
@@ -1023,6 +1038,10 @@
 
   // ---- events ----
   els.cityPill.addEventListener("click", openModal);
+  // Tap the error message to retry the last location.
+  els.status.addEventListener("click", function () {
+    if (els.status.classList.contains("error") && lastLoc) show(lastLoc);
+  });
   els.closeModal.addEventListener("click", closeModal);
   els.backdrop.addEventListener("click", function (e) { if (e.target === els.backdrop) closeModal(); });
   els.searchInput.addEventListener("input", onSearchInput);

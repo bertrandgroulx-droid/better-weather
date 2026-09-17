@@ -72,7 +72,13 @@ async function run() {
 
   await page.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) =>
     r.fulfill(json({ results: [{ name: "Calgary", admin1: "Alberta", country: "Canada", latitude: 51.05, longitude: -114.07 }] })));
-  await page.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+  // First forecast request fails with a transient 503; the app should retry and recover.
+  let forecastHits = 0;
+  await page.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => {
+    forecastHits++;
+    if (forecastHits === 1) return r.fulfill({ status: 503, contentType: "text/plain", body: "Service Unavailable" });
+    return r.fulfill(json(buildForecast()));
+  });
   await page.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
   await page.route(/api\.mapbox\.com\/search\/geocode/, (r) =>
     r.fulfill(json({ features: [{ properties: { name: "Lisbon", place_formatted: "Portugal" }, geometry: { coordinates: [-9.13, 38.72] } }] })));
@@ -88,6 +94,7 @@ async function run() {
   const daily = await page.$$eval("#daily .cell", (e) => e.length);
   assert(hourly > 100 && hourly < 130, `hourly cells ~121, got ${hourly}`);
   assert(daily === 23, `daily cells 23, got ${daily}`);
+  assert(forecastHits >= 2, `transient 503 should be retried, forecast requests = ${forecastHits}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
