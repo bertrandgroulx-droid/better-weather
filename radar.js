@@ -16,6 +16,7 @@ window.createRadar = function (ctx) {
     initialZoom: 9,
     subsampleGapSec: 14 * 60, // ~15 min between frames
     scrubThrottleMs: 80,
+    warmGapMs: 1100,          // pace tile pre-warming (~54 req/min, leaves headroom under RainViewer's ~100/min)
     circleColor: "#ffd166",
     locColor: "#fb8500"
   };
@@ -34,6 +35,7 @@ window.createRadar = function (ctx) {
   var tileBusy = 0, busyTimer = null, busyMax = null;
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
   var scrubTimer = null, scrubPending = null;
+  var warmed = {}, warmedCount = 0, warmQueue = [], warmTimer = null, warmDebounce = null;
 
   // ---- model-grid circle ----
   // Approximate grid resolution of the high-res model Open-Meteo tends to pick
@@ -151,6 +153,7 @@ window.createRadar = function (ctx) {
     drawModelCircle({ lat: center[0], lon: center[1] });
     map.on("click", onMapClick);      // tap the map to pick a forecast location
     map.on("move zoom", positionPick); // keep the confirm bar anchored to the pin
+    map.on("moveend", scheduleWarm);   // re-warm tiles for the new view (debounced + paced)
     if (pickGo) pickGo.addEventListener("click", function () {
       if (pendingPick && ctx.onPick) ctx.onPick(pendingPick.lat, pendingPick.lng);
       clearPick(); // recenter follows once the forecast resolves
@@ -184,6 +187,7 @@ window.createRadar = function (ctx) {
       animPos = frames.length - 1; // newest observed frame = "now"
       slider.value = animPos;
       showFrame(animPos);
+      scheduleWarm(); // gently preload the other frames for smooth scrubbing
     }).catch(function () { timeEl.textContent = "Radar unavailable"; });
   }
 
@@ -234,6 +238,50 @@ window.createRadar = function (ctx) {
     animPos = i;
     frameLabel(i);
     loadFrame(i);
+  }
+
+  // ---- gentle tile pre-warming ----
+  // Preload the other frames' tiles for the current view so scrubbing is smooth,
+  // but ONE tile at a time on a slow cadence so we never burst past RainViewer's
+  // free-tier rate limit (the all-at-once version starved the visible layer).
+  function tilesForView() {
+    var z = Math.min(Math.round(map.getZoom()), RADAR.maxNativeZoom), n = Math.pow(2, z);
+    var b = map.getBounds();
+    var nw = map.project(b.getNorthWest(), z).divideBy(256).floor();
+    var se = map.project(b.getSouthEast(), z).divideBy(256).floor();
+    var out = [];
+    for (var x = nw.x; x <= se.x; x++) for (var y = nw.y; y <= se.y; y++) {
+      if (y < 0 || y >= n) continue;
+      out.push({ x: ((x % n) + n) % n, y: y, z: z });
+    }
+    return out;
+  }
+  function scheduleWarm() { clearTimeout(warmDebounce); warmDebounce = setTimeout(buildWarmQueue, 700); }
+  function buildWarmQueue() {
+    if (!map || !rvHost || frames.length <= 1) return;
+    var tiles = tilesForView();
+    // Warm frames nearest the visible one first — those are the likeliest to be scrubbed to.
+    var order = [];
+    for (var i = 0; i < frames.length; i++) if (i !== animPos) order.push(i);
+    order.sort(function (a, b) { return Math.abs(a - animPos) - Math.abs(b - animPos); });
+    warmQueue = [];
+    for (var oi = 0; oi < order.length; oi++) for (var ti = 0; ti < tiles.length; ti++) {
+      var t = tiles[ti];
+      var url = rvHost + frames[order[oi]].path + "/256/" + t.z + "/" + t.x + "/" + t.y + "/" + RADAR.colorScheme + "/" + RADAR.snow + ".png";
+      if (!warmed[url]) warmQueue.push(url);
+    }
+    pumpWarm();
+  }
+  function pumpWarm() {
+    if (warmTimer) return;
+    warmTimer = setInterval(function () {
+      if (!warmQueue.length) { clearInterval(warmTimer); warmTimer = null; return; }
+      var url = warmQueue.shift();
+      if (warmed[url]) return;
+      if (warmedCount > 3000) { warmed = {}; warmedCount = 0; } // bound the dedupe set
+      warmed[url] = true; warmedCount++;
+      var img = new Image(); img.decoding = "async"; img.src = url; // browser caches it
+    }, RADAR.warmGapMs);
   }
 
   // Throttle tile loads while dragging so scrubbing stays smooth and we don't
