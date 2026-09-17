@@ -282,49 +282,6 @@
     background: linear-gradient(90deg, #7ec8f5, #3f8fd8, #f2e400, #f59a0b, #e0140a); }
   .radar-legend .lg-ends { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
 
-  /* temperature overlay: layer toggle, canvas, and its own legend */
-  #tempCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; }
-  .radar-layers {
-    position: absolute; top: 78px; left: 10px; z-index: 1000; display: inline-flex;
-    border: 1px solid var(--border); border-radius: 999px; overflow: hidden;
-    background: rgba(11, 31, 58, 0.85);
-    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  }
-  .radar-layers button {
-    border: none; background: transparent; color: var(--muted);
-    font-family: inherit; font-weight: 600; font-size: 0.8rem; padding: 7px 15px; cursor: pointer;
-  }
-  .radar-layers button.on { background: var(--accent); color: #0b1f3a; }
-  .temp-legend {
-    position: absolute; top: 10px; right: 10px; z-index: 1000;
-    background: rgba(11, 31, 58, 0.82); border: 1px solid var(--border);
-    border-radius: 10px; padding: 6px 9px; font-size: 0.72rem; color: var(--text);
-    display: flex; flex-direction: column; gap: 3px;
-  }
-  .temp-legend .lg-title { font-size: 0.66rem; color: var(--muted); margin-bottom: 2px; }
-  .temp-legend .tl-grad { width: 116px; height: 9px; border-radius: 5px; }
-  .temp-legend .lg-ends { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
-  /* keep the layer toggle + temp legend out of the way during search / pick */
-  body.searching .radar-layers, body.searching .temp-legend,
-  body.picking .radar-layers, body.picking .temp-legend { display: none !important; }
-
-  /* map busy/done status pill (stacked under the layer toggle) */
-  .map-status {
-    position: absolute; top: 116px; left: 10px; z-index: 1000;
-    display: inline-flex; align-items: center; gap: 7px;
-    background: rgba(11, 31, 58, 0.9); border: 1px solid var(--border); border-radius: 999px;
-    padding: 5px 12px; font-size: 0.74rem; color: var(--text);
-    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  }
-  .map-status .ms-dot { width: 9px; height: 9px; border-radius: 50%; background: #42d392; } /* done = green */
-  .map-status.busy .ms-dot {
-    width: 12px; height: 12px; background: transparent; box-sizing: border-box;
-    border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: var(--accent);
-    animation: ms-spin 0.7s linear infinite;
-  }
-  @keyframes ms-spin { to { transform: rotate(360deg); } }
-  body.searching .map-status, body.picking .map-status { display: none !important; }
-
   /* ---------------- bottom tab bar ---------------- */
   .tabbar { display: flex; gap: 8px; flex: none; }
   .tab {
@@ -373,30 +330,17 @@
   <!-- radar view -->
   <div id="radar" class="hidden">
     <div id="map"></div>
-    <canvas id="tempCanvas" class="hidden" aria-hidden="true"></canvas>
-    <div class="radar-layers" id="radarLayers" role="group" aria-label="Map layer">
-      <button id="layerRadar" class="on" type="button">Radar</button>
-      <button id="layerTemp" type="button">Temp</button>
-    </div>
-    <div class="map-status hidden" id="mapStatus" role="status" aria-live="polite">
-      <span class="ms-dot" aria-hidden="true"></span><span id="mapStatusText">Done</span>
-    </div>
-    <div class="radar-legend" id="radarLegend">
+    <div class="radar-legend">
       <div class="lg-title">Precipitation</div>
       <div class="lg-grad"></div>
       <div class="lg-ends"><span>Light</span><span>Heavy</span></div>
-    </div>
-    <div class="temp-legend hidden" id="tempLegend">
-      <div class="lg-title">Temperature</div>
-      <div class="tl-grad" id="tempGrad"></div>
-      <div class="lg-ends"><span id="tempLo">–</span><span id="tempHi">–</span></div>
     </div>
     <div class="radar-model" id="radarModel"></div>
     <div class="radar-pick hidden" id="radarPick">
       <button id="radarPickGo" type="button">📍 Forecast here</button>
       <button id="radarPickX" type="button" aria-label="Cancel">✕</button>
     </div>
-    <div class="radar-ctrl" id="radarCtrl">
+    <div class="radar-ctrl">
       <input id="frameSlider" type="range" min="0" max="0" value="0" aria-label="Radar time" />
       <span class="t" id="frameTime">—</span>
     </div>
@@ -1037,7 +981,6 @@
     els.unitC.classList.toggle("active", u === "metric");
     els.unitF.classList.toggle("active", u === "imperial");
     if (lastLoc) show(lastLoc);
-    radar.onUnits(); // refresh the temperature overlay if it's showing
   }
 
   // ---- radar map module (see radar.js) ----
@@ -1045,7 +988,6 @@
     fetchJson: fetchJson,
     token: MAPBOX_TOKEN,
     getLastLoc: function () { return lastLoc; },
-    getUnits: function () { return units; },
     CONFIG: CONFIG,
     // A point tapped on the map becomes the forecast location. Reverse-geocode
     // for a friendly name, falling back to the coordinates.

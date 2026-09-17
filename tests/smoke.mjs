@@ -99,11 +99,6 @@ async function run() {
   assert((await page.getAttribute("#tabRadar", "aria-selected")) === "true", "aria-selected on map tab");
   // Tap-to-pick confirm bar exists and starts hidden (map itself can't init headlessly).
   assert(await page.$eval("#radarPick", (e) => e.classList.contains("hidden")), "pick bar hidden until a point is tapped");
-  // Radar/Temp layer toggle: Radar active by default, temp overlay hidden.
-  assert(await page.$eval("#layerRadar", (e) => e.classList.contains("on")), "Radar layer active by default");
-  assert(!(await page.$eval("#layerTemp", (e) => e.classList.contains("on"))), "Temp layer off by default");
-  assert(await page.$eval("#tempCanvas", (e) => e.classList.contains("hidden")), "temp canvas hidden by default");
-  assert(await page.$eval("#tempLegend", (e) => e.classList.contains("hidden")), "temp legend hidden by default");
   // Search dialog opens cleanly over the map: overlays hidden, dialog stacked above them.
   await page.click("#cityPill");
   assert(await page.$eval("body", (b) => b.classList.contains("searching")), "searching class set over map");
