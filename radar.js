@@ -14,8 +14,7 @@ window.createRadar = function (ctx) {
     maxNativeZoom: 7,        // RainViewer free tiles top out at z7; upscale beyond
     maxZoom: 20,
     initialZoom: 9,
-    subsampleGapSec: 14 * 60, // ~15 min between preloaded frames
-    warmDelayMs: 350,
+    subsampleGapSec: 14 * 60, // ~15 min between frames
     scrubThrottleMs: 80,
     circleColor: "#ffd166",
     locColor: "#fb8500"
@@ -37,7 +36,6 @@ window.createRadar = function (ctx) {
   var tileBusy = 0, busyTimer = null, busyMax = null;
   var dbgOk = 0, dbgErr = 0, dbgLast = "";
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
-  var warmed = {}, warmedCount = 0, warmImgs = [], warmTimer = null;
   var scrubTimer = null, scrubPending = null;
 
   // ---- model-grid circle ----
@@ -154,7 +152,6 @@ window.createRadar = function (ctx) {
       radius: 8, color: "#ffffff", weight: 3, fillColor: RADAR.locColor, fillOpacity: 1
     }).addTo(map);
     drawModelCircle({ lat: center[0], lon: center[1] });
-    map.on("moveend", warmCacheSoon); // re-warm the cache after zoom/pan
     map.on("click", onMapClick);      // tap the map to pick a forecast location
     map.on("move zoom", positionPick); // keep the confirm bar anchored to the pin
     if (pickGo) pickGo.addEventListener("click", function () {
@@ -192,42 +189,7 @@ window.createRadar = function (ctx) {
       slider.value = animPos;
       showFrame(animPos);
       updateDebug();
-      setTimeout(warmCache, 300); // preload the other frames so scrubbing is instant
     }).catch(function () { timeEl.textContent = "Radar unavailable"; dbgLast = "index fetch failed"; updateDebug(); });
-  }
-
-  // Warm the browser cache with every frame's tiles for the current view, so the
-  // single radar layer can swap frames instantly (no on-the-spot fetch).
-  function warmCache() {
-    if (!map || !rvHost || !frames.length) return;
-    if (warmedCount > 4000) { warmed = {}; warmedCount = 0; } // bound the dedupe set
-    var z = Math.min(Math.round(map.getZoom()), RADAR.maxNativeZoom);
-    var n = Math.pow(2, z);
-    var b = map.getBounds();
-    var nw = map.project(b.getNorthWest(), z).divideBy(256).floor();
-    var se = map.project(b.getSouthEast(), z).divideBy(256).floor();
-    warmImgs = [];
-    for (var f = 0; f < frames.length; f++) {
-      for (var x = nw.x - 1; x <= se.x + 1; x++) {
-        for (var y = nw.y - 1; y <= se.y + 1; y++) {
-          if (y < 0 || y >= n) continue;
-          var xx = ((x % n) + n) % n;
-          var url = rvHost + frames[f].path + "/256/" + z + "/" + xx + "/" + y +
-            "/" + RADAR.colorScheme + "/" + RADAR.snow + ".png";
-          if (warmed[url]) continue;
-          warmed[url] = true; warmedCount++;
-          var img = new Image();
-          img.decoding = "async";
-          img.src = url; // browser caches the response
-          warmImgs.push(img);
-        }
-      }
-    }
-  }
-
-  function warmCacheSoon() {
-    clearTimeout(warmTimer);
-    warmTimer = setTimeout(warmCache, RADAR.warmDelayMs);
   }
 
   // ---- "updating radar…" indicator ----
