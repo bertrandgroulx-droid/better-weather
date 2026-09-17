@@ -753,9 +753,21 @@
       // Flag rain within the next 6 hours — the window people care about.
       return { text: word2 + " likely " + when, rain: true, soon: dh <= 6 };
     }
-    var days = Math.floor((end - 1 - i0) / 24); // nothing ahead in the hourly window
-    if (days >= 2) return { text: "Dry for the next " + days + " days", rain: false };
-    if (days === 1) return { text: "Dry through tomorrow", rain: false };
+    // No wet hour in the ~3-day hourly window — extend the dry outlook using the
+    // daily forecast (~16 days) so we report the real span, not the hourly cap.
+    var dd = d.daily, ti = todayIndex(d);
+    if (dd && dd.time && dd.time.length) {
+      var wetMin = units === "imperial" ? 0.04 : 1; // a daily total worth calling rain
+      for (i = ti + 1; i < dd.time.length; i++) {
+        var sum = dd.precipitation_sum ? dd.precipitation_sum[i] : null;
+        var pmax = dd.precipitation_probability_max ? dd.precipitation_probability_max[i] : null;
+        if ((sum != null && sum >= wetMin) || (pmax != null && pmax >= 50)) {
+          var nd = i - ti; // days from today until rain returns
+          return { text: "Dry for the next " + nd + " days", rain: false };
+        }
+      }
+      return { text: "Dry for 2+ weeks", rain: false }; // whole forecast is dry
+    }
     return { text: "No rain expected", rain: false };
   }
 
