@@ -119,6 +119,10 @@
   .sum-right .fcast { font-size: 0.78rem; font-weight: 600; line-height: 1.3; margin-bottom: 6px; white-space: normal; }
   .sum-right .fcast.rain { color: #7fd4ff; }
   .sum-right .fcast.dry { color: var(--muted); }
+  /* rain within ~6h: flash the line twice to draw the eye */
+  .sum-right .fcast.soon { animation: fcast-flash 0.55s ease-in-out 2; }
+  @keyframes fcast-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+  @media (prefers-reduced-motion: reduce) { .sum-right .fcast.soon { animation: none; } }
   .sum-right .row { color: var(--text); }
   .sum-right .row .k { color: var(--muted); }
   /* de-emphasize the clock times next to H/L and sunrise/sunset */
@@ -732,10 +736,10 @@
       return (p != null && p > wetAmt) || (pop != null && pop >= 50);
     }
     var end = h.time.length, i;
-    if (wet(i0)) { // precipitating now — say when it lets up
+    if (wet(i0)) { // precipitating now — say when it lets up (imminent → flash)
       var word = precipWord(h.weather_code[i0]);
-      for (i = i0 + 1; i < end; i++) if (!wet(i)) return { text: word + " easing by " + hourWord(h.time[i]), rain: true };
-      return { text: word + " continuing", rain: true };
+      for (i = i0 + 1; i < end; i++) if (!wet(i)) return { text: word + " easing by " + hourWord(h.time[i]), rain: true, soon: true };
+      return { text: word + " continuing", rain: true, soon: true };
     }
     for (i = i0 + 1; i < end; i++) { // dry now — find the next wet hour
       if (!wet(i)) continue;
@@ -746,7 +750,8 @@
       else if (dNow.toDateString() === dW.toDateString()) when = "around " + hourWord(h.time[i]);
       else if (tomorrow.toDateString() === dW.toDateString()) when = "tomorrow ~" + hourWord(h.time[i]);
       else when = dW.toLocaleDateString([], { weekday: "short" }) + " ~" + hourWord(h.time[i]);
-      return { text: word2 + " likely " + when, rain: true };
+      // Flag rain within the next 6 hours — the window people care about.
+      return { text: word2 + " likely " + when, rain: true, soon: dh <= 6 };
     }
     var days = Math.floor((end - 1 - i0) / 24); // nothing ahead in the hourly window
     if (days >= 2) return { text: "Dry for the next " + days + " days", rain: false };
@@ -789,7 +794,7 @@
       '</div>' +
       '<div class="sum-right">' +
         '<div class="cond">' + w[1] + '</div>' +
-        (outlook ? '<div class="fcast ' + (outlook.rain ? "rain" : "dry") + '">' + outlook.text + '</div>' : '') +
+        (outlook ? '<div class="fcast ' + (outlook.rain ? "rain" : "dry") + (outlook.soon ? " soon" : "") + '">' + outlook.text + '</div>' : '') +
         '<div class="row"><span class="k">Feels</span> ' + Math.round(c.apparent_temperature) + tU() + '</div>' +
         '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t">' + hiTime + '</span></div>' +
         '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t">' + loTime + '</span></div>' +
