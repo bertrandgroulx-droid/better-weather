@@ -279,6 +279,9 @@
   body.searching .radar-legend { display: none; }
   .radar-ctrl input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
   .radar-ctrl .t { font-size: 0.78rem; color: var(--text); min-width: 118px; text-align: right; white-space: nowrap; }
+  .radar-ctrl .t.fcast { color: #7fd4ff; } /* future = model forecast */
+  /* model precipitation forecast overlay (future half of the slider) */
+  #fcastCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; }
   .radar-legend {
     position: absolute; top: 10px; right: 10px; z-index: 1000;
     background: rgba(11, 31, 58, 0.82); border: 1px solid var(--border);
@@ -354,6 +357,7 @@
   <!-- radar view -->
   <div id="radar" class="hidden">
     <div id="map"></div>
+    <canvas id="fcastCanvas" class="hidden" aria-hidden="true"></canvas>
     <div class="radar-legend">
       <div class="lg-title">Precipitation</div>
       <div class="lg-grad"></div>
