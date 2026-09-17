@@ -36,11 +36,13 @@ window.createRadar = function (ctx) {
   var radarLegendEl = document.getElementById("radarLegend");
   var layerRadarBtn = document.getElementById("layerRadar");
   var layerTempBtn = document.getElementById("layerTemp");
+  var statusEl = document.getElementById("mapStatus");
+  var statusTxt = document.getElementById("mapStatusText");
 
   // ---- state ----
   var map = null, mapInited = false, locMarker = null, modelCircle = null;
   var pickMarker = null, pendingPick = null;
-  var mode = "radar", tempGrid = null, tempFetchTimer = null, tempRAF = null, tempReqId = 0;
+  var mode = "radar", tempGrid = null, tempFetchTimer = null, tempRAF = null, tempReqId = 0, statusTimer = null;
   var TEMP = { cols: 9, rows: 7, fine: 4, refetchMs: 450 };
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
   var warmed = {}, warmedCount = 0, warmImgs = [], warmTimer = null;
@@ -126,6 +128,19 @@ window.createRadar = function (ctx) {
     pickEl.style.top = top + "px";
   }
 
+  // ---- map busy/done status pill ----
+  function setBusy(on, label) {
+    if (!statusEl) return;
+    clearTimeout(statusTimer);
+    statusEl.classList.remove("hidden");
+    if (on) { statusEl.classList.add("busy"); statusTxt.textContent = label || "Calculating…"; }
+    else {
+      statusEl.classList.remove("busy"); statusTxt.textContent = label || "Done";
+      statusTimer = setTimeout(function () { statusEl.classList.add("hidden"); }, 1800);
+    }
+  }
+  function hideStatus() { if (!statusEl) return; clearTimeout(statusTimer); statusEl.classList.remove("busy"); statusEl.classList.add("hidden"); }
+
   // ---- temperature overlay (contour lines computed from Open-Meteo) ----
   // Colour ramp is defined in °C; values in °F are mapped back to °C for colour.
   var TSTOPS = [[-10,49,54,149],[-2,69,117,180],[4,116,173,209],[10,171,217,233],[14,224,243,248],
@@ -159,7 +174,11 @@ window.createRadar = function (ctx) {
     if (tempGrid && tempLoEl) { tempLoEl.textContent = Math.round(tempGrid.min) + "°"; tempHiEl.textContent = Math.round(tempGrid.max) + "°"; }
   }
 
-  function scheduleTempFetch() { clearTimeout(tempFetchTimer); tempFetchTimer = setTimeout(fetchTempGrid, TEMP.refetchMs); }
+  function scheduleTempFetch() {
+    setBusy(true, "Calculating…");
+    clearTimeout(tempFetchTimer);
+    tempFetchTimer = setTimeout(fetchTempGrid, TEMP.refetchMs);
+  }
 
   function fetchTempGrid() {
     if (!map || mode !== "temp") return;
@@ -185,7 +204,8 @@ window.createRadar = function (ctx) {
       tempGrid = { rows: rows, cols: cols, latRow: latRow, lonCol: lonCol, vals: vals, min: mn, max: mx };
       updateTempLegend();
       drawTemp();
-    }).catch(function () { /* keep the previous grid on a failed refresh */ });
+      setBusy(false, "Done");
+    }).catch(function () { if (mode === "temp") setBusy(false, "Update failed"); });
   }
 
   function bilerp(a, u, v) {
@@ -268,6 +288,7 @@ window.createRadar = function (ctx) {
   function setMode(m) {
     if (m === mode) return;
     mode = m;
+    hideStatus(); // clear any stale status from the previous layer
     var temp = m === "temp";
     if (layerRadarBtn) layerRadarBtn.classList.toggle("on", !temp);
     if (layerTempBtn) layerTempBtn.classList.toggle("on", temp);
@@ -339,18 +360,20 @@ window.createRadar = function (ctx) {
   }
 
   function loadRadarFrames() {
+    if (mode === "radar") setBusy(true, "Loading radar…");
     ctx.fetchJson("https://api.rainviewer.com/public/weather-maps.json").then(function (api) {
       rvHost = api.host;
       var sp = subsample((api.radar && api.radar.past) || [], RADAR.subsampleGapSec);
       var sn = subsample((api.radar && api.radar.nowcast) || [], RADAR.subsampleGapSec);
       frames = sp.concat(sn);
-      if (!frames.length) { timeEl.textContent = "No radar data"; return; }
+      if (!frames.length) { timeEl.textContent = "No radar data"; if (mode === "radar") setBusy(false, "No radar data"); return; }
       slider.max = frames.length - 1;
       animPos = frames.length - 1; // newest observed frame = "now"
       slider.value = animPos;
       showFrame(animPos);
+      if (mode === "radar") setBusy(false, "Done");
       setTimeout(warmCache, 300); // preload the other frames so scrubbing is instant
-    }).catch(function () { timeEl.textContent = "Radar unavailable"; });
+    }).catch(function () { timeEl.textContent = "Radar unavailable"; if (mode === "radar") setBusy(false, "Radar unavailable"); });
   }
 
   // Warm the browser cache with every frame's tiles for the current view, so the
