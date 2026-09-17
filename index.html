@@ -298,14 +298,6 @@
   @keyframes rb-spin { to { transform: rotate(360deg); } }
   body.searching .radar-busy, body.picking .radar-busy { display: none !important; }
 
-  /* temporary radar diagnostic (only shown with ?debug=1) */
-  .radar-debug {
-    position: absolute; left: 10px; bottom: 96px; z-index: 1200; max-width: 78%;
-    background: rgba(0, 0, 0, 0.72); color: #8fe3ff;
-    font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
-    padding: 6px 8px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; pointer-events: none;
-  }
-
   /* ---------------- bottom tab bar ---------------- */
   .tabbar { display: flex; gap: 8px; flex: none; }
   .tab {
@@ -362,7 +354,6 @@
     <div class="radar-busy hidden" id="radarBusy" role="status" aria-live="polite">
       <span class="rb-dot" aria-hidden="true"></span>Updating radar…
     </div>
-    <div class="radar-debug hidden" id="radarDebug"></div>
     <div class="radar-model" id="radarModel"></div>
     <div class="radar-pick hidden" id="radarPick">
       <button id="radarPickGo" type="button">📍 Forecast here</button>

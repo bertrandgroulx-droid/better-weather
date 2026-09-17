@@ -27,14 +27,11 @@ window.createRadar = function (ctx) {
   var pickGo = document.getElementById("radarPickGo");
   var pickX = document.getElementById("radarPickX");
   var busyEl = document.getElementById("radarBusy");
-  var debugEl = document.getElementById("radarDebug");
-  var DEBUG = /[?&]debug=1/.test(location.search);
 
   // ---- state ----
   var map = null, mapInited = false, locMarker = null, modelCircle = null;
   var pickMarker = null, pendingPick = null;
   var tileBusy = 0, busyTimer = null, busyMax = null;
-  var dbgOk = 0, dbgErr = 0, dbgLast = "";
   var rvHost = "", frames = [], animPos = 0, radarLayer = null, tz = null;
   var scrubTimer = null, scrubPending = null;
 
@@ -159,7 +156,6 @@ window.createRadar = function (ctx) {
       clearPick(); // recenter follows once the forecast resolves
     });
     if (pickX) pickX.addEventListener("click", clearPick);
-    if (DEBUG) map.on("moveend zoomend", updateDebug);
     setTimeout(function () { map.invalidateSize(); }, 60);
     loadRadarFrames();
   }
@@ -183,13 +179,12 @@ window.createRadar = function (ctx) {
       var sp = subsample((api.radar && api.radar.past) || [], RADAR.subsampleGapSec);
       var sn = subsample((api.radar && api.radar.nowcast) || [], RADAR.subsampleGapSec);
       frames = sp.concat(sn);
-      if (!frames.length) { timeEl.textContent = "No radar data"; updateDebug(); return; }
+      if (!frames.length) { timeEl.textContent = "No radar data"; return; }
       slider.max = frames.length - 1;
       animPos = frames.length - 1; // newest observed frame = "now"
       slider.value = animPos;
       showFrame(animPos);
-      updateDebug();
-    }).catch(function () { timeEl.textContent = "Radar unavailable"; dbgLast = "index fetch failed"; updateDebug(); });
+    }).catch(function () { timeEl.textContent = "Radar unavailable"; });
   }
 
   // ---- "updating radar…" indicator ----
@@ -202,21 +197,6 @@ window.createRadar = function (ctx) {
   function hideBusy() { clearTimeout(busyTimer); clearTimeout(busyMax); busyTimer = null; if (busyEl) busyEl.classList.add("hidden"); }
   function onTilesLoading() { tileBusy++; if (!busyTimer) busyTimer = setTimeout(function () { busyTimer = null; if (tileBusy > 0) showBusy(); }, 300); }
   function onTilesLoaded() { tileBusy = Math.max(0, tileBusy - 1); if (tileBusy === 0) hideBusy(); }
-
-  // ---- temporary radar diagnostic (?debug=1) ----
-  function updateDebug() {
-    if (!DEBUG || !debugEl) return;
-    debugEl.classList.remove("hidden");
-    var host = "(none)";
-    try { host = rvHost ? new URL(rvHost).host : "(none)"; } catch (e) { host = String(rvHost); }
-    var t = (frames.length && frames[animPos]) ? new Date(frames[animPos].time * 1000).toLocaleTimeString() : "-";
-    var z = map ? map.getZoom() : "-";
-    debugEl.textContent =
-      "frames=" + frames.length + "  host=" + host + "\n" +
-      "now=" + t + "  z=" + z + "\n" +
-      "tiles ok=" + dbgOk + "  err=" + dbgErr + "\n" +
-      (dbgLast ? dbgLast : "url=" + (frames.length ? frameUrl(frames[animPos]) : "-"));
-  }
 
   // ---- rendering a frame ----
   function frameUrl(fr) {
@@ -242,8 +222,6 @@ window.createRadar = function (ctx) {
       });
       radarLayer.on("loading", onTilesLoading);
       radarLayer.on("load", onTilesLoaded);
-      radarLayer.on("tileload", function () { dbgOk++; updateDebug(); });
-      radarLayer.on("tileerror", function (e) { dbgErr++; dbgLast = "ERR " + (e && e.tile ? e.tile.src : "?"); updateDebug(); });
       radarLayer.addTo(map);
     } else {
       radarLayer.setUrl(frameUrl(fr));
@@ -256,7 +234,6 @@ window.createRadar = function (ctx) {
     animPos = i;
     frameLabel(i);
     loadFrame(i);
-    updateDebug();
   }
 
   // Throttle tile loads while dragging so scrubbing stays smooth and we don't
