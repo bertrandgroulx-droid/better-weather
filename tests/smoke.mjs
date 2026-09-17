@@ -113,8 +113,22 @@ async function run() {
   assert(await page.$eval(".backdrop", (e) => parseInt(getComputedStyle(e).zIndex, 10) > 1000), "dialog stacked above map controls");
   await page.click("#closeModal");
   assert(!(await page.$eval("body", (b) => b.classList.contains("searching"))), "searching class cleared on close");
+
+  // Selecting a location while ON the map renders the strips hidden; switching to
+  // Weather must lay them out (thumb sized, Now/Today marker visible) — regression
+  // guard for picking a forecast location from the map.
+  await page.click("#cityPill");
+  await page.fill("#searchInput", "Lisbon");
+  await page.waitForFunction(() => document.querySelectorAll("#results li[data-i]").length > 0, { timeout: 5000 });
+  await page.click('#results li[data-i="0"]');
   await page.click("#tabWeather");
+  await page.waitForTimeout(120); // allow the rAF layout to run
   assert(await page.$eval("#result", (e) => !e.classList.contains("hidden")), "weather restored");
+  // Correctly-measured thumb is small (~10%); the bug (measuring while hidden)
+  // leaves it at 100%.
+  const thumbW = await page.$eval("#hThumb", (e) => parseFloat(e.style.width) || 0);
+  assert(thumbW >= 10 && thumbW < 30, `hourly thumb sized after map pick, got ${thumbW}%`);
+  assert(await page.$eval("#hMarker", (e) => e.style.display !== "none" && e.style.left !== ""), "now marker visible after map pick");
 
   // 3) Search (Mapbox mock) + recents
   await page.click("#cityPill");

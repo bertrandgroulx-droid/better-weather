@@ -423,6 +423,7 @@
   var searchTimer = null;
   var currentTab = "weather";
   var loaded = false;
+  var laidOut = false; // whether the strips were positioned while visible
 
   // ---- weather code → [emoji, label] ----
   var WMO = {
@@ -877,6 +878,18 @@
     scroller.addEventListener("scroll", function () { updateThumb(scroller, thumb); }, { passive: true });
   }
 
+  // Position both strips at Now/Today and size their thumbs + markers. Must run
+  // while the strips are visible — a hidden element measures as zero width, which
+  // breaks the thumb and hides the marker.
+  function layoutStrips() {
+    scrollToClass(els.hourly, "now");
+    scrollToClass(els.daily, "today");
+    updateThumb(els.hourly, els.hThumb);
+    updateThumb(els.daily, els.dThumb);
+    positionMarker(els.hourly, els.hMarker, "now");
+    positionMarker(els.daily, els.dMarker, "today");
+  }
+
   // ================= flow =================
 
   function setStatus(msg, err) {
@@ -913,15 +926,11 @@
       renderSummary(loc, d);
       renderHourly(d);
       renderDaily(d);
-      // Open each strip at Now/Today (history to the left) once laid out.
-      requestAnimationFrame(function () {
-        scrollToClass(els.hourly, "now");
-        scrollToClass(els.daily, "today");
-        updateThumb(els.hourly, els.hThumb);
-        updateThumb(els.daily, els.dThumb);
-        positionMarker(els.hourly, els.hMarker, "now");
-        positionMarker(els.daily, els.dMarker, "today");
-      });
+      // Open each strip at Now/Today (history to the left) once laid out. If the
+      // Weather tab is hidden (e.g. picked from the map), the strips can't be
+      // measured, so defer — selectTab lays them out when the tab is shown.
+      if (currentTab === "weather") { requestAnimationFrame(layoutStrips); laidOut = true; }
+      else { laidOut = false; }
     }).catch(function (err) {
       setStatus("Couldn't load the weather — " + err.message + ".\nTap to retry.", true);
     });
@@ -1050,8 +1059,15 @@
       radar.open();
     } else {
       radar.clearPick(); // drop any pending map pin when leaving the map
-      if (loaded) els.result.classList.remove("hidden");
-      else els.status.classList.remove("hidden");
+      if (loaded) {
+        els.result.classList.remove("hidden");
+        // If the forecast was rendered while this tab was hidden (picked from the
+        // map), lay the strips out now that they're measurable. Otherwise leave
+        // the scroll position as the user left it.
+        if (!laidOut) { requestAnimationFrame(layoutStrips); laidOut = true; }
+      } else {
+        els.status.classList.remove("hidden");
+      }
     }
   }
 
