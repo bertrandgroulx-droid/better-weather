@@ -123,6 +123,9 @@ async function run() {
   const aqhiBadge = await page.$eval("#airBody .air-badge", (e) => e.textContent);
   assert(/AQHI/.test(aqhiBadge) && /Moderate/.test(aqhiBadge), `AQHI panel badge shows scale + risk, got "${aqhiBadge}"`);
   assert((await page.$$eval("#airBody .air-poll .prow", (e) => e.length)) === 3, "AQHI panel lists three contributing pollutants");
+  assert((await page.$$eval("#airBody .airscale-bar .seg", (e) => e.length)) === 4, "AQHI scale has four colour bands");
+  assert(await page.$("#airBody .airscale .needle"), "AQHI scale shows a where-you-sit marker");
+  assert(/Moderate/.test(await page.$eval("#airBody .airscale-legend .lg.on", (e) => e.textContent)), "AQHI legend highlights the current band");
   await page.click("#airClose");
   assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel closes");
 
@@ -169,6 +172,8 @@ async function run() {
   await page.click("#summary .air-line");
   assert(/US AQI/.test(await page.$eval("#airBody .air-badge", (e) => e.textContent)), "US AQI panel for a non-Canada location");
   assert((await page.$$eval("#airBody .air-poll .prow", (e) => e.length)) === 4, "US AQI panel lists four pollutants");
+  assert((await page.$$eval("#airBody .airscale-bar .seg", (e) => e.length)) === 6, "US AQI scale has six colour bands");
+  assert(/Moderate/.test(await page.$eval("#airBody .airscale-legend .lg.on", (e) => e.textContent)), "US AQI legend highlights the current band");
   await page.click("#airClose");
   await page.click("#cityPill");
   assert(await page.$("#results .rc-head"), "recent header present");

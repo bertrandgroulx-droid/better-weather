@@ -171,6 +171,26 @@
   .air-badge .lab { font-size: 1.05rem; font-weight: 700; }
   .air-badge .us { font-size: 0.72rem; color: var(--muted); }
   .air-health { font-size: 0.85rem; line-height: 1.45; margin: 12px 2px; }
+  /* where-you-sit scale + legend */
+  .airscale { position: relative; margin: 30px 2px 4px; }
+  .airscale-bar { position: relative; display: flex; height: 12px; border-radius: 999px; }
+  .airscale-bar .seg { height: 100%; }
+  .airscale-bar .seg:first-child { border-radius: 999px 0 0 999px; }
+  .airscale-bar .seg:last-child { border-radius: 0 999px 999px 0; }
+  .airscale-bar .needle { position: absolute; top: -3px; width: 3px; height: 18px; transform: translateX(-50%);
+    background: #fff; border-radius: 2px; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.5); }
+  .airscale-bar .bub { position: absolute; bottom: 17px; transform: translateX(-50%);
+    background: #fff; color: #0e2440; font-weight: 800; font-size: 0.78rem; padding: 1px 8px; border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4); white-space: nowrap; }
+  .airscale-ticks { position: relative; height: 13px; margin-top: 4px; }
+  .airscale-ticks .tk { position: absolute; transform: translateX(-50%); font-size: 0.66rem;
+    color: var(--muted); font-variant-numeric: tabular-nums; }
+  .airscale-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 6px; }
+  .airscale-legend .lg { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--muted); }
+  .airscale-legend .lg i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .airscale-legend .lg em { font-style: normal; opacity: 0.65; }
+  .airscale-legend .lg.on { color: var(--text); font-weight: 700; }
+  .airscale-legend .lg.on i { box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
   .air-poll h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px; }
   .air-poll .prow { display: flex; align-items: center; gap: 10px; margin: 7px 0; font-size: 0.84rem; }
   .air-poll .nm { width: 56px; flex: none; }
@@ -993,13 +1013,63 @@
     var h = hex.replace("#", "");
     return "rgba(" + parseInt(h.slice(0, 2), 16) + "," + parseInt(h.slice(2, 4), 16) + "," + parseInt(h.slice(4, 6), 16) + "," + a + ")";
   }
-  // One badge + health-note + pollutant-rows + source layout shared by both scales.
-  function airPanelHtml(info, display, scaleLabel, dom, rowsHtml, foot) {
+  // The full band ladders, for the "where you sit" scale and legend. `w` is the
+  // segment's display weight (widths of the open-ended top bands are capped so the
+  // common lower bands stay readable); `lo`/`hi` are the real value range.
+  var AQHI_SCALE = [
+    { name: "Low", range: "1–3", lo: 1, hi: 3, w: 3, color: "#57c964" },
+    { name: "Moderate", range: "4–6", lo: 4, hi: 6, w: 3, color: "#f5d000" },
+    { name: "High", range: "7–10", lo: 7, hi: 10, w: 4, color: "#ff5b6e" },
+    { name: "Very high", range: "10+", lo: 11, hi: 20, w: 2, color: "#b06bff" }
+  ];
+  var USAQI_SCALE = [
+    { name: "Good", range: "0–50", lo: 0, hi: 50, w: 50, color: "#57c964" },
+    { name: "Moderate", range: "51–100", lo: 51, hi: 100, w: 50, color: "#f5d000" },
+    { name: "Sensitive", range: "101–150", lo: 101, hi: 150, w: 50, color: "#ff9f43" },
+    { name: "Unhealthy", range: "151–200", lo: 151, hi: 200, w: 50, color: "#ff5b6e" },
+    { name: "Very unhealthy", range: "201–300", lo: 201, hi: 300, w: 66, color: "#b06bff" },
+    { name: "Hazardous", range: "301+", lo: 301, hi: 500, w: 66, color: "#d0506e" }
+  ];
+  // A colour-banded scale with a needle + bubble at the current value, threshold
+  // ticks at the band boundaries, and a legend naming every band.
+  function airScaleHtml(bands, value, display) {
+    var total = bands.reduce(function (a, b) { return a + b.w; }, 0);
+    var segs = "", ticks = "", legend = "", cum = 0, markPct = null, curName = "";
+    for (var i = 0; i < bands.length; i++) {
+      var b = bands[i];
+      segs += '<span class="seg" style="flex:' + b.w + ';background:' + b.color + '"></span>';
+      var inBand = (value >= b.lo && value <= b.hi) || (i === bands.length - 1 && value > b.hi);
+      if (markPct === null && inBand) {
+        var frac = Math.max(0, Math.min(1, (value - b.lo + 0.5) / (b.hi - b.lo + 1)));
+        markPct = (cum + frac * b.w) / total * 100;
+        curName = b.name;
+      }
+      if (i < bands.length - 1) ticks += '<span class="tk" style="left:' + ((cum + b.w) / total * 100).toFixed(2) + '%">' + b.hi + '</span>';
+      cum += b.w;
+    }
+    if (markPct === null) markPct = value < bands[0].lo ? 0 : 100;
+    legend = bands.map(function (b) {
+      return '<span class="lg' + (b.name === curName ? ' on' : '') + '"><i style="background:' + b.color + '"></i>' +
+        b.name + ' <em>' + b.range + '</em></span>';
+    }).join("");
+    var bubLeft = Math.max(7, Math.min(93, markPct));
+    return '<div class="airscale">' +
+      '<div class="airscale-bar">' + segs +
+        '<span class="bub" style="left:' + bubLeft.toFixed(2) + '%">' + display + '</span>' +
+        '<span class="needle" style="left:' + markPct.toFixed(2) + '%"></span>' +
+      '</div>' +
+      '<div class="airscale-ticks">' + ticks + '</div>' +
+      '<div class="airscale-legend">' + legend + '</div>' +
+    '</div>';
+  }
+  // One badge + scale + health-note + pollutant-rows + source layout shared by both scales.
+  function airPanelHtml(info, display, scaleHtml, scaleLabel, dom, rowsHtml, foot) {
     return '<div class="air-badge" style="background:' + hexA(info.color, 0.12) + ';border:1px solid ' + hexA(info.color, 0.4) + '">' +
         '<span class="num">' + display + '</span>' +
         '<div><div class="lab" style="color:' + info.color + '">' + info.label + '</div>' +
           '<div class="us">' + scaleLabel + (dom ? ' · dominant: ' + dom : '') + '</div></div>' +
       '</div>' +
+      scaleHtml +
       '<p class="air-health">' + info.health + '</p>' +
       '<div class="air-poll"><h3>Pollutants</h3>' + rowsHtml + '</div>' +
       '<div class="air-foot">' + foot + '</div>';
@@ -1021,6 +1091,7 @@
           '<span class="val"><b>' + Math.round(p.conc) + '</b> µg/m³</span></div>';
       }).join("");
       els.airBody.innerHTML = airPanelHtml(m.info, m.display,
+        airScaleHtml(AQHI_SCALE, m.value, m.display),
         "Canada AQHI · " + m.info.band, dom, rows,
         "Open-Meteo Air Quality · Environment Canada AQHI (3-hour average of O₃, NO₂ &amp; PM2.5)");
       return;
@@ -1043,7 +1114,8 @@
         '<span class="bar"><i style="width:' + wpct.toFixed(0) + '%;background:' + col + '"></i></span>' +
         '<span class="val"><b>' + (conc == null ? "–" : Math.round(conc)) + '</b> µg/m³</span></div>';
     }).join("");
-    els.airBody.innerHTML = airPanelHtml(m.info, m.display, "US AQI", udom, urows,
+    els.airBody.innerHTML = airPanelHtml(m.info, m.display,
+      airScaleHtml(USAQI_SCALE, m.value, m.display), "US AQI", udom, urows,
       "Open-Meteo Air Quality · CAMS / NASA GEOS model");
   }
 
