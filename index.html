@@ -112,7 +112,12 @@
   .sum-metrics b { font-weight: 700; }
   .sum-metrics .k { color: var(--muted); }
   .sum-metrics .moon-line .moon { vertical-align: -0.22em; margin-right: 1px; }
-  .sum-metrics .air-line { cursor: pointer; }
+  /* the one tappable summary line: a faint pill + chevron so it reads as a button */
+  .sum-metrics .air-line { display: inline-block; cursor: pointer;
+    background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 999px;
+    padding: 1px 9px; margin: 1px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
+  .sum-metrics .air-line:active { background: rgba(255,255,255,0.14); }
+  .sum-metrics .air-line .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
   /* keep the sun rows at the bottom so Sunset aligns with the last left line */
@@ -1128,9 +1133,9 @@
     var airHtml = "";
     var am = airMetric(loc, air, d.timezone);
     if (am) {
-      airHtml = '<div class="air-line" role="button" tabindex="0"><b>Air</b> ' +
+      airHtml = '<div class="air-line" role="button" tabindex="0" aria-label="Air quality — tap for details"><b>Air</b> ' +
         '<span class="aqi-dot" style="background:' + am.info.color + '"></span>' + am.display +
-        ' <span class="k">' + am.info.short + '</span></div>';
+        ' <span class="k">' + am.info.short + '</span><span class="air-chev" aria-hidden="true">›</span></div>';
     }
     document.body.classList.toggle("night", c.is_day === 0);
 
