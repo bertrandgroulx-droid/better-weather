@@ -148,7 +148,7 @@
   .about-btn:hover, .about-btn:focus-visible { color: var(--text); }
   .about-btn svg { width: 17px; height: 17px; }
   /* about panel content (reuses .backdrop / .modal) */
-  .about-modal h2 { margin: 0; font-size: 1.15rem; }
+  .about-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill the row so ✕ sits in the corner */
   .about-modal .sub { color: var(--muted); font-size: 0.82rem; margin: 6px 0 12px; line-height: 1.45; }
   .about-list { margin: 0; padding: 0; list-style: none; }
   .about-list li { display: flex; gap: 9px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.07);
@@ -428,7 +428,7 @@
   <div class="backdrop hidden" id="aboutBackdrop">
     <div class="modal about-modal" role="dialog" aria-modal="true" aria-label="About Better Weather">
       <div class="modal-head">
-        <h2>Why Better Weather</h2>
+        <h2>Why Better Weather?</h2>
         <button class="close" id="aboutClose" type="button" aria-label="Close">✕</button>
       </div>
       <p class="sub">A phone-first weather app built to answer “what do I actually need to know?” at a glance — one screen, no clutter, no account, no ads.</p>
