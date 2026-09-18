@@ -520,6 +520,7 @@
   var units = localStorage.getItem("bw-units") || "metric"; // "metric" | "imperial"
   var lastLoc = null;
   var lastAir = null; // last air-quality response (for the tap-through panel)
+  var lastTz = null; // forecast time zone of the current location (for AQHI detection)
   var searchTimer = null;
   var searchSeq = 0; // guards against a slow geocode resolving after the list moved on
   var currentTab = "weather";
@@ -692,22 +693,36 @@
     return fetchJsonRetry(url, 2);
   }
 
+  // The IANA time zones used in Canada — a reliable, network-independent signal
+  // for "is this location in Canada?" when the geocoder gives no country.
+  var CANADA_TZ = {
+    "America/St_Johns": 1, "America/Halifax": 1, "America/Glace_Bay": 1, "America/Moncton": 1,
+    "America/Goose_Bay": 1, "America/Blanc-Sablon": 1, "America/Toronto": 1, "America/Nipigon": 1,
+    "America/Thunder_Bay": 1, "America/Iqaluit": 1, "America/Pangnirtung": 1, "America/Atikokan": 1,
+    "America/Winnipeg": 1, "America/Rainy_River": 1, "America/Resolute": 1, "America/Rankin_Inlet": 1,
+    "America/Regina": 1, "America/Swift_Current": 1, "America/Edmonton": 1, "America/Cambridge_Bay": 1,
+    "America/Yellowknife": 1, "America/Inuvik": 1, "America/Creston": 1, "America/Dawson_Creek": 1,
+    "America/Fort_Nelson": 1, "America/Vancouver": 1, "America/Whitehorse": 1, "America/Dawson": 1,
+    "America/Coral_Harbour": 1, "America/Montreal": 1
+  };
   // Is this location in Canada? Canada uses the AQHI (1–10) rather than the US AQI.
-  // Prefer the ISO country code from the geocoder; fall back to the display string.
-  function isCanada(loc) {
-    if (!loc) return false;
-    if (loc.cc) return String(loc.cc).toUpperCase() === "CA";
-    return /\bcanada\b/i.test(loc.sub || "");
+  // Prefer the geocoder's country (ISO code, then display string); fall back to the
+  // forecast time zone, which is always present even when reverse geocoding fails.
+  function isCanada(loc, tz) {
+    if (loc && loc.cc) return String(loc.cc).toUpperCase() === "CA";
+    if (loc && /\bcanada\b/i.test(loc.sub || "")) return true;
+    return !!(tz && CANADA_TZ[tz]);
   }
 
-  // Air quality from Open-Meteo's separate air-quality model. Always fetch the US
-  // AQI + pollutants; for Canadian locations also pull the hourly pollutant series
-  // so the AQHI can use a 3-hour trailing average, as Environment Canada defines it.
+  // Air quality from Open-Meteo's separate air-quality model: US AQI + pollutants,
+  // plus the hourly pollutant series so a Canadian location's AQHI can use the
+  // 3-hour trailing average Environment Canada defines. (The hourly block is small;
+  // fetching it always keeps detection independent of the geocoder's country.)
   function getAir(loc) {
     var url = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + loc.lat +
       "&longitude=" + loc.lon + "&current=us_aqi,us_aqi_pm2_5,us_aqi_pm10,us_aqi_ozone," +
-      "us_aqi_nitrogen_dioxide,pm2_5,pm10,ozone,nitrogen_dioxide&timezone=auto";
-    if (isCanada(loc)) url += "&hourly=ozone,nitrogen_dioxide,pm2_5&past_days=1&forecast_days=1";
+      "us_aqi_nitrogen_dioxide,pm2_5,pm10,ozone,nitrogen_dioxide" +
+      "&hourly=ozone,nitrogen_dioxide,pm2_5&past_days=1&forecast_days=1&timezone=auto";
     return fetchJsonRetry(url, 2);
   }
   // US AQI band → colour, full label, short label (for the summary line), and health note.
@@ -783,9 +798,9 @@
 
   // Pick the air-quality metric for a location: Canada → AQHI, elsewhere → US AQI.
   // Returns { scale, value, display, info, aqhi? } or null when no data.
-  function airMetric(loc, air) {
+  function airMetric(loc, air, tz) {
     if (!air || !air.current) return null;
-    if (isCanada(loc)) {
+    if (isCanada(loc, tz)) {
       var a = aqhiFrom(air);
       if (!a) return null;
       return { scale: "aqhi", value: a.value, display: a.display, info: aqhiInfo(a.value), aqhi: a };
@@ -984,8 +999,8 @@
       '<div class="air-foot">' + foot + '</div>';
   }
   // Build the air-quality detail panel from the last air response for this location.
-  function fillAirModal(loc, air) {
-    var m = airMetric(loc, air);
+  function fillAirModal(loc, air, tz) {
+    var m = airMetric(loc, air, tz);
     if (!m) { els.airBody.innerHTML = '<p class="air-health">Air quality data isn’t available for this spot right now.</p>'; return; }
     if (m.scale === "aqhi") {
       // Bar length reflects each pollutant's share of the AQHI, so the reader can
@@ -1033,7 +1048,7 @@
     // Optional air-quality line (tap opens the detail panel). Canada uses the
     // AQHI (1–10); everywhere else uses the US AQI.
     var airHtml = "";
-    var am = airMetric(loc, air);
+    var am = airMetric(loc, air, d.timezone);
     if (am) {
       airHtml = '<div class="air-line" role="button" tabindex="0"><b>Air</b> ' +
         '<span class="aqi-dot" style="background:' + am.info.color + '"></span>' + am.display +
@@ -1262,6 +1277,7 @@
       radar.setTz(d.timezone || null); // map clock uses the location's timezone
       mergeArchive(d, res[1]);
       lastAir = res[2];
+      lastTz = d.timezone || null;
       showResult(); // unhide first so the strips have layout to measure
       renderSummary(loc, d, lastAir);
       renderHourly(d);
@@ -1430,7 +1446,7 @@
   els.aboutClose.addEventListener("click", closeAbout);
   els.aboutBackdrop.addEventListener("click", function (e) { if (e.target === els.aboutBackdrop) closeAbout(); });
   // Air quality panel (opens from the summary "Air" line)
-  function openAir() { fillAirModal(lastLoc, lastAir); els.airBackdrop.classList.remove("hidden"); }
+  function openAir() { fillAirModal(lastLoc, lastAir, lastTz); els.airBackdrop.classList.remove("hidden"); }
   function closeAir() { els.airBackdrop.classList.add("hidden"); }
   els.summary.addEventListener("click", function (e) { if (e.target.closest(".air-line")) openAir(); });
   els.summary.addEventListener("keydown", function (e) {

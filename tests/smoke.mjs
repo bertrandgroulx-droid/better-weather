@@ -14,7 +14,7 @@ function fmtDate(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-"
 
 // Minimal but shape-correct Open-Meteo forecast (48h past + now + 72h future,
 // 7 past days + 16 forecast days).
-function buildForecast() {
+function buildForecast(tz) {
   const now = new Date(); now.setMinutes(0, 0, 0);
   const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], weather_code: [], wind_speed_10m: [], is_day: [] };
   const startH = new Date(now.getTime() - 48 * 3600e3);
@@ -50,7 +50,7 @@ function buildForecast() {
     D.sunrise.push(fmt(sr)); D.sunset.push(fmt(ss));
   }
   return {
-    latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton",
+    latitude: 51.05, longitude: -114.07, timezone: tz || "America/Edmonton",
     current: { time: fmt(now), temperature_2m: 13, apparent_temperature: 11, relative_humidity_2m: 60, weather_code: 2, wind_speed_10m: 18, precipitation: 0, is_day: 1 },
     hourly: H, daily: D
   };
@@ -77,7 +77,12 @@ async function run() {
   await page.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => {
     forecastHits++;
     if (forecastHits === 1) return r.fulfill({ status: 503, contentType: "text/plain", body: "Service Unavailable" });
-    return r.fulfill(json(buildForecast()));
+    // Return a timezone that matches the requested longitude so country-by-timezone
+    // detection behaves like production: Calgary → Canada, Lisbon → Europe.
+    const m = /[?&]longitude=(-?[\d.]+)/.exec(r.request().url());
+    const lon = m ? parseFloat(m[1]) : -114.07;
+    const tz = lon > -30 ? "Europe/Lisbon" : "America/Edmonton";
+    return r.fulfill(json(buildForecast(tz)));
   });
   await page.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
   await page.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: {
