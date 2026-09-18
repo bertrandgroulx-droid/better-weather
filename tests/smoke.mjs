@@ -174,6 +174,19 @@ async function run() {
   assert(await page.$("#results .rc-head"), "recent header present");
   const recents = await page.$$eval("#results li[data-i]", (e) => e.map((x) => x.textContent));
   assert(recents.some((t) => t.includes("Lisbon")), "recent saved");
+  // Per-item delete: seed two recents, remove one, and confirm the other stays.
+  await page.click("#closeModal");
+  await page.evaluate(() => localStorage.setItem("bw-recents", JSON.stringify([
+    { name: "Lisbon", sub: "Portugal", lat: 38.72, lon: -9.13, cc: "PT" },
+    { name: "Calgary", sub: "Alberta, Canada", lat: 51.05, lon: -114.07, cc: "CA" }
+  ])));
+  await page.click("#cityPill");
+  assert((await page.$$eval("#results li[data-i]", (e) => e.length)) === 2, "two recents seeded");
+  assert((await page.$$eval("#results .rc-del", (e) => e.length)) === 2, "each recent has a delete control");
+  await page.click('#results li[data-i="0"] .rc-del'); // remove the first (Lisbon)
+  const afterDel = await page.$$eval("#results li[data-i]", (e) => e.map((x) => x.textContent));
+  assert(afterDel.length === 1 && afterDel[0].includes("Calgary"), `individual delete removes just that one, got ${JSON.stringify(afterDel)}`);
+  // Clear all: removes the rest.
   await page.click("#results .rc-clear");
   assert((await page.$$eval("#results li[data-i]", (e) => e.length)) === 0, "recents cleared");
 

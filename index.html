@@ -281,6 +281,12 @@
   .results .rc-head:hover { background: none; }
   .results .rc-clear { color: var(--accent); text-transform: none; letter-spacing: 0;
     font-size: 0.7rem; cursor: pointer; padding: 2px 4px; }
+  .results li.rc-item { display: flex; align-items: center; }
+  .results li.rc-item .sub { margin-left: 6px; }
+  .results .rc-del { margin-left: auto; flex: none; border: none; background: transparent;
+    color: var(--muted); font-size: 0.95rem; line-height: 1; cursor: pointer;
+    padding: 4px 8px; border-radius: 8px; }
+  .results .rc-del:hover { color: var(--text); background: rgba(255,255,255,0.12); }
 
   /* ---------------- radar tab ---------------- */
   #radar { position: relative; flex: 1; min-height: 0; }
@@ -1295,9 +1301,11 @@
   // ---- search modal ----
   var GEO_LI = '<li class="geo" data-geo="1">📍 Use my current location</li>';
 
-  function itemHtml(loc, i) {
-    return '<li data-i="' + i + '">' + esc(loc.name) +
-      (loc.sub ? ' <span class="sub">' + esc(loc.sub) + '</span>' : '') + '</li>';
+  function itemHtml(loc, i, removable) {
+    return '<li data-i="' + i + '"' + (removable ? ' class="rc-item"' : '') + '>' + esc(loc.name) +
+      (loc.sub ? ' <span class="sub">' + esc(loc.sub) + '</span>' : '') +
+      (removable ? '<button type="button" class="rc-del" data-del="' + i + '" aria-label="Remove from recent searches">✕</button>' : '') +
+      '</li>';
   }
 
   function openModal() {
@@ -1317,8 +1325,8 @@
     var recents = getRecents();
     var html = GEO_LI;
     if (recents.length) {
-      html += '<li class="rc-head">Recent<span class="rc-clear" data-clear="1">Clear</span></li>';
-      recents.forEach(function (loc, i) { html += itemHtml(loc, i); });
+      html += '<li class="rc-head">Recent<span class="rc-clear" data-clear="1">Clear all</span></li>';
+      recents.forEach(function (loc, i) { html += itemHtml(loc, i, true); });
     }
     els.results.innerHTML = html;
     els.results._list = recents;
@@ -1345,8 +1353,16 @@
   }
 
   function clearRecents() { try { localStorage.removeItem("bw-recents"); } catch (e) { /* ignore */ } }
+  function removeRecent(i) {
+    try {
+      var list = getRecents();
+      list.splice(i, 1);
+      localStorage.setItem("bw-recents", JSON.stringify(list));
+    } catch (e) { /* storage may be unavailable */ }
+  }
 
   function onResultsClick(e) {
+    if (e.target.dataset && e.target.dataset.del != null) { removeRecent(+e.target.dataset.del); renderRecents(); return; }
     if (e.target.dataset && e.target.dataset.clear) { clearRecents(); renderRecents(); return; }
     var li = e.target.closest("li");
     if (!li) return;
