@@ -80,6 +80,9 @@ async function run() {
     return r.fulfill(json(buildForecast()));
   });
   await page.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+  await page.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: {
+    us_aqi: 63, us_aqi_ozone: 63, us_aqi_pm2_5: 41, us_aqi_pm10: 30, us_aqi_nitrogen_dioxide: 12,
+    ozone: 96, pm2_5: 12, pm10: 20, nitrogen_dioxide: 15 } })));
   await page.route(/api\.mapbox\.com\/search\/geocode/, (r) =>
     r.fulfill(json({ features: [{ properties: { name: "Lisbon", place_formatted: "Portugal" }, geometry: { coordinates: [-9.13, 38.72] } }] })));
   await page.route(/api\.rainviewer\.com/, (r) => r.fulfill(json({ host: "https://x", radar: { past: [], nowcast: [] } })));
@@ -105,6 +108,16 @@ async function run() {
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel closes");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
+  // Air quality: the summary line renders the US AQI value + category, and taps open a detail panel.
+  const airLine = await page.$eval("#summary .air-line", (e) => e.textContent.replace(/\s+/g, " ").trim());
+  assert(/63/.test(airLine) && /Moderate/.test(airLine), `air line shows AQI value + category, got "${airLine}"`);
+  assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel hidden by default");
+  await page.click("#summary .air-line");
+  assert(!(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden"))), "air panel opens on tap");
+  assert(/Moderate/.test(await page.$eval("#airBody .air-badge", (e) => e.textContent)), "air panel shows the AQI badge");
+  assert((await page.$$eval("#airBody .air-poll .prow", (e) => e.length)) === 4, "air panel lists four pollutants");
+  await page.click("#airClose");
+  assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel closes");
 
   // 2) Tabs switch
   await page.click("#tabRadar");
