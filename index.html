@@ -456,7 +456,7 @@
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
-        <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index (AQI) from a separate air-quality model. Tap the “Air” line on the summary to see the details — what the category means and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
+        <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air” line on the summary to see the details — what the category means and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase, a custom fog icon, aligned numbers, day markers.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
@@ -521,6 +521,7 @@
   var lastLoc = null;
   var lastAir = null; // last air-quality response (for the tap-through panel)
   var searchTimer = null;
+  var searchSeq = 0; // guards against a slow geocode resolving after the list moved on
   var currentTab = "weather";
   var loaded = false;
   var laidOut = false; // whether the strips were positioned while visible
@@ -616,7 +617,7 @@
   // ---- geocoding (loc = { name, sub, lat, lon }) ----
   function omToLoc(r) {
     return { name: r.name, sub: [r.admin1, r.country].filter(Boolean).join(", "),
-      lat: r.latitude, lon: r.longitude };
+      lat: r.latitude, lon: r.longitude, cc: r.country_code || "" };
   }
   // Mapbox handles street addresses, POIs and cities; Open-Meteo (cities only)
   // is the fallback if no token is set.
@@ -626,8 +627,9 @@
     return fetchJson(url).then(function (d) {
       return (d.features || []).map(function (f) {
         var p = f.properties || {}, c = (f.geometry && f.geometry.coordinates) || [];
+        var cc = (p.context && p.context.country && (p.context.country.country_code || p.context.country.country_code_alpha_2)) || "";
         return { name: p.name || p.name_preferred || q, sub: p.place_formatted || "",
-          lat: c[1], lon: c[0] };
+          lat: c[1], lon: c[0], cc: cc };
       }).filter(function (loc) { return loc.lat != null && loc.lon != null; });
     });
   }
@@ -648,7 +650,7 @@
     try {
       var key = function (x) { return (x.name + "|" + (x.sub || "")).toLowerCase(); };
       var list = getRecents().filter(function (r) { return key(r) !== key(loc); });
-      list.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon });
+      list.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "" });
       localStorage.setItem("bw-recents", JSON.stringify(list.slice(0, 6)));
     } catch (e) { /* storage may be unavailable */ }
   }
@@ -690,11 +692,22 @@
     return fetchJsonRetry(url, 2);
   }
 
-  // Air quality (US AQI + pollutants) from Open-Meteo's separate air-quality model.
+  // Is this location in Canada? Canada uses the AQHI (1–10) rather than the US AQI.
+  // Prefer the ISO country code from the geocoder; fall back to the display string.
+  function isCanada(loc) {
+    if (!loc) return false;
+    if (loc.cc) return String(loc.cc).toUpperCase() === "CA";
+    return /\bcanada\b/i.test(loc.sub || "");
+  }
+
+  // Air quality from Open-Meteo's separate air-quality model. Always fetch the US
+  // AQI + pollutants; for Canadian locations also pull the hourly pollutant series
+  // so the AQHI can use a 3-hour trailing average, as Environment Canada defines it.
   function getAir(loc) {
     var url = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + loc.lat +
       "&longitude=" + loc.lon + "&current=us_aqi,us_aqi_pm2_5,us_aqi_pm10,us_aqi_ozone," +
       "us_aqi_nitrogen_dioxide,pm2_5,pm10,ozone,nitrogen_dioxide&timezone=auto";
+    if (isCanada(loc)) url += "&hourly=ozone,nitrogen_dioxide,pm2_5&past_days=1&forecast_days=1";
     return fetchJsonRetry(url, 2);
   }
   // US AQI band → colour, full label, short label (for the summary line), and health note.
@@ -712,6 +725,74 @@
       health: "Health alert — everyone may feel stronger effects. Avoid prolonged outdoor exertion." };
     return { color: "#d0506e", label: "Hazardous", short: "Hazardous",
       health: "Emergency conditions — everyone should avoid outdoor exertion." };
+  }
+
+  // ---- Canadian AQHI (Air Quality Health Index, 1–10+) --------------------
+  // Environment Canada's formula from ozone (O₃), nitrogen dioxide (NO₂) and
+  // fine particulate matter (PM2.5), each a 3-hour average. O₃/NO₂ enter the
+  // formula in ppb; Open-Meteo returns µg/m³, so convert (25 °C, 1 atm).
+  var O3_UGM3_PER_PPB = 1.96, NO2_UGM3_PER_PPB = 1.88;
+  function aqhiTerm(kind, ugm3) {
+    if (ugm3 == null) return null;
+    if (kind === "o3") return Math.exp(0.000537 * (ugm3 / O3_UGM3_PER_PPB)) - 1;
+    if (kind === "no2") return Math.exp(0.000871 * (ugm3 / NO2_UGM3_PER_PPB)) - 1;
+    return Math.exp(0.000487 * ugm3) - 1; // pm2.5, already µg/m³
+  }
+  // 3-hour trailing average of an hourly series ending at the current hour, with
+  // a graceful fall back to the current value when the hourly series is absent.
+  function airAvg3h(air, key) {
+    var h = air && air.hourly, cur = air && air.current;
+    if (h && h.time && h[key]) {
+      var idx = cur && cur.time ? h.time.indexOf(cur.time) : -1;
+      if (idx < 0) { for (var j = h[key].length - 1; j >= 0; j--) { if (h[key][j] != null) { idx = j; break; } } }
+      if (idx >= 0) {
+        var s = 0, n = 0;
+        for (var k = idx; k > idx - 3 && k >= 0; k--) { if (h[key][k] != null) { s += h[key][k]; n++; } }
+        if (n) return s / n;
+      }
+    }
+    return cur ? cur[key] : null;
+  }
+  // Returns { value, display, terms } or null. value is the rounded AQHI (min 1);
+  // display shows "10+" above 10. terms carries each pollutant's contribution.
+  function aqhiFrom(air) {
+    var o3 = airAvg3h(air, "ozone"), no2 = airAvg3h(air, "nitrogen_dioxide"), pm = airAvg3h(air, "pm2_5");
+    if (o3 == null || no2 == null || pm == null) return null;
+    var terms = [
+      { nm: "Ozone", conc: o3, t: aqhiTerm("o3", o3) },
+      { nm: "PM2.5", conc: pm, t: aqhiTerm("pm", pm) },
+      { nm: "NO₂", conc: no2, t: aqhiTerm("no2", no2) }
+    ];
+    var sum = terms.reduce(function (a, x) { return a + x.t; }, 0);
+    var raw = (1000 / 10.4) * sum;
+    var v = Math.max(1, Math.round(raw));
+    return { value: v, display: v > 10 ? "10+" : String(v), terms: terms };
+  }
+  // AQHI band → colour, label, short label, and Health Canada risk guidance.
+  function aqhiInfo(v) {
+    if (v == null) return null;
+    if (v <= 3) return { color: "#57c964", label: "Low health risk", short: "Low", band: "1–3",
+      health: "Ideal air quality for outdoor activities." };
+    if (v <= 6) return { color: "#f5d000", label: "Moderate health risk", short: "Moderate", band: "4–6",
+      health: "No need to change your usual outdoor activities unless you have symptoms. At-risk people should consider easing off strenuous activity if they feel unwell." };
+    if (v <= 10) return { color: "#ff5b6e", label: "High health risk", short: "High", band: "7–10",
+      health: "Consider reducing or rescheduling strenuous activities outdoors, especially if you have symptoms. At-risk groups should cut back." };
+    return { color: "#b06bff", label: "Very high health risk", short: "Very high", band: "10+",
+      health: "Reduce or avoid strenuous outdoor activities. At-risk groups should avoid being outdoors." };
+  }
+
+  // Pick the air-quality metric for a location: Canada → AQHI, elsewhere → US AQI.
+  // Returns { scale, value, display, info, aqhi? } or null when no data.
+  function airMetric(loc, air) {
+    if (!air || !air.current) return null;
+    if (isCanada(loc)) {
+      var a = aqhiFrom(air);
+      if (!a) return null;
+      return { scale: "aqhi", value: a.value, display: a.display, info: aqhiInfo(a.value), aqhi: a };
+    }
+    var u = air.current.us_aqi;
+    if (u == null) return null;
+    return { scale: "usaqi", value: u, display: String(Math.round(u)), info: aqiInfo(u) };
   }
 
   // Override the "measured" daily fields with reanalysis where available.
@@ -891,20 +972,49 @@
     var h = hex.replace("#", "");
     return "rgba(" + parseInt(h.slice(0, 2), 16) + "," + parseInt(h.slice(2, 4), 16) + "," + parseInt(h.slice(4, 6), 16) + "," + a + ")";
   }
-  // Build the air-quality detail panel from the last air response.
-  function fillAirModal(air) {
-    var cur = air && air.current ? air.current : null;
-    if (!cur || cur.us_aqi == null) { els.airBody.innerHTML = '<p class="air-health">Air quality data isn’t available for this spot right now.</p>'; return; }
-    var v = cur.us_aqi, info = aqiInfo(v);
+  // One badge + health-note + pollutant-rows + source layout shared by both scales.
+  function airPanelHtml(info, display, scaleLabel, dom, rowsHtml, foot) {
+    return '<div class="air-badge" style="background:' + hexA(info.color, 0.12) + ';border:1px solid ' + hexA(info.color, 0.4) + '">' +
+        '<span class="num">' + display + '</span>' +
+        '<div><div class="lab" style="color:' + info.color + '">' + info.label + '</div>' +
+          '<div class="us">' + scaleLabel + (dom ? ' · dominant: ' + dom : '') + '</div></div>' +
+      '</div>' +
+      '<p class="air-health">' + info.health + '</p>' +
+      '<div class="air-poll"><h3>Pollutants</h3>' + rowsHtml + '</div>' +
+      '<div class="air-foot">' + foot + '</div>';
+  }
+  // Build the air-quality detail panel from the last air response for this location.
+  function fillAirModal(loc, air) {
+    var m = airMetric(loc, air);
+    if (!m) { els.airBody.innerHTML = '<p class="air-health">Air quality data isn’t available for this spot right now.</p>'; return; }
+    if (m.scale === "aqhi") {
+      // Bar length reflects each pollutant's share of the AQHI, so the reader can
+      // see what's driving the number; values are the 3-hour average concentration.
+      var terms = m.aqhi.terms;
+      var maxT = terms.reduce(function (a, x) { return Math.max(a, x.t); }, 0) || 1;
+      var dom = terms.reduce(function (a, x) { return x.t > a.t ? x : a; }, terms[0]).nm;
+      var rows = terms.map(function (p) {
+        var wpct = Math.max(4, Math.min(100, p.t / maxT * 100));
+        return '<div class="prow"><span class="nm">' + p.nm + '</span>' +
+          '<span class="bar"><i style="width:' + wpct.toFixed(0) + '%;background:' + m.info.color + '"></i></span>' +
+          '<span class="val"><b>' + Math.round(p.conc) + '</b> µg/m³</span></div>';
+      }).join("");
+      els.airBody.innerHTML = airPanelHtml(m.info, m.display,
+        "Canada AQHI · " + m.info.band, dom, rows,
+        "Open-Meteo Air Quality · Environment Canada AQHI (3-hour average of O₃, NO₂ &amp; PM2.5)");
+      return;
+    }
+    // US AQI panel: per-pollutant sub-indices, coloured by their own band.
+    var cur = air.current;
     var polls = [
       { nm: "Ozone", key: "ozone", sub: cur.us_aqi_ozone },
       { nm: "PM2.5", key: "pm2_5", sub: cur.us_aqi_pm2_5 },
       { nm: "PM10", key: "pm10", sub: cur.us_aqi_pm10 },
       { nm: "NO₂", key: "nitrogen_dioxide", sub: cur.us_aqi_nitrogen_dioxide }
     ];
-    var dom = null, domSub = -1;
-    polls.forEach(function (p) { if (p.sub != null && p.sub > domSub) { domSub = p.sub; dom = p.nm; } });
-    var rows = polls.map(function (p) {
+    var udom = null, domSub = -1;
+    polls.forEach(function (p) { if (p.sub != null && p.sub > domSub) { domSub = p.sub; udom = p.nm; } });
+    var urows = polls.map(function (p) {
       var conc = cur[p.key], sub = p.sub == null ? 0 : p.sub;
       var col = (aqiInfo(sub) || {}).color || "#57c964";
       var wpct = Math.max(4, Math.min(100, sub / 200 * 100));
@@ -912,29 +1022,22 @@
         '<span class="bar"><i style="width:' + wpct.toFixed(0) + '%;background:' + col + '"></i></span>' +
         '<span class="val"><b>' + (conc == null ? "–" : Math.round(conc)) + '</b> µg/m³</span></div>';
     }).join("");
-    els.airBody.innerHTML =
-      '<div class="air-badge" style="background:' + hexA(info.color, 0.12) + ';border:1px solid ' + hexA(info.color, 0.4) + '">' +
-        '<span class="num">' + Math.round(v) + '</span>' +
-        '<div><div class="lab" style="color:' + info.color + '">' + info.label + '</div>' +
-          '<div class="us">US AQI' + (dom ? ' · dominant: ' + dom : '') + '</div></div>' +
-      '</div>' +
-      '<p class="air-health">' + info.health + '</p>' +
-      '<div class="air-poll"><h3>Pollutants</h3>' + rows + '</div>' +
-      '<div class="air-foot">Open-Meteo Air Quality · CAMS / NASA GEOS model</div>';
+    els.airBody.innerHTML = airPanelHtml(m.info, m.display, "US AQI", udom, urows,
+      "Open-Meteo Air Quality · CAMS / NASA GEOS model");
   }
 
   function renderSummary(loc, d, air) {
     var c = d.current, ti = todayIndex(d), dd = d.daily, ex = todayExtremes(d);
     var w = wmo(c.weather_code);
     var outlook = precipOutlook(d);
-    // Optional air-quality line (tap opens the detail panel).
+    // Optional air-quality line (tap opens the detail panel). Canada uses the
+    // AQHI (1–10); everywhere else uses the US AQI.
     var airHtml = "";
-    var av = air && air.current ? air.current.us_aqi : null;
-    if (av != null) {
-      var ai = aqiInfo(av);
+    var am = airMetric(loc, air);
+    if (am) {
       airHtml = '<div class="air-line" role="button" tabindex="0"><b>Air</b> ' +
-        '<span class="aqi-dot" style="background:' + ai.color + '"></span>' + Math.round(av) +
-        ' <span class="k">' + ai.short + '</span></div>';
+        '<span class="aqi-dot" style="background:' + am.info.color + '"></span>' + am.display +
+        ' <span class="k">' + am.info.short + '</span></div>';
     }
     document.body.classList.toggle("night", c.is_day === 0);
 
@@ -1194,6 +1297,7 @@
   }
 
   function renderRecents() {
+    searchSeq++; // any in-flight search is now stale — don't let it overwrite recents
     var recents = getRecents();
     var html = GEO_LI;
     if (recents.length) {
@@ -1216,8 +1320,11 @@
     clearTimeout(searchTimer);
     var q = els.searchInput.value.trim();
     if (q.length < 2) { renderRecents(); return; }
+    var seq = ++searchSeq;
     searchTimer = setTimeout(function () {
-      forwardGeocode(q, 6).then(renderResults).catch(function () { renderResults([]); });
+      forwardGeocode(q, 6)
+        .then(function (list) { if (seq === searchSeq) renderResults(list); })
+        .catch(function () { if (seq === searchSeq) renderResults([]); });
     }, 250);
   }
 
@@ -1323,7 +1430,7 @@
   els.aboutClose.addEventListener("click", closeAbout);
   els.aboutBackdrop.addEventListener("click", function (e) { if (e.target === els.aboutBackdrop) closeAbout(); });
   // Air quality panel (opens from the summary "Air" line)
-  function openAir() { fillAirModal(lastAir); els.airBackdrop.classList.remove("hidden"); }
+  function openAir() { fillAirModal(lastLoc, lastAir); els.airBackdrop.classList.remove("hidden"); }
   function closeAir() { els.airBackdrop.classList.add("hidden"); }
   els.summary.addEventListener("click", function (e) { if (e.target.closest(".air-line")) openAir(); });
   els.summary.addEventListener("keydown", function (e) {

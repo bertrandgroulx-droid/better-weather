@@ -108,14 +108,16 @@ async function run() {
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel closes");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
-  // Air quality: the summary line renders the US AQI value + category, and taps open a detail panel.
+  // Air quality: Calgary is in Canada, so the summary shows the AQHI (1–10), not the US AQI.
   const airLine = await page.$eval("#summary .air-line", (e) => e.textContent.replace(/\s+/g, " ").trim());
-  assert(/63/.test(airLine) && /Moderate/.test(airLine), `air line shows AQI value + category, got "${airLine}"`);
+  assert(/\b4\b/.test(airLine) && /Moderate/.test(airLine), `Canada air line shows AQHI value + risk, got "${airLine}"`);
+  assert(!/63/.test(airLine), `Canada should not show the US AQI value, got "${airLine}"`);
   assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel hidden by default");
   await page.click("#summary .air-line");
   assert(!(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden"))), "air panel opens on tap");
-  assert(/Moderate/.test(await page.$eval("#airBody .air-badge", (e) => e.textContent)), "air panel shows the AQI badge");
-  assert((await page.$$eval("#airBody .air-poll .prow", (e) => e.length)) === 4, "air panel lists four pollutants");
+  const aqhiBadge = await page.$eval("#airBody .air-badge", (e) => e.textContent);
+  assert(/AQHI/.test(aqhiBadge) && /Moderate/.test(aqhiBadge), `AQHI panel badge shows scale + risk, got "${aqhiBadge}"`);
+  assert((await page.$$eval("#airBody .air-poll .prow", (e) => e.length)) === 3, "AQHI panel lists three contributing pollutants");
   await page.click("#airClose");
   assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel closes");
 
@@ -156,6 +158,13 @@ async function run() {
   await page.waitForFunction(() => document.querySelectorAll("#results li[data-i]").length > 0, { timeout: 5000 });
   await page.click('#results li[data-i="0"]');
   assert((await page.$eval("#cityName", (e) => e.textContent)) === "Lisbon", "selected place loads");
+  // Lisbon (Portugal) is outside Canada → the scale switches back to the US AQI (0–500).
+  const usLine = await page.$eval("#summary .air-line", (e) => e.textContent.replace(/\s+/g, " ").trim());
+  assert(/63/.test(usLine) && /Moderate/.test(usLine), `non-Canada air line shows US AQI, got "${usLine}"`);
+  await page.click("#summary .air-line");
+  assert(/US AQI/.test(await page.$eval("#airBody .air-badge", (e) => e.textContent)), "US AQI panel for a non-Canada location");
+  assert((await page.$$eval("#airBody .air-poll .prow", (e) => e.length)) === 4, "US AQI panel lists four pollutants");
+  await page.click("#airClose");
   await page.click("#cityPill");
   assert(await page.$("#results .rc-head"), "recent header present");
   const recents = await page.$$eval("#results li[data-i]", (e) => e.map((x) => x.textContent));
