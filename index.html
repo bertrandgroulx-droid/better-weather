@@ -134,9 +134,30 @@
 
   /* ---------------- scrolling sections ---------------- */
   .result {
-    flex: 1; min-height: 0;
+    flex: 1; min-height: 0; position: relative;
     display: flex; flex-direction: column; gap: 16px;
   }
+  /* ⓘ "about" button in the summary card's top-left corner */
+  .about-btn {
+    position: absolute; top: 8px; left: 8px; z-index: 3;
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--muted);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  }
+  .about-btn:hover, .about-btn:focus-visible { color: var(--text); }
+  .about-btn svg { width: 17px; height: 17px; }
+  /* about panel content (reuses .backdrop / .modal) */
+  .about-modal h2 { margin: 0; font-size: 1.15rem; }
+  .about-modal .sub { color: var(--muted); font-size: 0.82rem; margin: 6px 0 12px; line-height: 1.45; }
+  .about-list { margin: 0; padding: 0; list-style: none; }
+  .about-list li { display: flex; gap: 9px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: 0.85rem; line-height: 1.4; }
+  .about-list li:first-child { border-top: none; }
+  .about-list .i { font-size: 1.05rem; flex: none; }
+  .about-list b { font-weight: 700; }
+  .about-list .d { color: var(--muted); }
+  .about-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.10);
+    font-size: 0.8rem; color: var(--muted); text-align: center; }
   .content {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column;
@@ -334,6 +355,12 @@
   <div class="status" id="status">Loading your weather…</div>
 
   <div class="result hidden" id="result">
+    <button class="about-btn" id="aboutBtn" type="button" aria-label="About Better Weather">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.25"/><circle cx="12" cy="7.8" r="0.2" fill="currentColor" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M12 11.2 v5.2" stroke-linecap="round"/>
+      </svg>
+    </button>
     <section class="summary" id="summary"></section>
 
     <div class="content" id="content">
@@ -390,6 +417,27 @@
     </div>
   </div>
 
+  <!-- about panel -->
+  <div class="backdrop hidden" id="aboutBackdrop">
+    <div class="modal about-modal" role="dialog" aria-modal="true" aria-label="About Better Weather">
+      <div class="modal-head">
+        <h2>Why Better Weather</h2>
+        <button class="close" id="aboutClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="sub">A phone-first weather app built to answer “what do I actually need to know?” at a glance — one screen, no clutter, no account, no ads.</p>
+      <ul class="about-list">
+        <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
+        <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” read straight from the hourly data.</span></span></li>
+        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips.</span></span></li>
+        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
+        <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase, a custom fog icon, aligned numbers, day markers.</span></span></li>
+        <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation; tap anywhere to get the forecast there.</span></span></li>
+        <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
+      </ul>
+      <div class="about-foot">Better Weather</div>
+    </div>
+  </div>
+
 <script src="radar.js"></script>
 <script>
 (function () {
@@ -404,6 +452,7 @@
     unitC: $("unitC"), unitF: $("unitF"),
     backdrop: $("backdrop"), searchInput: $("searchInput"),
     closeModal: $("closeModal"), results: $("results"),
+    aboutBtn: $("aboutBtn"), aboutBackdrop: $("aboutBackdrop"), aboutClose: $("aboutClose"),
     radar: $("radar"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
     radarModel: $("radarModel"), tabWeather: $("tabWeather"), tabRadar: $("tabRadar"),
   };
@@ -1151,6 +1200,12 @@
   });
   els.closeModal.addEventListener("click", closeModal);
   els.backdrop.addEventListener("click", function (e) { if (e.target === els.backdrop) closeModal(); });
+  // About panel
+  function openAbout() { els.aboutBackdrop.classList.remove("hidden"); }
+  function closeAbout() { els.aboutBackdrop.classList.add("hidden"); }
+  els.aboutBtn.addEventListener("click", openAbout);
+  els.aboutClose.addEventListener("click", closeAbout);
+  els.aboutBackdrop.addEventListener("click", function (e) { if (e.target === els.aboutBackdrop) closeAbout(); });
   els.searchInput.addEventListener("input", onSearchInput);
   els.searchInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {

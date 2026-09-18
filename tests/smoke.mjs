@@ -97,6 +97,12 @@ async function run() {
   assert(forecastHits >= 2, `transient 503 should be retried, forecast requests = ${forecastHits}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
   assert((await page.$eval("#summary .fcast", (e) => e.textContent.trim().length)) > 0, "precip outlook subtitle renders");
+  // About panel opens and closes
+  assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel hidden by default");
+  await page.click("#aboutBtn");
+  assert(!(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden"))), "about panel opens");
+  await page.click("#aboutClose");
+  assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel closes");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
 
