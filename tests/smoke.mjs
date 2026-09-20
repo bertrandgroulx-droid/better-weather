@@ -195,6 +195,31 @@ async function run() {
   await page.click("#results .rc-clear");
   assert((await page.$$eval("#results li[data-i]", (e) => e.length)) === 0, "recents cleared");
 
+  // 4) Desktop pointer affordances (mouse drag + draggable thumb). page.mouse
+  // dispatches mouse-type pointer events, so this exercises the non-touch paths
+  // without disturbing the native touch scrolling used on phones.
+  await page.click("#closeModal");
+  await page.click("#tabWeather");
+  await page.waitForTimeout(120);
+  await page.$eval("#hourly", (e) => { e.scrollLeft = 0; });
+  const hbox = await (await page.$("#hourly")).boundingBox();
+  await page.mouse.move(hbox.x + hbox.width * 0.75, hbox.y + hbox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hbox.x + hbox.width * 0.25, hbox.y + hbox.height / 2, { steps: 8 });
+  await page.mouse.up();
+  const dragScroll = await page.$eval("#hourly", (e) => e.scrollLeft);
+  assert(dragScroll > 20, `mouse-drag scrolls the hourly strip, scrollLeft=${dragScroll}`);
+  // Dragging the thumb scrubs the strip.
+  await page.$eval("#hourly", (e) => { e.scrollLeft = 0; });
+  await page.waitForTimeout(30);
+  const tbox = await (await page.$("#hThumb")).boundingBox();
+  await page.mouse.move(tbox.x + tbox.width / 2, tbox.y + tbox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tbox.x + tbox.width / 2 + 80, tbox.y + tbox.height / 2, { steps: 6 });
+  await page.mouse.up();
+  const thumbScroll = await page.$eval("#hourly", (e) => e.scrollLeft);
+  assert(thumbScroll > 20, `dragging the thumb scrolls the strip, scrollLeft=${thumbScroll}`);
+
   assert(errors.length === 0, "page errors: " + errors.join(" | "));
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);

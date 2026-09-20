@@ -60,6 +60,11 @@
     padding: calc(env(safe-area-inset-top) + 8px) 8px calc(env(safe-area-inset-bottom) + 10px);
   }
   body.night { --bg-1: #050f1e; --bg-2: #0a1f38; --bg-3: #0f2c48; }
+  /* Phone-first: on wider (desktop) screens, centre the app in a comfortable
+     column instead of stretching edge-to-edge. Below this width nothing changes,
+     so the phone layout is untouched. The gradient still fills the whole page. */
+  body { align-items: center; }
+  .topbar, #status, #result, #radar, .tabbar { width: 100%; max-width: 640px; }
 
   /* ---------------- top bar ---------------- */
   .topbar { display: flex; align-items: center; gap: 8px; }
@@ -258,9 +263,17 @@
   .water { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 0; }
   .water svg { position: absolute; top: -6px; left: 0; width: 100%; height: 8px; display: block; }
 
-  /* scroll-position indicator */
-  .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 8px; position: relative; }
-  .thumb { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); min-width: 24px; }
+  /* scroll-position indicator (also a click/drag control on desktop) */
+  .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 8px; position: relative; cursor: pointer; }
+  .thumb { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); min-width: 24px;
+    cursor: grab; touch-action: none; }
+  .thumb:active { cursor: grabbing; }
+  /* invisible taller hit area so the thin thumb is easy to grab with a mouse;
+     kept inside the 8px gap above the track so it never overlaps the strip */
+  .thumb::before { content: ""; position: absolute; top: -7px; bottom: -7px; left: 0; right: 0; }
+  /* desktop: the strip is grab-to-scroll; touch keeps its native scrolling */
+  .scroller { cursor: grab; }
+  .scroller.dragging { cursor: grabbing; user-select: none; }
   /* fixed "Now" / "Today" reference marker on the track */
   .marker { position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
     background: #fff; border: 2px solid var(--bg-1);
@@ -1323,6 +1336,74 @@
     scroller.addEventListener("scroll", function () { updateThumb(scroller, thumb); }, { passive: true });
   }
 
+  // ---- desktop pointer affordances (touch behaviour is left completely alone) ----
+  // Click-and-drag anywhere on the strip to scroll it. Mouse/pen only; touch keeps
+  // its native momentum scrolling, so the phone experience is unchanged.
+  function enableDragScroll(scroller) {
+    var down = false, startX = 0, startLeft = 0, pid = null;
+    scroller.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "touch") return;      // don't touch touch
+      if (e.button && e.button !== 0) return;      // primary button only
+      down = true; pid = e.pointerId; startX = e.clientX; startLeft = scroller.scrollLeft;
+      try { scroller.setPointerCapture(pid); } catch (_) {}
+      scroller.classList.add("dragging");
+      e.preventDefault();
+    });
+    scroller.addEventListener("pointermove", function (e) {
+      if (!down || e.pointerId !== pid) return;
+      scroller.scrollLeft = startLeft - (e.clientX - startX);
+      e.preventDefault();
+    });
+    function end() {
+      if (!down) return;
+      down = false;
+      try { scroller.releasePointerCapture(pid); } catch (_) {}
+      scroller.classList.remove("dragging");
+    }
+    scroller.addEventListener("pointerup", end);
+    scroller.addEventListener("pointercancel", end);
+  }
+  // Vertical mouse-wheel scrolls the strip horizontally (trackpad horizontal
+  // gestures already scroll it natively and are left as-is).
+  function enableWheelScroll(scroller) {
+    scroller.addEventListener("wheel", function (e) {
+      if (scroller.scrollWidth <= scroller.clientWidth) return;
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      scroller.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
+  }
+  // Drag the position thumb, or click the track, to scrub the strip.
+  function enableThumbDrag(scroller, thumb) {
+    var track = thumb.parentNode;
+    var down = false, startX = 0, startLeft = 0, pid = null;
+    function scrollToFrac(frac) {
+      var sMax = scroller.scrollWidth - scroller.clientWidth;
+      scroller.scrollLeft = Math.max(0, Math.min(1, frac)) * sMax;
+    }
+    thumb.addEventListener("pointerdown", function (e) {
+      down = true; pid = e.pointerId; startX = e.clientX; startLeft = thumb.offsetLeft;
+      try { thumb.setPointerCapture(pid); } catch (_) {}
+      e.preventDefault(); e.stopPropagation();
+    });
+    thumb.addEventListener("pointermove", function (e) {
+      if (!down || e.pointerId !== pid) return;
+      var maxLeft = track.clientWidth - thumb.offsetWidth;
+      scrollToFrac(maxLeft > 0 ? (startLeft + (e.clientX - startX)) / maxLeft : 0);
+      e.preventDefault();
+    });
+    function end() { if (!down) return; down = false; try { thumb.releasePointerCapture(pid); } catch (_) {} }
+    thumb.addEventListener("pointerup", end);
+    thumb.addEventListener("pointercancel", end);
+    // A click on the bare track jumps toward that spot (mouse/pen only).
+    track.addEventListener("pointerdown", function (e) {
+      if (e.target === thumb || e.pointerType === "touch") return;
+      var rect = track.getBoundingClientRect();
+      var maxLeft = track.clientWidth - thumb.offsetWidth;
+      scrollToFrac(maxLeft > 0 ? (e.clientX - rect.left - thumb.offsetWidth / 2) / maxLeft : 0);
+    });
+  }
+
   // Position both strips at Now/Today and size their thumbs + markers. Must run
   // while the strips are visible — a hidden element measures as zero width, which
   // breaks the thumb and hides the marker.
@@ -1573,6 +1654,11 @@
   els.frameSlider.addEventListener("change", function () { radar.onCommit(+els.frameSlider.value); });
   bindThumb(els.hourly, els.hThumb);
   bindThumb(els.daily, els.dThumb);
+  [[els.hourly, els.hThumb], [els.daily, els.dThumb]].forEach(function (s) {
+    enableDragScroll(s[0]);
+    enableWheelScroll(s[0]);
+    enableThumbDrag(s[0], s[1]);
+  });
   window.addEventListener("resize", function () {
     updateThumb(els.hourly, els.hThumb);
     updateThumb(els.daily, els.dThumb);
