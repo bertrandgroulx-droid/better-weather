@@ -144,6 +144,13 @@
   .sum-right .row .hl { display: inline-block; width: 1.5em; }
   .sum-right .row .tval { display: inline-block; min-width: 2ch; text-align: right;
     font-variant-numeric: tabular-nums; }
+  /* sunrise/sunset: a fixed-width label keeps the words left-aligned; the clock
+     digits sit in a fixed right-aligned column so am/pm stack on top of each other */
+  .sum-right .sun-group .k { display: inline-block; width: 3.95em; }
+  .sum-right .sun-group .clk { display: inline-block; min-width: 2.9em; text-align: right;
+    font-variant-numeric: tabular-nums; }
+  /* keep the aligned sun times clear of the ⓘ button in the card's corner */
+  .sum-right .sun-group { padding-right: 26px; }
 
   /* ---------------- scrolling sections ---------------- */
   .result {
@@ -638,6 +645,11 @@
   }
   function fmtClock(iso) {
     return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  }
+  // Split a clock string into { t: "6:23", m: "am" } so the meridiem can be aligned.
+  function clockParts(iso) {
+    var s = fmtClock(iso), i = s.lastIndexOf(" ");
+    return i < 0 ? { t: s, m: "" } : { t: s.slice(0, i), m: s.slice(i + 1) };
   }
   function precipLabel(v, daily) {
     if (v == null || v <= 0) return "";
@@ -1165,8 +1177,8 @@
     var lo = Math.round(dd.temperature_2m_min[ti]);
     var hiTime = ex.maxTime ? " (" + fmtClock(ex.maxTime) + ")" : "";
     var loTime = ex.minTime ? " (" + fmtClock(ex.minTime) + ")" : "";
-    var sr = fmtClock(dd.sunrise[ti]);
-    var ss = fmtClock(dd.sunset[ti]);
+    var sr = clockParts(dd.sunrise[ti]);
+    var ss = clockParts(dd.sunset[ti]);
     var pop = dd.precipitation_probability_max[ti];
     var psum = dd.precipitation_sum[ti];
     var windH = Math.round(dd.wind_speed_10m_max[ti]);
@@ -1196,8 +1208,8 @@
         '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t">' + hiTime + '</span></div>' +
         '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
-          '<div class="row"><span class="k">Sunrise</span> <span class="t">' + sr + '</span></div>' +
-          '<div class="row"><span class="k">Sunset</span> <span class="t">' + ss + '</span></div>' +
+          '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
+          '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
         '</div>' +
       '</div>';
     els.summary.appendChild(els.aboutBtn); // keep the ⓘ nestled in the card's corner across re-renders
