@@ -1338,13 +1338,20 @@
     thumb.style.left = (lr * (100 - wPct)) + "%";
   }
 
-  // Place the fixed Now/Today marker at that cell's position within the whole track.
+  // Place the fixed Now/Today marker in the thumb's own coordinate space, anchored
+  // to the cell's LEFT edge. That way the dot sits at the thumb's left edge when the
+  // strip is parked with Now/Today as the left-most cell, and the thumb slides past
+  // the dot exactly as Now/Today scrolls through the window. Using the same clamped
+  // thumb width as updateThumb keeps the two in sync (notably on the hourly bar,
+  // whose true thumb is thinner than the 10% minimum).
   function positionMarker(scroller, marker, cls) {
     var el = scroller.querySelector("." + cls);
-    if (!el || scroller.scrollWidth <= 0) { marker.style.display = "none"; return; }
-    var center = el.offsetLeft + el.offsetWidth / 2;
+    var sw = scroller.scrollWidth, cw = scroller.clientWidth, max = sw - cw;
+    if (!el || max <= 0) { marker.style.display = "none"; return; }
+    var wPct = Math.max(10, (cw / sw) * 100); // must match updateThumb
+    var pos = Math.max(0, Math.min(el.offsetLeft, max));
     marker.style.display = "block";
-    marker.style.left = (center / scroller.scrollWidth * 100) + "%";
+    marker.style.left = (pos / max * (100 - wPct)) + "%";
   }
 
   function bindThumb(scroller, thumb) {
