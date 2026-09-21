@@ -104,6 +104,11 @@ async function run() {
   assert(daily === 23, `daily cells 23, got ${daily}`);
   assert(forecastHits >= 2, `transient 503 should be retried, forecast requests = ${forecastHits}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
+  // Cells must be positioned relative to their strip (strip is position:relative), so
+  // offsetLeft is strip-relative — the scroll-to-Now and track marker math depend on it.
+  // (When the app is centred on desktop, a page-relative offsetLeft threw both far off.)
+  assert(await page.$eval("#daily .cell.today", (el) => el.offsetParent === document.getElementById("daily")), "daily cell is positioned relative to the strip");
+  assert(await page.$eval("#hourly .cell.now", (el) => el.offsetParent === document.getElementById("hourly")), "hourly cell is positioned relative to the strip");
   assert((await page.$eval("#summary .fcast", (e) => e.textContent.trim().length)) > 0, "precip outlook subtitle renders");
   // About panel opens and closes
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel hidden by default");
