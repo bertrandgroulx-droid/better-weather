@@ -118,6 +118,10 @@ async function run() {
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel closes");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
+  // Canada: an Environment Canada "Alerts" link for this location opens in a new tab.
+  const alertHref = await page.$eval("#summary .alert-line", (e) => e.getAttribute("href"));
+  assert(/weather\.gc\.ca\/en\/location\/index\.html\?coords=51\.05,-114\.07/.test(alertHref), `alerts link points to ECCC for this spot, got "${alertHref}"`);
+  assert((await page.$eval("#summary .alert-line", (e) => e.getAttribute("target"))) === "_blank", "alerts link opens in a new tab");
   // Air quality: Calgary is in Canada, so the summary shows the AQHI (1–10), not the US AQI.
   const airLine = await page.$eval("#summary .air-line", (e) => e.textContent.replace(/\s+/g, " ").trim());
   assert(/\b4\b/.test(airLine) && /Moderate/.test(airLine), `Canada air line shows AQHI value + risk, got "${airLine}"`);
@@ -196,6 +200,8 @@ async function run() {
   assert((await page.$$eval("#airBody .airscale-bar .seg", (e) => e.length)) === 6, "US AQI scale has six colour bands");
   assert(/Moderate/.test(await page.$eval("#airBody .airscale-legend .lg.on", (e) => e.textContent)), "US AQI legend highlights the current band");
   await page.click("#airClose");
+  // The Environment Canada alerts link is Canada-only, so it must not show for Lisbon.
+  assert(!(await page.$("#summary .alert-line")), "no ECCC alerts link for a non-Canada location");
   await page.click("#cityPill");
   assert(await page.$("#results .rc-head"), "recent header present");
   const recents = await page.$$eval("#results li[data-i]", (e) => e.map((x) => x.textContent));
