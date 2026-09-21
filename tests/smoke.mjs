@@ -159,11 +159,27 @@ async function run() {
   await page.click("#tabWeather");
   await page.waitForTimeout(120); // allow the rAF layout to run
   assert(await page.$eval("#result", (e) => !e.classList.contains("hidden")), "weather restored");
-  // Correctly-measured thumb is small (~10%); the bug (measuring while hidden)
-  // leaves it at 100%.
+  // Correctly-measured thumb reflects the true window (~5% of 121 hourly cells);
+  // the bug (measuring while hidden) left it at 100%.
   const thumbW = await page.$eval("#hThumb", (e) => parseFloat(e.style.width) || 0);
-  assert(thumbW >= 10 && thumbW < 30, `hourly thumb sized after map pick, got ${thumbW}%`);
+  assert(thumbW >= 3 && thumbW < 12, `hourly thumb sized after map pick, got ${thumbW}%`);
   assert(await page.$eval("#hMarker", (e) => e.style.display !== "none" && e.style.left !== ""), "now marker visible after map pick");
+  // The bar reflects the true window, so the Now dot sits inside it at rest and
+  // leaves it (to the right) once Now is scrolled off the right edge.
+  const dotAtRest = await page.evaluate(() => {
+    const th = document.getElementById("hThumb"), mk = document.getElementById("hMarker");
+    const l = parseFloat(th.style.left) || 0, w = parseFloat(th.style.width) || 0, m = parseFloat(mk.style.left) || 0;
+    return m >= l - 0.5 && m <= l + w + 0.5;
+  });
+  assert(dotAtRest, "Now dot sits within the window bar at rest");
+  await page.$eval("#hourly", (e) => { e.scrollLeft = 0; });
+  await page.waitForTimeout(30);
+  const dotLeft = await page.evaluate(() => {
+    const th = document.getElementById("hThumb"), mk = document.getElementById("hMarker");
+    const l = parseFloat(th.style.left) || 0, w = parseFloat(th.style.width) || 0, m = parseFloat(mk.style.left) || 0;
+    return m > l + w; // dot is to the right of (outside) the thumb
+  });
+  assert(dotLeft, "Now dot leaves the window bar when Now scrolls off to the right");
 
   // 3) Search (Mapbox mock) + recents
   await page.click("#cityPill");

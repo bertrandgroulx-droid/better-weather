@@ -275,7 +275,7 @@
 
   /* scroll-position indicator (also a click/drag control on desktop) */
   .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 8px; position: relative; cursor: pointer; }
-  .thumb { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); min-width: 24px;
+  .thumb { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); min-width: 14px;
     cursor: grab; touch-action: none; }
   .thumb:active { cursor: grabbing; }
   /* invisible taller hit area so the thin thumb is easy to grab with a mouse;
@@ -1331,8 +1331,9 @@
   function updateThumb(scroller, thumb) {
     var sw = scroller.scrollWidth, cw = scroller.clientWidth;
     var max = sw - cw;
-    var ratio = sw > 0 ? cw / sw : 1;
-    var wPct = Math.max(10, ratio * 100);
+    // Thumb width = the true fraction of the timeline in view (no minimum), so the
+    // bar reflects the real window size and the Now/Today dot leaves it correctly.
+    var wPct = sw > 0 ? (cw / sw) * 100 : 100;
     thumb.style.width = wPct + "%";
     var lr = max > 0 ? scroller.scrollLeft / max : 0;
     thumb.style.left = (lr * (100 - wPct)) + "%";
@@ -1348,7 +1349,7 @@
     var el = scroller.querySelector("." + cls);
     var sw = scroller.scrollWidth, cw = scroller.clientWidth, max = sw - cw;
     if (!el || max <= 0) { marker.style.display = "none"; return; }
-    var wPct = Math.max(10, (cw / sw) * 100); // must match updateThumb
+    var wPct = (cw / sw) * 100; // must match updateThumb
     var pos = Math.max(0, Math.min(el.offsetLeft, max));
     marker.style.display = "block";
     marker.style.left = (pos / max * (100 - wPct)) + "%";
