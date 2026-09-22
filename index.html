@@ -88,13 +88,24 @@
 
   /* ---------------- top bar ---------------- */
   .topbar { display: flex; align-items: center; gap: 8px; }
+  /* The studio credit goes under the app's name, so the name is shown at every
+     width now rather than hiding below 420px to make room. A two-column grid
+     puts the sun beside a stacked name-over-credit; the row does not get any
+     taller for it, because its height was already set by the search box and
+     the unit buttons, so two small lines drop into space that was always
+     there. The credit itself comes from the studio kit, which inserts
+     #shozkit-bar directly after .name — see shozbot.com/kit/kit.js. */
   .brand {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 0.95rem; font-weight: 700; white-space: nowrap;
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 6px;
+    line-height: 1.15;
+    font-weight: 700; white-space: nowrap;
   }
-  .brand .logo { font-size: 1.2rem; }
-  .brand .name { display: none; }
-  @media (min-width: 420px) { .brand .name { display: inline; } }
+  .brand .logo { grid-row: 1 / 3; font-size: 1.35rem; }
+  .brand .name { grid-column: 2; grid-row: 1; font-size: 0.78rem; }
+  .brand #shozkit-bar { grid-column: 2; grid-row: 2; margin-left: 0; font-size: 0.62rem; }
 
   .city-pill {
     flex: 1; min-width: 0;
@@ -1720,10 +1731,12 @@
 
 <!-- The shozbot studio kit: the "back to shozbot" bar at the top, and visitor
      counting. One line, so both are changed in one place rather than seven. -->
-<!-- data-hide-standalone: installed to a home screen there is no browser to go
-     back to, and this app is built to fill exactly one phone screen — so the
-     bar drops out there and the layout is the same as it ever was. -->
-<script src="https://shozbot.com/kit/kit.js" data-app="Better Weather"
-        data-hide-standalone defer></script>
+<!-- The studio kit. data-by replaces the bar with the words "by shozbot",
+     inserted just after .brand .name and styled by the rule up in the <head>.
+     A credit rather than a navigation bar: it borrows a line this app already
+     draws, so it costs no height, and it stays put when the app is installed
+     to a home screen because there is nothing worth hiding. The visit is
+     counted either way. -->
+<script src="https://shozbot.com/kit/kit.js" data-by=".brand .name" defer></script>
 </body>
 </html>
