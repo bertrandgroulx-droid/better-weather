@@ -138,13 +138,6 @@
     padding: 1px 9px; margin: 1px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
   .sum-metrics .air-line:active { background: rgba(255,255,255,0.14); }
   .sum-metrics .air-line .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
-  /* Canada-only link out to Environment Canada's official warnings */
-  .sum-metrics .alert-line { display: inline-block; margin: 2px 0 0; text-decoration: none; color: var(--text);
-    background: rgba(255,209,102,0.12); border: 1px solid rgba(255,209,102,0.42); border-radius: 999px;
-    padding: 1px 9px; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
-  .sum-metrics .alert-line:active { background: rgba(255,209,102,0.24); }
-  .sum-metrics .alert-line .tri { vertical-align: -0.15em; margin-right: 3px; }
-  .sum-metrics .alert-line .arr { color: var(--muted); margin-left: 4px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
   /* keep the sun rows at the bottom so Sunset aligns with the last left line */
@@ -536,7 +529,7 @@
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
-        <li><span class="i">⚠️</span><span><b>Severe-weather alerts.</b> <span class="d">For Canadian locations, an “Alerts” link opens Environment Canada’s official warnings for that exact spot. Better Weather doesn’t issue alerts itself — ECCC is the authority, so always check there for watches and warnings.</span></span></li>
+        <li><span class="i">⚠️</span><span><b>No severe-weather alerts.</b> <span class="d">Better Weather doesn’t issue or show watches and warnings. For official alerts, check your national weather service — in Canada, Environment Canada (weather.gc.ca).</span></span></li>
         <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase, a custom fog icon, aligned numbers, day markers.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
@@ -1197,19 +1190,6 @@
         '<span class="aqi-dot" style="background:' + am.info.color + '"></span>' + am.display +
         ' <span class="k">' + am.info.short + '</span><span class="air-chev" aria-hidden="true">›</span></div>';
     }
-    // Canada only: a discreet link out to Environment Canada's official warnings for
-    // this spot. The app doesn't issue alerts — ECCC is the authority.
-    var alertsHtml = "";
-    if (isCanada(loc, d.timezone)) {
-      alertsHtml = '<a class="alert-line" target="_blank" rel="noopener" ' +
-        'href="https://weather.gc.ca/en/location/index.html?coords=' + loc.lat + ',' + loc.lon + '" ' +
-        'title="Environment Canada official weather warnings (opens in a new tab)">' +
-        '<svg class="tri" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">' +
-          '<path d="M12 3.5 22 20.5H2Z" fill="none" stroke="#ffd166" stroke-width="2" stroke-linejoin="round"/>' +
-          '<path d="M12 10v4" stroke="#ffd166" stroke-width="2" stroke-linecap="round"/>' +
-          '<circle cx="12" cy="17.2" r="1.1" fill="#ffd166"/></svg>' +
-        '<b>Alerts</b> <span class="k">Env Canada</span><span class="arr" aria-hidden="true">↗</span></a>';
-    }
     document.body.classList.toggle("night", c.is_day === 0);
 
     var hi = Math.round(dd.temperature_2m_max[ti]);
@@ -1237,7 +1217,6 @@
           '<div><b>Wind</b> <span class="k">H:</span>' + windH + ' <span class="k">' + wU() + '</span>' +
             ' <span class="k">L:</span>' + windL + ' <span class="k">' + wU() + '</span></div>' +
           airHtml +
-          alertsHtml +
           '<div class="moon-line">' + moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate + '</div>' +
         '</div>' +
       '</div>' +
