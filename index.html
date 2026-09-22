@@ -71,7 +71,12 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    /* 12px, not 18. The whole point of this app is the forecast on one screen,
+       and there are four gaps down the page, so every pixel here costs four.
+       Measured on an iPhone 14: at 18px the layout is 27px too tall with the
+       studio bar in and the Weather/Map buttons are sliced in half; at 12px it
+       fits with the tabs whole. */
+    gap: 12px;
     padding: calc(env(safe-area-inset-top) + 8px) 8px calc(env(safe-area-inset-bottom) + 10px);
   }
   body.night { --bg-1: #050f1e; --bg-2: #0a1f38; --bg-3: #0f2c48; }
@@ -1715,6 +1720,10 @@
 
 <!-- The shozbot studio kit: the "back to shozbot" bar at the top, and visitor
      counting. One line, so both are changed in one place rather than seven. -->
-<script src="https://shozbot.com/kit/kit.js" data-app="Better Weather" defer></script>
+<!-- data-hide-standalone: installed to a home screen there is no browser to go
+     back to, and this app is built to fill exactly one phone screen — so the
+     bar drops out there and the layout is the same as it ever was. -->
+<script src="https://shozbot.com/kit/kit.js" data-app="Better Weather"
+        data-hide-standalone defer></script>
 </body>
 </html>
