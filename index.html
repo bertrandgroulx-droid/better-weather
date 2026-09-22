@@ -4,6 +4,21 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
 <title>Better Weather</title>
+<link rel="canonical" href="https://shozbot.com/better-weather/">
+<script>
+  /* This app lives at shozbot.com/better-weather/ now. Anyone still arriving at the old
+     GitHub Pages address is moved across, so that scores, streaks and settings
+     — which a browser files under whichever address they were made on — pile up
+     in one place instead of quietly splitting in two.
+
+     The hostname test is load-bearing, not defensive. shozbot.com serves this
+     very file through a rewrite, so without the test the redirect would fire
+     there too and bounce the browser against the same address for ever. */
+  (function () {
+    if (location.hostname !== "bertrandgroulx-droid.github.io") return;
+    location.replace("https://shozbot.com/better-weather/" + location.search + location.hash);
+  })();
+</script>
 <meta name="description" content="Better Weather — a phone-first, single-screen weather app: condensed current summary plus horizontally scrollable hourly and daily strips with history. Powered by the free Open-Meteo API, no key required." />
 <meta name="color-scheme" content="dark" />
 
