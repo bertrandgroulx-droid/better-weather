@@ -242,6 +242,41 @@ async function run() {
   assert(thumbScroll > 20, `dragging the thumb scrolls the strip, scrollLeft=${thumbScroll}`);
 
   assert(errors.length === 0, "page errors: " + errors.join(" | "));
+
+  // 5) Dry outlook: a notable amount at a low chance softens "N days" to "N+ days";
+  // a likely (>=50%) day stays firm. Uses a fully-dry hourly window so the outlook
+  // falls through to the daily-extend branch.
+  {
+    const dryForecast = (dayOffset, sum, pop) => {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], weather_code: [], wind_speed_10m: [], is_day: [] };
+      const startH = new Date(now.getTime() - 48 * 3600e3);
+      for (let i = 0; i < 121; i++) { const t = new Date(startH.getTime() + i * 3600e3); H.time.push(fmt(t)); H.temperature_2m.push(8); H.apparent_temperature.push(6); H.precipitation_probability.push(15); H.precipitation.push(0); H.weather_code.push(3); H.wind_speed_10m.push(20); H.is_day.push(1); }
+      const D = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [], precipitation_probability_max: [], wind_speed_10m_max: [], sunrise: [], sunset: [] };
+      const startD = new Date(now.getTime() - 7 * 86400e3);
+      for (let i = 0; i < 23; i++) { const d = new Date(startD.getTime() + i * 86400e3); const wet = (i - 7) === dayOffset; D.time.push(fmtDate(d)); D.weather_code.push(wet ? 61 : 3); D.temperature_2m_max.push(12); D.temperature_2m_min.push(3); D.precipitation_sum.push(wet ? sum : 0); D.precipitation_probability_max.push(wet ? pop : 8); D.wind_speed_10m_max.push(28); const sr = new Date(d); sr.setHours(7, 29, 0, 0); const ss = new Date(d); ss.setHours(19, 25, 0, 0); D.sunrise.push(fmt(sr)); D.sunset.push(fmt(ss)); }
+      return { latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton", current: { time: fmt(now), temperature_2m: 6, apparent_temperature: 4, weather_code: 3, wind_speed_10m: 28, precipitation: 0, is_day: 1 }, hourly: H, daily: D };
+    };
+    const dctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const dpage = await dctx.newPage();
+    let dryDay = [6, 5, 10]; // [dayOffset, sum(mm), pop(%)] — start with the low-confidence case
+    await dpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "Alberta", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await dpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(dryForecast(dryDay[0], dryDay[1], dryDay[2]))));
+    await dpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await dpage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 22 } })));
+    await dpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await dpage.goto(URL);
+    await dpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const fcastSoft = await dpage.$eval("#summary .fcast", (e) => e.textContent.trim());
+    assert(fcastSoft === "Dry for the next 6+ days", `low-confidence amount softens to N+, got "${fcastSoft}"`);
+    dryDay = [4, 2, 60]; // a likely (>=50%) day, 4 out — should stay firm, no plus
+    await dpage.reload();
+    await dpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const fcastFirm = await dpage.$eval("#summary .fcast", (e) => e.textContent.trim());
+    assert(fcastFirm === "Dry for the next 4 days", `a likely day stays firm, got "${fcastFirm}"`);
+    await dctx.close();
+  }
+
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }

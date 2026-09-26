@@ -1078,9 +1078,14 @@
       for (i = ti + 1; i < dd.time.length; i++) {
         var sum = dd.precipitation_sum ? dd.precipitation_sum[i] : null;
         var pmax = dd.precipitation_probability_max ? dd.precipitation_probability_max[i] : null;
-        if ((sum != null && sum >= wetMin) || (pmax != null && pmax >= 50)) {
+        var byProb = pmax != null && pmax >= 50; // a likely-wet day ends the streak firmly
+        var byAmt = sum != null && sum >= wetMin; // a notable total does too, but…
+        if (byProb || byAmt) {
           var nd = i - ti; // days from today until rain returns
-          return { text: "Dry for the next " + nd + " days", rain: false };
+          // …if it only crosses the bar on amount at a low chance, the break is
+          // uncertain (probably still dry), so soften "N days" to "N+ days".
+          var plus = byProb ? "" : "+";
+          return { text: "Dry for the next " + nd + plus + " days", rain: false };
         }
       }
       return { text: "Dry for 2+ weeks", rain: false }; // whole forecast is dry
