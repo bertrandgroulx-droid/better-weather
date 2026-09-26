@@ -116,6 +116,15 @@ async function run() {
   assert(!(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden"))), "about panel opens");
   await page.click("#aboutClose");
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel closes");
+  // Info-page figures track the °C/°F toggle (metric by default; imperial on °F).
+  assert((await page.$$eval("#aboutBackdrop .u-pmin", (e) => e.map((x) => x.textContent))).every((t) => t === "1 mm"), "info precip threshold is metric by default");
+  await page.click("#unitF");
+  await page.waitForTimeout(30);
+  assert((await page.$$eval("#aboutBackdrop .u-pmin", (e) => e.map((x) => x.textContent))).every((t) => t === "0.04 in"), "info precip threshold switches to imperial");
+  assert((await page.$eval("#aboutBackdrop .u-cell", (e) => e.textContent)) === "1–2 miles", "info grid size switches to miles");
+  await page.click("#unitC"); // restore metric for the remaining assertions
+  await page.waitForTimeout(30);
+  assert((await page.$eval("#aboutBackdrop .u-cell", (e) => e.textContent)) === "1–3 km", "info grid size back to km");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
   // Air quality: Calgary is in Canada, so the summary shows the AQHI (1–10), not the US AQI.

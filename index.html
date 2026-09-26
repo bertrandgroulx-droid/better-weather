@@ -545,7 +545,7 @@
       <p class="sub">A phone-first weather app built to answer “what do I actually need to know?” at a glance — one screen, no clutter, no account, no ads.</p>
       <ul class="about-list">
         <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
-        <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥1 mm total. A “+” (e.g. “6+ days”) means that day has ≥1 mm but under 50% chance, so it likely stays dry longer.</span></span></li>
+        <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
@@ -556,7 +556,7 @@
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
         <li class="about-sep">How the forecast works</li>
         <li><span class="i">🕰️</span><span><b>Honest history.</b> <span class="d">Recent past days are the model’s best estimate; days older than ~5 days switch to observation-based reanalysis — what actually happened. (Chance-of-rain stays model-based.)</span></span></li>
-        <li><span class="i">📐</span><span><b>An area, not a pinpoint.</b> <span class="d">Each forecast covers a small area — typically 1–3 km across near towns, larger in remote spots — not one exact address. The yellow circle on the Map marks it.</span></span></li>
+        <li><span class="i">📐</span><span><b>An area, not a pinpoint.</b> <span class="d">Each forecast covers a small area — typically <span class="u-cell">1–3 km</span> across near towns, larger in remote spots — not one exact address. The yellow circle on the Map marks it.</span></span></li>
       </ul>
       <div class="about-foot">
         <div class="about-src"><b>Data sources</b><br>
@@ -1631,7 +1631,19 @@
     localStorage.setItem("bw-units", u);
     els.unitC.classList.toggle("active", u === "metric");
     els.unitF.classList.toggle("active", u === "imperial");
+    updateInfoUnits();
     if (lastLoc) show(lastLoc);
+  }
+
+  // Keep the info page's fixed metric figures in step with the °C/°F toggle.
+  function updateInfoUnits() {
+    var imp = units === "imperial";
+    var pmin = imp ? "0.04 in" : "1 mm";
+    var cell = imp ? "1–2 miles" : "1–3 km";
+    var i, ps = document.querySelectorAll(".u-pmin");
+    for (i = 0; i < ps.length; i++) ps[i].textContent = pmin;
+    var c = document.querySelector(".u-cell");
+    if (c) c.textContent = cell;
   }
 
   // ---- radar map module (see radar.js) ----
@@ -1735,6 +1747,7 @@
   // ---- init ----
   els.unitC.classList.toggle("active", units === "metric");
   els.unitF.classList.toggle("active", units === "imperial");
+  updateInfoUnits();
   useLocation();
 })();
 </script>
