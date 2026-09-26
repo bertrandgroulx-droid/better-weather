@@ -621,6 +621,9 @@
   var lastLoc = null;
   var lastAir = null; // last air-quality response (for the tap-through panel)
   var lastTz = null; // forecast time zone of the current location (for AQHI detection)
+  var lastLoad = 0; // Date.now() of the last successful forecast load (for auto-refresh)
+  var refreshing = false;
+  var STALE_MS = 30 * 60 * 1000; // refresh on return if the data is older than this
   var searchTimer = null;
   var searchSeq = 0; // guards against a slow geocode resolving after the list moved on
   var currentTab = "weather";
@@ -1499,11 +1502,14 @@
     }
   }
 
-  function show(loc) {
+  // `silent`: refresh in place without flashing the loading screen — used when the
+  // tab regains focus after being idle. The current forecast stays on screen until
+  // fresh data arrives (and stays put if a silent refresh fails).
+  function show(loc, silent) {
     lastLoc = loc;
     els.cityName.textContent = loc.name;
     radar.recenter(loc);
-    setStatus("Loading weather for " + loc.name + "…");
+    if (!(silent && loaded)) setStatus("Loading weather for " + loc.name + "…");
     // Fetch the forecast and the ERA5 archive together; the archive is optional
     // and only improves the older history days.
     return Promise.all([
@@ -1525,8 +1531,11 @@
       // measured, so defer — selectTab lays them out when the tab is shown.
       if (currentTab === "weather") { requestAnimationFrame(layoutStrips); laidOut = true; }
       else { laidOut = false; }
+      lastLoad = Date.now();
     }).catch(function (err) {
-      setStatus("Couldn't load the weather — " + err.message + ".\nTap to retry.", true);
+      // A silent refresh that fails keeps the existing forecast rather than
+      // replacing it with an error screen.
+      if (!(silent && loaded)) setStatus("Couldn't load the weather — " + err.message + ".\nTap to retry.", true);
     });
   }
 
@@ -1727,6 +1736,19 @@
   els.unitF.addEventListener("click", function () { setUnits("imperial"); });
   els.tabWeather.addEventListener("click", function () { selectTab("weather"); });
   els.tabRadar.addEventListener("click", function () { selectTab("radar"); });
+  // Auto-refresh: when the tab is reopened/refocused after sitting idle, pull fresh
+  // data if what's on screen has gone stale (the "Now" hour drifts as time passes).
+  function maybeRefresh() {
+    if (document.visibilityState !== "visible") return;
+    if (!lastLoc || !loaded || refreshing) return;
+    if (Date.now() - lastLoad < STALE_MS) return;
+    refreshing = true;
+    var done = function () { refreshing = false; };
+    Promise.resolve(show(lastLoc, true)).then(done, done);
+  }
+  document.addEventListener("visibilitychange", maybeRefresh);
+  window.addEventListener("focus", maybeRefresh);
+  window.addEventListener("pageshow", function (e) { if (e.persisted) maybeRefresh(); });
   els.frameSlider.addEventListener("input", function () { radar.onScrub(+els.frameSlider.value); });
   els.frameSlider.addEventListener("change", function () { radar.onCommit(+els.frameSlider.value); });
   bindThumb(els.hourly, els.hThumb);

@@ -286,6 +286,32 @@ async function run() {
     await dctx.close();
   }
 
+  // 6) Auto-refresh: a refocus refetches only once the data is stale, and does so
+  // silently (the forecast stays on screen — no loading flash). Uses a fake clock.
+  {
+    const rctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const rpage = await rctx.newPage();
+    await rpage.clock.install();
+    let temp = 5, hits = 0;
+    const fc = (t) => { const f = buildForecast(); f.current.temperature_2m = t; return f; };
+    await rpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "Alberta", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await rpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => { hits++; r.fulfill(json(fc(temp))); });
+    await rpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await rpage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await rpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await rpage.goto(URL);
+    await rpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    temp = 20; // change the source — a non-stale refocus must NOT pick it up
+    await rpage.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await rpage.waitForTimeout(50);
+    assert((await rpage.$eval("#summary .temp", (e) => e.textContent)).startsWith("5"), "fresh data is not refetched on refocus");
+    await rpage.clock.fastForward(31 * 60 * 1000); // now older than the stale threshold
+    await rpage.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await rpage.waitForFunction(() => document.querySelector("#summary .temp").textContent.startsWith("20"), { timeout: 5000 });
+    assert(await rpage.$eval("#result", (e) => !e.classList.contains("hidden")), "auto-refresh keeps the forecast visible (no loading flash)");
+    await rctx.close();
+  }
+
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }
