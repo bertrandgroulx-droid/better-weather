@@ -18,6 +18,15 @@
     if (location.hostname !== "bertrandgroulx-droid.github.io") return;
     location.replace("https://shozbot.com/better-weather/" + location.search + location.hash);
   })();
+
+  /* Self-update: a network-first service worker keeps the pinned home-screen app
+     on the latest version. Only over http(s) — it's a no-op on file:// and when
+     the browser has no service-worker support. */
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
 </script>
 <meta name="description" content="Better Weather — a phone-first, single-screen weather app: condensed current summary plus horizontally scrollable hourly and daily strips with history. Powered by the free Open-Meteo API, no key required." />
 <meta name="color-scheme" content="dark" />

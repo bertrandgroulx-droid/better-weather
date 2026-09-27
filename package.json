@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "A phone-first weather app (forecast + animated radar map).",
   "scripts": {
+    "pretest": "node --check sw.js",
     "test": "node tests/smoke.mjs"
   },
   "devDependencies": {
