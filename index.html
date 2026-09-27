@@ -1346,16 +1346,32 @@
   // Only days the hourly window covers get an entry; others fall back to the
   // daily weather_code.
   function daylightCodeByDate(d) {
-    var h = d.hourly, m = {};
-    if (!h || !h.time) return m;
+    var h = d.hourly, byDay = {};
+    if (!h || !h.time) return {};
     for (var i = 0; i < h.time.length; i++) {
       if (h.is_day[i] !== 1) continue;
       var c = h.weather_code[i];
       if (c == null) continue;
       var day = h.time[i].slice(0, 10);
-      if (m[day] == null || c > m[day]) m[day] = c; // higher code ≈ more significant
+      (byDay[day] || (byDay[day] = [])).push(c);
     }
-    return m;
+    var out = {};
+    for (var k in byDay) if (byDay.hasOwnProperty(k)) out[k] = summarizeDayCode(byDay[k]);
+    return out;
+  }
+  // One representative WMO code for a day's daylight hours. Precipitation is the
+  // headline — show the worst of it. On a dry day, show the most significant sky
+  // state, but a brief fog (a minority of daylight hours) shouldn't make the whole
+  // day read as foggy, so fog only wins the icon when it actually persists.
+  function summarizeDayCode(codes) {
+    var isPrecip = function (c) { return c >= 51; };       // drizzle and up
+    var isFog = function (c) { return c === 45 || c === 48; };
+    var precip = codes.filter(isPrecip);
+    if (precip.length) return Math.max.apply(null, precip);
+    var fog = 0, sky = [];
+    codes.forEach(function (c) { if (isFog(c)) fog++; else sky.push(c); });
+    if (sky.length && fog * 2 < codes.length) return Math.max.apply(null, sky);
+    return Math.max.apply(null, codes); // fog persists, or there's nothing but fog
   }
 
   function renderDaily(d) {

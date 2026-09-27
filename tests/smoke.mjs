@@ -26,9 +26,10 @@ function buildForecast(tz) {
     H.apparent_temperature.push(14 + (hr % 8));
     H.precipitation_probability.push(hr % 100);
     H.precipitation.push(hr % 5 === 0 ? 0.4 : 0);
-    // Foggy overnight, clear-ish by day: the daily icon should ignore the
-    // overnight fog and never mark a covered day foggy.
-    H.weather_code.push(hr >= 7 && hr <= 19 ? 2 : 45);
+    // Foggy overnight AND a brief foggy morning (7–9), then partly cloudy through
+    // the day: the daily icon should ignore both — a minority-of-daylight fog must
+    // not make the whole day read as foggy.
+    H.weather_code.push(hr >= 7 && hr <= 19 ? (hr <= 9 ? 45 : 2) : 45);
     H.wind_speed_10m.push(10 + (hr % 5));
     H.is_day.push(hr >= 7 && hr <= 19 ? 1 : 0);
   }
