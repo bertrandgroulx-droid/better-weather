@@ -312,6 +312,34 @@ async function run() {
     await rctx.close();
   }
 
+  // 7) Remember last location: first run geolocates, but after choosing a specific
+  // place, reopening restores it without re-requesting geolocation.
+  {
+    const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const lpage = await lctx.newPage();
+    let revHits = 0;
+    await lpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => { revHits++; r.fulfill(json({ results: [{ name: "Calgary", admin1: "Alberta", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })); });
+    await lpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+    await lpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await lpage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await lpage.route(/api\.mapbox\.com\/search\/geocode/, (r) => r.fulfill(json({ features: [{ properties: { name: "Lisbon", place_formatted: "Portugal" }, geometry: { coordinates: [-9.13, 38.72] } }] })));
+    await lpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com\/styles|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await lpage.goto(URL);
+    await lpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    assert((await lpage.$eval("#cityName", (e) => e.textContent)) === "Calgary", "first run geolocates");
+    const revAfterFirst = revHits;
+    await lpage.click("#cityPill");
+    await lpage.fill("#searchInput", "Lisbon");
+    await lpage.waitForFunction(() => document.querySelectorAll("#results li[data-i]").length > 0, { timeout: 5000 });
+    await lpage.click('#results li[data-i="0"]');
+    assert((await lpage.$eval("#cityName", (e) => e.textContent)) === "Lisbon", "a specific place is selected");
+    await lpage.reload();
+    await lpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    assert((await lpage.$eval("#cityName", (e) => e.textContent)) === "Lisbon", "reopening restores the last place");
+    assert(revHits === revAfterFirst, "reopening does not re-request geolocation");
+    await lctx.close();
+  }
+
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }

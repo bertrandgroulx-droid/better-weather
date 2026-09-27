@@ -764,6 +764,24 @@
     } catch (e) { /* storage may be unavailable */ }
   }
 
+  // ---- last viewed location (localStorage) ----
+  // Remember the place currently on screen so the next open reopens it directly,
+  // instead of re-requesting geolocation every time.
+  function saveLoc(loc) {
+    try {
+      localStorage.setItem("bw-last-loc", JSON.stringify({
+        name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || ""
+      }));
+    } catch (e) { /* storage may be unavailable */ }
+  }
+  function loadLoc() {
+    try {
+      var s = JSON.parse(localStorage.getItem("bw-last-loc") || "null");
+      if (s && s.lat != null && s.lon != null) return s;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
   // ---- forecast (daily spans the past/forecast days; hourly is limited to the
   //      window the strip actually shows, to avoid over-fetching) ----
   function getWeather(loc) {
@@ -1507,6 +1525,7 @@
   // fresh data arrives (and stays put if a silent refresh fails).
   function show(loc, silent) {
     lastLoc = loc;
+    saveLoc(loc); // remember this place so the next open reopens it
     els.cityName.textContent = loc.name;
     radar.recenter(loc);
     if (!(silent && loaded)) setStatus("Loading weather for " + loc.name + "…");
@@ -1770,7 +1789,11 @@
   els.unitC.classList.toggle("active", units === "metric");
   els.unitF.classList.toggle("active", units === "imperial");
   updateInfoUnits();
-  useLocation();
+  // Reopen the last place viewed (no prompt); only ask for location on a true first
+  // run. "Use my location" in search always re-triggers geolocation on demand.
+  var startLoc = loadLoc();
+  if (startLoc) show(startLoc);
+  else useLocation();
 })();
 </script>
 
