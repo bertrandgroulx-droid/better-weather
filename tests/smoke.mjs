@@ -143,6 +143,16 @@ async function run() {
   assert(/Moderate/.test(await page.$eval("#airBody .airscale-legend .lg.on", (e) => e.textContent)), "AQHI legend highlights the current band");
   await page.click("#airClose");
   assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel closes");
+  // Moon line taps open a panel listing the next ~6 months of new & full moons.
+  assert(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden")), "moon panel hidden by default");
+  await page.click("#summary .moon-line");
+  assert(!(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "moon panel opens on tap");
+  const moonRows = await page.$$eval("#moonBody .moon-row", (e) => e.map((x) => x.textContent));
+  assert(moonRows.length >= 10 && moonRows.length <= 14, `~6 months of phases, got ${moonRows.length}`);
+  assert(moonRows.some((t) => /New Moon/.test(t)) && moonRows.some((t) => /Full Moon/.test(t)), "lists both new and full moons");
+  assert(await page.$("#moonBody .moon-row.soon"), "the next phase is highlighted");
+  await page.click("#moonClose");
+  assert(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden")), "moon panel closes");
 
   // 2) Tabs switch
   await page.click("#tabRadar");
