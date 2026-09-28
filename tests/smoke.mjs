@@ -26,10 +26,11 @@ function buildForecast(tz) {
     H.apparent_temperature.push(14 + (hr % 8));
     H.precipitation_probability.push(hr % 100);
     H.precipitation.push(hr % 5 === 0 ? 0.4 : 0);
-    // Foggy overnight AND a brief foggy morning (7–9), then partly cloudy through
-    // the day: the daily icon should ignore both — a minority-of-daylight fog must
-    // not make the whole day read as foggy.
-    H.weather_code.push(hr >= 7 && hr <= 19 ? (hr <= 9 ? 45 : 2) : 45);
+    // Foggy overnight + a brief foggy morning (7–9), then clear (10–14) and
+    // overcast (15–19). The daily icon should ignore the minority fog AND, since
+    // the dry-sky hours are an even clear/overcast mix, read as partly cloudy —
+    // not fog, and not the single cloudiest hour.
+    H.weather_code.push(hr >= 7 && hr <= 19 ? (hr <= 9 ? 45 : (hr <= 14 ? 0 : 3)) : 45);
     H.wind_speed_10m.push(10 + (hr % 5));
     H.is_day.push(hr >= 7 && hr <= 19 ? 1 : 0);
   }
@@ -128,6 +129,9 @@ async function run() {
   assert((await page.$eval("#aboutBackdrop .u-cell", (e) => e.textContent)) === "1–3 km", "info grid size back to km");
   assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
+  // A day that mixes clear and overcast hours reads as partly cloudy (⛅), not as
+  // its single cloudiest hour (☁️) — the daily icon averages the sky.
+  assert((await page.$eval("#daily .cell.today .ic", (e) => e.textContent)) === "⛅", "mixed sun/cloud day reads partly cloudy, not overcast");
   // Air quality: Calgary is in Canada, so the summary shows the AQHI (1–10), not the US AQI.
   const airLine = await page.$eval("#summary .air-line", (e) => e.textContent.replace(/\s+/g, " ").trim());
   assert(/\b4\b/.test(airLine) && /Moderate/.test(airLine), `Canada air line shows AQHI value + risk, got "${airLine}"`);

@@ -1435,9 +1435,11 @@
     return out;
   }
   // One representative WMO code for a day's daylight hours. Precipitation is the
-  // headline — show the worst of it. On a dry day, show the most significant sky
-  // state, but a brief fog (a minority of daylight hours) shouldn't make the whole
-  // day read as foggy, so fog only wins the icon when it actually persists.
+  // headline — show the worst of it. On a dry day, show the day's overall sky by
+  // averaging the clear→overcast codes (0–3), so a day with real sun *and* cloud
+  // reads as partly cloudy rather than as its single cloudiest hour. A brief fog
+  // (a minority of daylight hours) is likewise ignored; fog only wins when it
+  // actually persists.
   function summarizeDayCode(codes) {
     var isPrecip = function (c) { return c >= 51; };       // drizzle and up
     var isFog = function (c) { return c === 45 || c === 48; };
@@ -1445,7 +1447,11 @@
     if (precip.length) return Math.max.apply(null, precip);
     var fog = 0, sky = [];
     codes.forEach(function (c) { if (isFog(c)) fog++; else sky.push(c); });
-    if (sky.length && fog * 2 < codes.length) return Math.max.apply(null, sky);
+    if (sky.length && fog * 2 < codes.length) {
+      var sum = 0;
+      for (var i = 0; i < sky.length; i++) sum += sky[i]; // 0 clear … 3 overcast
+      return Math.round(sum / sky.length);                // the day's average sky
+    }
     return Math.max.apply(null, codes); // fog persists, or there's nothing but fog
   }
 
