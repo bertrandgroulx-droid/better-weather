@@ -163,9 +163,11 @@
   .sum-metrics .k { color: var(--muted); }
   .sum-metrics .moon-line .moon { vertical-align: -0.22em; margin-right: 1px; }
   /* the tappable summary lines: a faint pill + chevron so they read as buttons */
-  .sum-metrics .air-line, .sum-metrics .moon-line { display: inline-block; cursor: pointer;
+  .sum-metrics .air-line, .sum-metrics .moon-line { display: block;
+    width: -webkit-fit-content; width: fit-content; /* own line, but only as wide as its content */
+    cursor: pointer;
     background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 999px;
-    padding: 1px 9px; margin: 1px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
+    padding: 1px 9px; margin: 2px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
   .sum-metrics .air-line:active, .sum-metrics .moon-line:active { background: rgba(255,255,255,0.14); }
   .sum-metrics .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
