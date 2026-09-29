@@ -34,7 +34,7 @@ function buildForecast(tz) {
     H.wind_speed_10m.push(10 + (hr % 5));
     H.is_day.push(hr >= 7 && hr <= 19 ? 1 : 0);
   }
-  const D = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [], precipitation_probability_max: [], wind_speed_10m_max: [], sunrise: [], sunset: [] };
+  const D = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [], precipitation_probability_max: [], wind_speed_10m_max: [], wind_direction_10m_dominant: [], sunrise: [], sunset: [] };
   const startD = new Date(now.getTime() - 7 * 86400e3);
   for (let i = 0; i < 7 + 16; i++) {
     const d = new Date(startD.getTime() + i * 86400e3);
@@ -47,6 +47,7 @@ function buildForecast(tz) {
     D.precipitation_sum.push([2, 0, 1, 7][i % 4]);
     D.precipitation_probability_max.push([20, 40, 60, 70][i % 4]);
     D.wind_speed_10m_max.push(25);
+    D.wind_direction_10m_dominant.push(315); // NW
     const sr = new Date(d); sr.setHours(6, 23, 0, 0);
     const ss = new Date(d); ss.setHours(20, 35, 0, 0);
     D.sunrise.push(fmt(sr)); D.sunset.push(fmt(ss));
@@ -112,6 +113,13 @@ async function run() {
   assert(await page.$eval("#daily .cell.today", (el) => el.offsetParent === document.getElementById("daily")), "daily cell is positioned relative to the strip");
   assert(await page.$eval("#hourly .cell.now", (el) => el.offsetParent === document.getElementById("hourly")), "hourly cell is positioned relative to the strip");
   assert((await page.$eval("#summary .fcast", (e) => e.textContent.trim().length)) > 0, "precip outlook subtitle renders");
+  // Wind line: dominant direction + unit once, then H/L without repeated units
+  const windLine = await page.$eval("#summary .sum-metrics", (e) => {
+    const div = [...e.querySelectorAll("div")].find((d) => /^Wind/.test(d.textContent));
+    return div ? div.textContent.replace(/\s+/g, " ").trim() : "";
+  });
+  assert(/^Wind NW \(km\/h\) H:\d+ L:/.test(windLine), `wind line reads "Wind <dir> (unit) H: L:", got "${windLine}"`);
+  assert((windLine.match(/km\/h/g) || []).length === 1, `wind unit appears once, got "${windLine}"`);
   // About panel opens and closes
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel hidden by default");
   await page.click("#aboutBtn");

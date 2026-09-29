@@ -870,7 +870,7 @@
       "?latitude=" + loc.lat + "&longitude=" + loc.lon +
       "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day" +
       "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,is_day" +
-      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
       "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFuture;
@@ -1165,6 +1165,12 @@
       '<div class="air-foot">Phase times computed on-device (Meeus astronomical algorithms).</div>';
   }
 
+  // 16-point compass label from a wind direction in degrees (the direction the
+  // wind blows FROM, per Open-Meteo). null when there's no direction.
+  function degToCompass(deg) {
+    if (deg == null || isNaN(deg)) return null;
+    return ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(deg / 22.5) % 16];
+  }
   // "11h 42m" (or "42m" under an hour) from a minute count.
   function fmtDur(min) {
     min = Math.max(0, Math.round(min));
@@ -1587,6 +1593,7 @@
     var psum = dd.precipitation_sum[ti];
     var windH = Math.round(dd.wind_speed_10m_max[ti]);
     var windL = ex.minWind == null ? "–" : Math.round(ex.minWind);
+    var windDir = dd.wind_direction_10m_dominant ? degToCompass(dd.wind_direction_10m_dominant[ti]) : null;
     var ms = moonState(new Date());
     var moonLabel = ms.waxing ? "Full Moon" : "New Moon";
     var moonDate = (ms.waxing ? ms.nextFull : ms.nextNew)
@@ -1608,8 +1615,8 @@
         '<div class="sum-metrics">' +
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
-          '<div><b>Wind</b> <span class="k">H:</span>' + windH + ' <span class="k">' + wU() + '</span>' +
-            ' <span class="k">L:</span>' + windL + ' <span class="k">' + wU() + '</span></div>' +
+          '<div><b>Wind</b> ' + (windDir ? windDir + ' ' : '') + '<span class="k">(' + wU() + ')</span> ' +
+            '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL + '</div>' +
           airHtml +
           '<div class="moon-line" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate +
