@@ -171,11 +171,12 @@
   .sum-metrics .tap, .sum-right .tap { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sum-metrics .tap:active, .sum-right .tap:active { opacity: 0.55; }
   .sum-metrics .tap::before, .sum-right .tap::before {
-    content: "+"; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
-    font-size: 1.15em; line-height: 1; font-weight: 300;
+    content: "+"; position: absolute; left: -16px; top: 0; bottom: 0; width: 14px;
+    display: flex; align-items: center; justify-content: center; transform: translateY(-0.08em);
+    font-size: 1.2em; line-height: 1; font-weight: 300;
     color: var(--accent); opacity: 0.85; }
-  .sum-metrics .wind-line .dir-arrow { fill: #7fd4ff; vertical-align: -0.32em; margin: 0 1px; }
-  .sum-metrics .wind-line .gust-ico { stroke: #9fb6d0; vertical-align: -0.22em; margin: 0 3px 0 6px; }
+  .sum-metrics .wind-line .dir-arrow { fill: #7fd4ff; vertical-align: -0.26em; margin: 0 1px; }
+  .sum-metrics .wind-line .gust-ico { stroke: #9fb6d0; vertical-align: -0.28em; margin: 0 2px 0 7px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
   /* keep the sun rows at the bottom so Sunset aligns with the last left line */
@@ -1223,16 +1224,18 @@
   function dirArrow(fromDeg, label) {
     if (fromDeg == null || isNaN(fromDeg)) return "";
     var head = (Math.round(fromDeg) + 180) % 360; // from → to (flow direction)
-    // Path centroid sits at y≈0.33; rotate about it so the arrow stays visually
-    // centred in its box whatever the direction.
-    return '<svg class="dir-arrow" viewBox="-8 -9 16 18" width="14" height="14" role="img"' +
+    // The path is shifted so its centroid is the viewBox centre (0,0); rotating
+    // about (0,0) then keeps the arrow centred in its box for any direction.
+    return '<svg class="dir-arrow" viewBox="-8 -8 16 16" width="14" height="14" role="img"' +
       (label ? ' aria-label="wind from the ' + label + '"' : ' aria-hidden="true"') +
-      '><path transform="rotate(' + head + ' 0 0.33)" d="M0,-7 L5,6 L0,2 L-5,6 Z"/></svg>';
+      '><path transform="rotate(' + head + ')" d="M0,-7.33 L5,5.67 L0,1.67 L-5,5.67 Z"/></svg>';
   }
-  // Little wind-gust glyph (moving-air strokes) — replaces the word "gust".
+  // Dramatic wind-gust glyph (three swooshing air-streaks) — replaces "gust".
   function gustGlyph() {
-    return '<svg class="gust-ico" viewBox="0 0 16 16" width="16" height="12" role="img" aria-label="gust" fill="none" stroke-width="1.4" stroke-linecap="round">' +
-      '<path d="M2 6 H9 a2 2 0 1 0 -2 -2"/><path d="M2 10 H11.5 a2 2 0 1 1 -2 2"/></svg>';
+    return '<svg class="gust-ico" viewBox="0 0 22 18" width="20" height="14" role="img" aria-label="gusting" fill="none" stroke-width="1.7" stroke-linecap="round">' +
+      '<path d="M2 5 H13 a2.6 2.6 0 1 0 -2.6 -2.6"/>' +
+      '<path d="M2 9.5 H17 a2.9 2.9 0 1 1 -2.9 2.9"/>' +
+      '<path d="M2 14 H10"/></svg>';
   }
   // "11h 42m" (or "42m" under an hour) from a minute count.
   function fmtDur(min) {
@@ -1793,9 +1796,8 @@
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
           '<div class="wind-line tap" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
-            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) + ' ' : '') + windNow +
-            (gustNow != null ? gustGlyph() + '<span class="k">' + gustNow + '</span>' : '') +
-            ' <span class="k">' + wU() + '</span></div>' +
+            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) + ' ' : '') + windNow + ' <span class="k">' + wU() + '</span>' +
+            (gustNow != null ? gustGlyph() + '<span class="k">to ' + gustNow + '</span>' : '') + '</div>' +
           airHtml +
           '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             '<b>' + moonLabel + '</b> ' + moonSVG(ms.illum, ms.waxing) + ' ' + moonDate + '</div>' +
