@@ -163,13 +163,13 @@
   .sum-metrics .k { color: var(--muted); }
   .sum-metrics .moon-line .moon { vertical-align: -0.22em; margin-right: 1px; }
   /* the tappable summary lines: a faint pill + chevron so they read as buttons */
-  .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line { display: block;
+  .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { display: block;
     width: -webkit-fit-content; width: fit-content; /* own line, but only as wide as its content */
     cursor: pointer;
     background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 8px;
     padding: 2px 9px; margin: 2px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
-  .sum-metrics .air-line:active, .sum-metrics .moon-line:active, .sum-metrics .day-line:active { background: rgba(255,255,255,0.14); }
-  .sum-metrics .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
+  .sum-metrics .air-line:active, .sum-metrics .moon-line:active, .sum-metrics .day-line:active, .sum-right .day-line:active { background: rgba(255,255,255,0.14); }
+  .sum-metrics .air-chev, .sum-right .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
   /* keep the sun rows at the bottom so Sunset aligns with the last left line */
@@ -277,7 +277,9 @@
   .moon-row .mn { flex: 1; font-weight: 600; }
   .moon-row .md { color: var(--muted); font-variant-numeric: tabular-nums; }
   .moon-row.soon .mn { color: var(--accent); }
-  .sum-metrics .day-line .sun-ico { vertical-align: -0.18em; margin-right: 2px; }
+  .day-line .sun-ico { vertical-align: -0.18em; margin-right: 2px; }
+  /* Daylight pill sits above the sunrise/sunset rows in the right column */
+  .sum-right .day-line { white-space: nowrap; margin-bottom: 4px; }
   /* daylight-over-the-year panel */
   .day-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .day-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
@@ -1569,7 +1571,6 @@
           '<div class="moon-line" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate +
             '<span class="air-chev" aria-hidden="true">›</span></div>' +
-          dayHtml +
         '</div>' +
       '</div>' +
       '<div class="sum-right">' +
@@ -1579,6 +1580,7 @@
         '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t">' + hiTime + '</span></div>' +
         '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
+          dayHtml +
           '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
           '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
         '</div>' +
