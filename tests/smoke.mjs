@@ -508,20 +508,19 @@ async function run() {
     await wpage.waitForSelector("#windBackdrop:not(.hidden)", { timeout: 5000 });
     assert(await wpage.$("#windBody .wind-chart .wind-line"), "wind-speed line is drawn");
     assert(await wpage.$("#windBody .wind-chart .wind-gustline"), "gust line is drawn");
-    assert(await wpage.$("#windBody .wind-chart .wind-band-fill"), "gust-spread band fill is drawn");
     assert((await wpage.$$eval("#windBody .wind-chart .wind-arrow", (e) => e.length)) > 0, "direction arrows drawn");
     assert(await wpage.$("#windBody .wind-chart .now-line"), "now marker drawn");
     const bands = await wpage.$$eval("#windBody .wind-band", (e) => e.map((t) => t.textContent));
     assert(["Light", "Mod", "Strong", "Severe"].every((b) => bands.includes(b)), `band labels present, got ${JSON.stringify(bands)}`);
-    const when0 = await wpage.$eval("#windReadout .rd-date", (e) => e.textContent);
+    const when0 = await wpage.$eval("#windWhen", (e) => e.textContent);
     assert(/now/.test(when0), `readout starts at now, got "${when0}"`);
-    assert(/Wind\s+\d+ km\/h [NSEW]/.test(await wpage.$eval("#windReadout .rd-wind", (e) => e.textContent)), "wind readout shows speed + direction");
-    assert(/Gust\s+\d+ km\/h/.test(await wpage.$eval("#windReadout .rd-gust", (e) => e.textContent)), "gust readout shows speed");
+    assert(/\d+ km\/h [NSEW]/.test(await wpage.$eval("#windRowV", (e) => e.textContent)), "wind row shows speed + direction");
+    assert(/\d+ km\/h/.test(await wpage.$eval("#gustRowV", (e) => e.textContent)), "gust row shows speed");
     // scrubbing to the far right moves off "now"
     const wbox = await wpage.$eval("#windWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
     await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2);
     await wpage.mouse.down(); await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2); await wpage.mouse.up();
-    assert(!/now/.test(await wpage.$eval("#windReadout .rd-date", (e) => e.textContent)), "scrubbing off now updates the readout");
+    assert(!/now/.test(await wpage.$eval("#windWhen", (e) => e.textContent)), "scrubbing off now updates the readout");
     await wctx.close();
   }
 
