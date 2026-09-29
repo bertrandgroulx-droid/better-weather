@@ -115,13 +115,18 @@ async function run() {
   assert(await page.$eval("#daily .cell.today", (el) => el.offsetParent === document.getElementById("daily")), "daily cell is positioned relative to the strip");
   assert(await page.$eval("#hourly .cell.now", (el) => el.offsetParent === document.getElementById("hourly")), "hourly cell is positioned relative to the strip");
   assert((await page.$eval("#summary .fcast", (e) => e.textContent.trim().length)) > 0, "precip outlook subtitle renders");
-  // Wind line: dominant direction + unit once, then H/L without repeated units
+  // Wind line: a direction arrow (from-direction, in the accessible name) + unit
+  // once, then H/L without repeated units
   const windLine = await page.$eval("#summary .sum-metrics", (e) => {
     const div = [...e.querySelectorAll("div")].find((d) => /^Wind/.test(d.textContent));
     return div ? div.textContent.replace(/\s+/g, " ").trim() : "";
   });
-  assert(/^Wind NW \(km\/h\) H:\d+ L:/.test(windLine), `wind line reads "Wind <dir> (unit) H: L:", got "${windLine}"`);
+  assert(/^Wind \(km\/h\) H:\d+ L:/.test(windLine), `wind line reads "Wind (unit) H: L:", got "${windLine}"`);
   assert((windLine.match(/km\/h/g) || []).length === 1, `wind unit appears once, got "${windLine}"`);
+  const arrowLbl = await page.$eval("#summary .wind-line .dir-arrow", (e) => e.getAttribute("aria-label"));
+  assert(/wind from the (N|S|E|W|NE|NW|SE|SW|NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW)/.test(arrowLbl), `direction arrow names the compass source, got "${arrowLbl}"`);
+  const rot = await page.$eval("#summary .wind-line .dir-arrow path", (e) => e.getAttribute("transform"));
+  assert(/rotate\(\d+\)/.test(rot), `arrow is rotated to the direction, got "${rot}"`);
   // About panel opens and closes
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel hidden by default");
   await page.click("#aboutBtn");

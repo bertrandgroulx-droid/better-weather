@@ -173,6 +173,7 @@
   /* Wind stays a bright hard metric (like POP/Precip) but is tappable for the graph */
   .sum-metrics .wind-line { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sum-metrics .wind-line:active { opacity: 0.65; }
+  .sum-metrics .wind-line .dir-arrow { fill: #7fd4ff; vertical-align: -0.14em; margin: 0 1px; }
   /* the tappable pills read quietly — text matches the muted, normal-weight
      Sunrise/Sunset rows, with the icons kept bright as the tap cue */
   .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { color: var(--muted); }
@@ -1212,6 +1213,16 @@
     if (deg == null || isNaN(deg)) return null;
     return ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(deg / 22.5) % 16];
   }
+  // Inline arrow pointing toward the direction the wind comes FROM (N up, E right,
+  // S down, W left) — so a "W" wind shows an arrow pointing left. Same shape as
+  // the wind-graph arrows. `deg` is the Open-Meteo from-direction; `label` is the
+  // compass text, kept as the accessible name in place of the removed letters.
+  function dirArrow(deg, label) {
+    if (deg == null || isNaN(deg)) return "";
+    return '<svg class="dir-arrow" viewBox="-8 -9 16 18" width="12" height="12" role="img"' +
+      (label ? ' aria-label="wind from the ' + label + '"' : ' aria-hidden="true"') +
+      '><path transform="rotate(' + Math.round(deg) + ')" d="M0,-7 L5,6 L0,2 L-5,6 Z"/></svg>';
+  }
   // "11h 42m" (or "42m" under an hour) from a minute count.
   function fmtDur(min) {
     min = Math.max(0, Math.round(min));
@@ -1478,8 +1489,8 @@
       if ((i - A) % 3 !== 0) continue;
       xlab += '<text class="wind-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - PB + 12) + '" text-anchor="middle">' + hourLabelShort(t[i]) + '</text>';
       if (wd[i] != null && ws[i] != null) {
-        var head = (wd[i] + 180) % 360; // point the way the wind blows (from + 180)
-        arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + head.toFixed(0) + ')">' +
+        // point toward where the wind comes FROM, matching the compass label
+        arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + Math.round(wd[i]) + ')">' +
           '<path d="M0,-9 L5.4,6.4 L0,2.6 L-5.4,6.4 Z"/></g>';
       }
     }
@@ -1746,7 +1757,8 @@
     var psum = dd.precipitation_sum[ti];
     var windH = Math.round(dd.wind_speed_10m_max[ti]);
     var windL = ex.minWind == null ? "–" : Math.round(ex.minWind);
-    var windDir = dd.wind_direction_10m_dominant ? degToCompass(dd.wind_direction_10m_dominant[ti]) : null;
+    var windDeg = dd.wind_direction_10m_dominant ? dd.wind_direction_10m_dominant[ti] : null;
+    var windDir = degToCompass(windDeg);
     var ms = moonState(new Date());
     var moonLabel = ms.waxing ? "Full Moon" : "New Moon";
     var moonDate = (ms.waxing ? ms.nextFull : ms.nextNew)
@@ -1769,7 +1781,7 @@
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
           '<div class="wind-line" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
-            '<b>Wind</b> ' + (windDir ? windDir + ' ' : '') + '<span class="k">(' + wU() + ')</span> ' +
+            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) : '') + '<span class="k">(' + wU() + ')</span> ' +
             '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL +
             '<span class="air-chev" aria-hidden="true">›</span></div>' +
           airHtml +
