@@ -1161,8 +1161,11 @@
       else if (dNow.toDateString() === dW.toDateString()) when = "around " + hourWord(h.time[i]);
       else if (tomorrow.toDateString() === dW.toDateString()) when = "tomorrow ~" + hourWord(h.time[i]);
       else when = dW.toLocaleDateString([], { weekday: "short" }) + " ~" + hourWord(h.time[i]);
-      // Flag rain within the next 6 hours — the window people care about.
-      return { text: word2 + " likely " + when, rain: true, soon: dh <= 6 };
+      // "likely" only when the chance is real (≥50%); an hour that's wet on amount
+      // alone at a low chance is just "possible", and doesn't flash for attention.
+      var popI = h.precipitation_probability[i];
+      var likely = popI != null && popI >= 50;
+      return { text: word2 + (likely ? " likely " : " possible ") + when, rain: true, soon: likely && dh <= 6 };
     }
     // No wet hour in the ~3-day hourly window — extend the dry outlook using the
     // daily forecast (~16 days) so we report the real span, not the hourly cap.

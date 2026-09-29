@@ -355,6 +355,42 @@ async function run() {
     await lctx.close();
   }
 
+  // 8) Outlook wording by confidence: an hour that's wet on amount alone at a low
+  // chance is "possible" and doesn't flash; a >=50% hour is "likely" and flashes.
+  {
+    const octx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const opage = await octx.newPage();
+    // Dry now, with a single wet hour `wetOffset` hours ahead at (mm, pop).
+    const oneWet = (wetOffset, mm, pop, code) => {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], weather_code: [], wind_speed_10m: [], is_day: [] };
+      const start = new Date(now.getTime() - 48 * 3600e3);
+      for (let i = 0; i < 121; i++) { const t = new Date(start.getTime() + i * 3600e3); const off = Math.round((t - now) / 3600e3); const wet = off === wetOffset; H.time.push(fmt(t)); H.temperature_2m.push(10); H.apparent_temperature.push(8); H.precipitation_probability.push(wet ? pop : 5); H.precipitation.push(wet ? mm : 0); H.weather_code.push(wet ? code : 3); H.wind_speed_10m.push(10); H.is_day.push(1); }
+      const D = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [], precipitation_probability_max: [], wind_speed_10m_max: [], sunrise: [], sunset: [] };
+      const sd = new Date(now.getTime() - 7 * 86400e3);
+      for (let i = 0; i < 23; i++) { const d = new Date(sd.getTime() + i * 86400e3); D.time.push(fmtDate(d)); D.weather_code.push(3); D.temperature_2m_max.push(12); D.temperature_2m_min.push(3); D.precipitation_sum.push(0); D.precipitation_probability_max.push(5); D.wind_speed_10m_max.push(15); const sr = new Date(d); sr.setHours(7, 32); const ss = new Date(d); ss.setHours(19, 20); D.sunrise.push(fmt(sr)); D.sunset.push(fmt(ss)); }
+      return { latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton", current: { time: fmt(now), temperature_2m: 12, apparent_temperature: 8, weather_code: 3, wind_speed_10m: 18, precipitation: 0, is_day: 1 }, hourly: H, daily: D };
+    };
+    let f = oneWet(5, 0.4, 18, 51); // 0.4 mm drizzle at 18%, 5 h out
+    await opage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Home", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await opage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(f)));
+    await opage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await opage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await opage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await opage.goto(URL);
+    await opage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const low = await opage.$eval("#summary .fcast", (e) => ({ text: e.textContent.trim(), soon: e.classList.contains("soon") }));
+    assert(/possible/.test(low.text) && !/likely/.test(low.text), `low-chance amount reads "possible", got "${low.text}"`);
+    assert(low.soon === false, "a low-chance outlook does not flash");
+    f = oneWet(4, 1.0, 60, 61); // 1 mm rain at 60%, 4 h out
+    await opage.reload();
+    await opage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const hi = await opage.$eval("#summary .fcast", (e) => ({ text: e.textContent.trim(), soon: e.classList.contains("soon") }));
+    assert(/likely/.test(hi.text), `a >=50% hour reads "likely", got "${hi.text}"`);
+    assert(hi.soon === true, "an imminent likely outlook flashes");
+    await octx.close();
+  }
+
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }
