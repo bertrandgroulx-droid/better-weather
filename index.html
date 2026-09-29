@@ -203,8 +203,9 @@
   .sum-right .sun-group .k { display: inline-block; width: 3.95em; }
   .sum-right .sun-group .clk { display: inline-block; min-width: 2.9em; text-align: right;
     font-variant-numeric: tabular-nums; }
-  /* keep the aligned sun times clear of the ⓘ button in the card's corner */
-  .sum-right .sun-group { padding-right: 26px; }
+  /* the ⓘ button now sits beside Sunrise/Sunset (see .sr-ss); reserve room for
+     it there so those two rows' times stay clear of it. Daylight runs full width. */
+  .sum-right .sr-ss { position: relative; padding-right: 30px; }
   /* Small phones (≤384 px): the two-column summary gets cramped, so scale the
      card down a touch and drop the low-value H/L time annotations. */
   /* On phones the H/L time annotations crowd the two columns and collapse the
@@ -228,10 +229,12 @@
     flex: 1; min-height: 0;
     display: flex; flex-direction: column; gap: 16px;
   }
-  /* ⓘ "about" button, nestled in the summary card's bottom-right corner */
+  /* ⓘ "about" button, vertically centered between the Sunrise and Sunset rows
+     (it lives inside .sr-ss, so top:50% is exactly the midpoint of the pair).
+     This frees the card's bottom-right corner that the Daylight line runs into. */
   .about-btn {
-    position: absolute; bottom: 8px; right: 8px; z-index: 3;
-    width: 28px; height: 28px; border-radius: 50%;
+    position: absolute; top: 50%; right: 0; transform: translateY(-50%); z-index: 3;
+    width: 26px; height: 26px; border-radius: 50%;
     border: 1px solid var(--border); background: var(--card-2); color: var(--muted);
     display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
   }
@@ -1828,12 +1831,15 @@
         '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t ext-time">' + hiTime + '</span></div>' +
         '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t ext-time">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
-          '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
-          '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
+          '<div class="sr-ss">' +
+            '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
+            '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
+          '</div>' +
           dayHtml +
         '</div>' +
       '</div>';
-    els.summary.appendChild(els.aboutBtn); // keep the ⓘ nestled in the card's corner across re-renders
+    // seat the ⓘ vertically centered between Sunrise and Sunset (survives re-renders)
+    (els.summary.querySelector(".sr-ss") || els.summary).appendChild(els.aboutBtn);
   }
 
   function waterFrac(amount, safe, full) {
