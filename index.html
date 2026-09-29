@@ -207,10 +207,7 @@
      it there so those two rows' times stay clear of it. Daylight runs full width. */
   .sum-right .sr-ss { position: relative; padding-right: 30px; }
   /* Small phones (≤384 px): the two-column summary gets cramped, so scale the
-     card down a touch and drop the low-value H/L time annotations. */
-  /* On phones the H/L time annotations crowd the two columns and collapse the
-     gap between them; drop them so the columns breathe. Kept on wider screens. */
-  @media (max-width: 430px) { .sum-right .ext-time { display: none; } }
+     card down a touch. (The H/L time annotations stay — they fit.) */
   @media (max-width: 384px) {
     .sum-hero .ico { font-size: 2.35rem; }
     .sum-hero .temp { font-size: 2.4rem; }
