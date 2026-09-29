@@ -2280,6 +2280,12 @@
     // A point tapped on the map becomes the forecast location. Reverse-geocode
     // for a friendly name, falling back to the coordinates.
     onPick: function (lat, lon) {
+      // A world map pans past its edges, so a tap can return an out-of-range
+      // longitude (e.g. -465° after scrolling a full turn west). Wrap it into
+      // [-180, 180] and clamp latitude so the point maps to the real location;
+      // otherwise the forecast request is invalid and the old forecast lingers.
+      lat = Math.max(-90, Math.min(90, lat));
+      lon = ((lon + 180) % 360 + 360) % 360 - 180;
       var loc = { lat: lat, lon: lon, sub: "",
         name: lat.toFixed(3) + "°, " + lon.toFixed(3) + "°" };
       fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + lat +
