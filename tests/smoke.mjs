@@ -517,15 +517,18 @@ async function run() {
     assert(await wpage.$("#windBody .wind-chart .now-line"), "now marker drawn");
     const bands = await wpage.$$eval("#windBody .wind-band", (e) => e.map((t) => t.textContent));
     assert(["Light", "Mod", "Strong", "Severe"].every((b) => bands.includes(b)), `band labels present, got ${JSON.stringify(bands)}`);
-    const when0 = await wpage.$eval("#windWhen", (e) => e.textContent);
-    assert(/now/.test(when0), `readout starts at now, got "${when0}"`);
-    assert(/\d+ km\/h [NSEW]/.test(await wpage.$eval("#windRowV", (e) => e.textContent)), "wind row shows speed + direction");
-    assert(/\d+ km\/h/.test(await wpage.$eval("#gustRowV", (e) => e.textContent)), "gust row shows speed");
-    // scrubbing to the far right moves off "now"
+    // the cursor tooltip carries time + wind (speed/dir) + gust, starting at now
+    const tip0 = await wpage.$eval("#windTip", (e) => e.textContent);
+    assert(/now/.test(tip0), `tooltip starts at now, got "${tip0}"`);
+    assert(/Wind\s*\d+ km\/h [NSEW]/.test(tip0), `tooltip shows wind speed + direction, got "${tip0}"`);
+    assert(/Gust\s*\d+ km\/h/.test(tip0), `tooltip shows gust speed, got "${tip0}"`);
+    // scrubbing to the far right moves the tooltip off "now"
     const wbox = await wpage.$eval("#windWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
     await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2);
     await wpage.mouse.down(); await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2); await wpage.mouse.up();
-    assert(!/now/.test(await wpage.$eval("#windWhen", (e) => e.textContent)), "scrubbing off now updates the readout");
+    assert(!/now/.test(await wpage.$eval("#windTip", (e) => e.textContent)), "scrubbing off now updates the tooltip");
+    // near the right edge the tooltip flips to sit on the left (default, no .right)
+    assert(!(await wpage.$eval("#windTip", (e) => e.classList.contains("right"))), "tooltip sits left of the cursor near the right edge");
     await wctx.close();
   }
 
