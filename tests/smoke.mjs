@@ -56,7 +56,7 @@ function buildForecast(tz) {
   }
   return {
     latitude: 51.05, longitude: -114.07, timezone: tz || "America/Edmonton",
-    current: { time: fmt(now), temperature_2m: 13, apparent_temperature: 11, relative_humidity_2m: 60, weather_code: 2, wind_speed_10m: 18, precipitation: 0, is_day: 1 },
+    current: { time: fmt(now), temperature_2m: 13, apparent_temperature: 11, relative_humidity_2m: 60, weather_code: 2, wind_speed_10m: 18, wind_gusts_10m: 31, wind_direction_10m: 315, precipitation: 0, is_day: 1 },
     hourly: H, daily: D
   };
 }
@@ -121,7 +121,7 @@ async function run() {
     const div = [...e.querySelectorAll("div")].find((d) => /^Wind/.test(d.textContent));
     return div ? div.textContent.replace(/\s+/g, " ").trim() : "";
   });
-  assert(/^Wind \(km\/h\) H:\d+ L:/.test(windLine), `wind line reads "Wind (unit) H: L:", got "${windLine}"`);
+  assert(/^Wind \d+ \(gust \d+\) km\/h$/.test(windLine), `wind line reads "Wind <now> (gust <n>) unit", got "${windLine}"`);
   assert((windLine.match(/km\/h/g) || []).length === 1, `wind unit appears once, got "${windLine}"`);
   const arrowLbl = await page.$eval("#summary .wind-line .dir-arrow", (e) => e.getAttribute("aria-label"));
   assert(/wind from the (N|S|E|W|NE|NW|SE|SW|NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW)/.test(arrowLbl), `direction arrow names the compass source, got "${arrowLbl}"`);

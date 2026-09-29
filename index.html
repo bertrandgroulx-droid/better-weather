@@ -1757,9 +1757,12 @@
     var ss = clockParts(dd.sunset[ti]);
     var pop = dd.precipitation_probability_max[ti];
     var psum = dd.precipitation_sum[ti];
-    var windH = Math.round(dd.wind_speed_10m_max[ti]);
-    var windL = ex.minWind == null ? "–" : Math.round(ex.minWind);
-    var windDeg = dd.wind_direction_10m_dominant ? dd.wind_direction_10m_dominant[ti] : null;
+    // Current wind + gust (a "now" snapshot, like the temp/condition); the day's
+    // range lives in the wind graph. Direction is the current wind direction.
+    var windNow = c.wind_speed_10m == null ? "–" : Math.round(c.wind_speed_10m);
+    var gustNow = c.wind_gusts_10m == null ? null : Math.round(c.wind_gusts_10m);
+    var windDeg = c.wind_direction_10m != null ? c.wind_direction_10m
+      : (dd.wind_direction_10m_dominant ? dd.wind_direction_10m_dominant[ti] : null);
     var windDir = degToCompass(windDeg);
     var ms = moonState(new Date());
     var moonLabel = ms.waxing ? "Full Moon" : "New Moon";
@@ -1782,8 +1785,9 @@
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
           '<div class="wind-line tap" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
-            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) : '') + '<span class="k">(' + wU() + ')</span> ' +
-            '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL + '</div>' +
+            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) : '') + windNow +
+            (gustNow != null ? ' <span class="k">(gust ' + gustNow + ')</span>' : '') +
+            ' <span class="k">' + wU() + '</span></div>' +
           airHtml +
           '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             '<b>' + moonLabel + '</b> ' + moonSVG(ms.illum, ms.waxing) + ' ' + moonDate + '</div>' +
