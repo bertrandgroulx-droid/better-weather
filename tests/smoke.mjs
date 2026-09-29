@@ -434,8 +434,9 @@ async function run() {
     await nctx.close();
   }
 
-  // 10) Daylight-over-the-year: a "Daylight" pill opens a year chart whose
-  // scrubber reads out a day, and dragging across the year changes the readout.
+  // 10) Daylight over the year: a "Daylight" pill opens a rolling 12-month
+  // chart centred on today (six months back, six ahead) whose draggable scrubber
+  // reads out any day.
   {
     const yctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
     const ypage = await yctx.newPage();
@@ -456,16 +457,20 @@ async function run() {
     assert(["J", "F", "M", "A", "S", "O", "N", "D"].every((x) => months.includes(x)), "month labels J..D present");
     const today = await ypage.$eval("#dayReadout", (e) => e.textContent);
     assert(/today/.test(today), `readout starts on today, got "${today.replace(/\s+/g, " ").trim()}"`);
-    // drag from far left (Jan) to sample another day — readout must change
+    // today sits in the middle: its marker line is at the horizontal centre of
+    // the plot (viewBox 0..364, left pad 24, right pad 8 → centre x ≈ 190)
+    const todayX = await ypage.$eval("#dayCursor", (e) => +e.getAttribute("x1"));
+    assert(Math.abs(todayX - 190) < 2, `today's marker is centred (x≈190), got ${todayX}`);
+    // dragging to each edge reads a different, non-today day ~6 months out
     const box = await ypage.$eval("#dayWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
-    await ypage.mouse.move(box.x + 3, box.y + box.h / 2);
-    await ypage.mouse.down(); await ypage.mouse.move(box.x + 3, box.y + box.h / 2); await ypage.mouse.up();
-    const jan = await ypage.$eval("#dayReadout", (e) => e.textContent);
-    assert(/Jan/.test(jan) && !/today/.test(jan), `scrubbing to the left edge reads a January day, got "${jan.replace(/\s+/g, " ").trim()}"`);
-    // Calgary in January is short — well under 10 h of daylight
-    const jm = jan.match(/Daylight\s+(\d+)h\s+(\d+)m/);
-    const janMin = jm ? (+jm[1]) * 60 + (+jm[2]) : 0;
-    assert(janMin > 0 && janMin < 600, `a Calgary January day is short (<10h), got ${janMin} min`);
+    const scrubTo = async (fx) => { const x = box.x + box.w * fx; await ypage.mouse.move(x, box.y + box.h / 2); await ypage.mouse.down(); await ypage.mouse.move(x, box.y + box.h / 2); await ypage.mouse.up(); return ypage.$eval("#dayReadout .rd-date", (e) => e.textContent.trim()); };
+    const left = await scrubTo(0.01);
+    const right = await scrubTo(0.99);
+    assert(!/today/.test(left) && !/today/.test(right), `edges are not today, got "${left}" / "${right}"`);
+    assert(left !== right, `the two edges are different days, got "${left}" / "${right}"`);
+    // the readout still carries a full sunrise/sunset/length line off-centre
+    const lenOK = /Daylight\s+\d+h\s+\d+m/.test(await ypage.$eval("#dayReadout", (e) => e.textContent));
+    assert(lenOK, "a scrubbed day still shows sunrise/sunset/daylight length");
     await yctx.close();
   }
 

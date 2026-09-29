@@ -1235,12 +1235,17 @@
   // sunrise and sunset curves, with a draggable scrubber that reads out any day.
   function buildDaylightChart(loc, tz) {
     if (!loc || loc.lat == null || loc.lon == null) return false;
-    var today = new Date(), yr = today.getFullYear();
-    var days = Math.round((Date.UTC(yr + 1, 0, 1) - Date.UTC(yr, 0, 1)) / 86400000);
+    // A rolling 12-month window centred on today: six months back, six forward.
+    var today = new Date();
+    var todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    var HALF = 182, days = HALF * 2 + 1, todayIdx = HALF;
+    var startUTC = todayUTC - HALF * 86400000;
+    function dayNoon(i) { return new Date(startUTC + i * 86400000 + 43200000); }
+    function dayMid(i) { return new Date(startUTC + i * 86400000); }
     var srH = [], ssH = [], len = [], sunrise = [], sunset = [];
     var iMax = 0, iMin = 0;
     for (var i = 0; i < days; i++) {
-      var ev = solarEvents(loc.lat, loc.lon, new Date(Date.UTC(yr, 0, 1 + i, 12)));
+      var ev = solarEvents(loc.lat, loc.lon, dayNoon(i));
       // Plot the band symmetric about local solar noon (avoids midnight wrap);
       // read exact rise/set times from the instants.
       var noonH = localHours(ev.noon, tz, loc.lon), half = ev.lenMin / 120;
@@ -1249,8 +1254,6 @@
       if (ev.lenMin > len[iMax]) iMax = i;
       if (ev.lenMin < len[iMin]) iMin = i;
     }
-    var todayIdx = Math.max(0, Math.min(days - 1,
-      Math.round((Date.UTC(yr, today.getMonth(), today.getDate()) - Date.UTC(yr, 0, 1)) / 86400000)));
 
     var W = 364, H = 190, PL = 24, PR = 8, PT = 10, PB = 16;
     var plotW = W - PL - PR, plotH = H - PT - PB;
@@ -1273,13 +1276,17 @@
       grid += '<line class="ax-line" x1="' + PL + '" y1="' + gy + '" x2="' + (W - PR) + '" y2="' + gy + '"/>' +
         '<text x="' + (PL - 3) + '" y="' + (Y(hours[i][0]) + 2.6).toFixed(1) + '" text-anchor="end">' + hours[i][1] + '</text>';
     }
-    // month gridlines + centred initials
+    // month gridlines + centred initials, walked across the (year-crossing) window
     var mlab = "JFMAMJJASOND", months = "";
-    for (var m = 0; m < 12; m++) {
-      var d0 = Math.round((Date.UTC(yr, m, 1) - Date.UTC(yr, 0, 1)) / 86400000);
-      var d1 = Math.round((Date.UTC(yr, m + 1, 1) - Date.UTC(yr, 0, 1)) / 86400000);
-      months += '<line class="ax-line" x1="' + X(d0).toFixed(1) + '" y1="' + PT + '" x2="' + X(d0).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
-        '<text x="' + X((d0 + d1) / 2).toFixed(1) + '" y="' + (H - PB + 11) + '" text-anchor="middle">' + mlab[m] + '</text>';
+    var s0 = dayMid(0), sy = s0.getUTCFullYear(), sm = s0.getUTCMonth();
+    for (var k = 0; k < 14; k++) {
+      var mS = (Date.UTC(sy, sm + k, 1) - startUTC) / 86400000;
+      var mE = (Date.UTC(sy, sm + k + 1, 1) - startUTC) / 86400000;
+      if (mE <= 0 || mS >= days - 1) continue;
+      if (mS >= 0) months += '<line class="ax-line" x1="' + X(mS).toFixed(1) + '" y1="' + PT + '" x2="' + X(mS).toFixed(1) + '" y2="' + (H - PB) + '"/>';
+      var lo = Math.max(mS, 0), hi = Math.min(mE, days - 1);
+      if (hi - lo >= 12) // only label a month with enough room to read
+        months += '<text x="' + X((lo + hi) / 2).toFixed(1) + '" y="' + (H - PB + 11) + '" text-anchor="middle">' + mlab[(sm + k) % 12] + '</text>';
     }
     var svg =
       '<svg class="day-chart" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
@@ -1298,10 +1305,10 @@
       '<circle class="cursor-dot" id="dayDotS" r="2.6"/>' +
       '</svg>';
 
-    var fLong = new Date(Date.UTC(yr, 0, 1 + iMax)).toLocaleDateString([], { month: "short", day: "numeric" });
-    var fShort = new Date(Date.UTC(yr, 0, 1 + iMin)).toLocaleDateString([], { month: "short", day: "numeric" });
+    var fLong = dayMid(iMax).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
+    var fShort = dayMid(iMin).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     els.dayBody.innerHTML =
-      '<p class="day-note">Drag across the year to read any day. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
+      '<p class="day-note">Today sits in the middle — six months back, six ahead. Drag to read any day. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
       '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + ').</p>' +
       '<div class="day-readout" id="dayReadout"></div>' +
       '<div class="day-chart-wrap" id="dayWrap">' + svg + '</div>' +
@@ -1314,7 +1321,7 @@
       cursor.setAttribute("x1", x); cursor.setAttribute("x2", x);
       dotR.setAttribute("cx", x); dotR.setAttribute("cy", Y(srH[i]));
       dotS.setAttribute("cx", x); dotS.setAttribute("cy", Y(ssH[i]));
-      var dstr = new Date(Date.UTC(yr, 0, 1 + i)).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+      var dstr = dayMid(i).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
       var delta = i > 0 ? Math.round(len[i] - len[i - 1]) : 0;
       var trend = delta > 0 ? '<span class="rd-item rd-trend" style="color:#7fd4ff">▲ ' + delta + 'm longer than the day before</span>'
         : delta < 0 ? '<span class="rd-item rd-trend" style="color:var(--muted)">▼ ' + (-delta) + 'm shorter than the day before</span>'
