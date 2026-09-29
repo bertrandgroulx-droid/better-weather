@@ -167,7 +167,7 @@
      no pill, no trailing chevron. The margin gutter keeps labels aligned. */
   .sum-metrics { padding-left: 15px; }
   .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { color: var(--muted); }
-  .air-line b, .moon-line b, .day-line b { font-weight: 400; color: inherit; }
+  .air-line b, .moon-line b, .day-line b { font-weight: 700; color: inherit; }
   .sum-metrics .tap, .sum-right .tap { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .sum-metrics .tap:active, .sum-right .tap:active { opacity: 0.55; }
   .sum-metrics .tap::before, .sum-right .tap::before {
@@ -1771,7 +1771,7 @@
       var dayMin = Math.round((new Date(dd.sunset[ti]) - new Date(dd.sunrise[ti])) / 60000);
       if (dayMin > 0) dayHtml =
         '<div class="day-line tap" role="button" tabindex="0" aria-label="Daylight hours — tap for the whole year">' +
-        sunGlyph() + ' <b>Daylight</b> ' + fmtDur(dayMin) + '</div>';
+        '<b>Daylight</b> ' + sunGlyph() + ' ' + fmtDur(dayMin) + '</div>';
     }
 
     els.summary.innerHTML =
@@ -1786,7 +1786,7 @@
             '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL + '</div>' +
           airHtml +
           '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
-            moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate + '</div>' +
+            '<b>' + moonLabel + '</b> ' + moonSVG(ms.illum, ms.waxing) + ' ' + moonDate + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="sum-right">' +
