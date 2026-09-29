@@ -1213,15 +1213,16 @@
     if (deg == null || isNaN(deg)) return null;
     return ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"][Math.round(deg / 22.5) % 16];
   }
-  // Inline arrow pointing toward the direction the wind comes FROM (N up, E right,
-  // S down, W left) — so a "W" wind shows an arrow pointing left. Same shape as
-  // the wind-graph arrows. `deg` is the Open-Meteo from-direction; `label` is the
-  // compass text, kept as the accessible name in place of the removed letters.
-  function dirArrow(deg, label) {
-    if (deg == null || isNaN(deg)) return "";
-    return '<svg class="dir-arrow" viewBox="-8 -9 16 18" width="12" height="12" role="img"' +
+  // Inline arrow pointing the way the wind BLOWS (toward): a west wind — which
+  // comes FROM the west — points right/east, the way people picture it. Same shape
+  // as the wind-graph arrows. `fromDeg` is the Open-Meteo from-direction; `label`
+  // (the compass source) is kept as the accessible name in place of the letters.
+  function dirArrow(fromDeg, label) {
+    if (fromDeg == null || isNaN(fromDeg)) return "";
+    var head = (Math.round(fromDeg) + 180) % 360; // from → to (flow direction)
+    return '<svg class="dir-arrow" viewBox="-8 -9 16 18" width="14" height="14" role="img"' +
       (label ? ' aria-label="wind from the ' + label + '"' : ' aria-hidden="true"') +
-      '><path transform="rotate(' + Math.round(deg) + ')" d="M0,-7 L5,6 L0,2 L-5,6 Z"/></svg>';
+      '><path transform="rotate(' + head + ')" d="M0,-7 L5,6 L0,2 L-5,6 Z"/></svg>';
   }
   // "11h 42m" (or "42m" under an hour) from a minute count.
   function fmtDur(min) {
@@ -1489,8 +1490,8 @@
       if ((i - A) % 3 !== 0) continue;
       xlab += '<text class="wind-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - PB + 12) + '" text-anchor="middle">' + hourLabelShort(t[i]) + '</text>';
       if (wd[i] != null && ws[i] != null) {
-        // point toward where the wind comes FROM, matching the compass label
-        arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + Math.round(wd[i]) + ')">' +
+        var head = (Math.round(wd[i]) + 180) % 360; // point the way the wind blows (toward)
+        arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + head + ')">' +
           '<path d="M0,-9 L5.4,6.4 L0,2.6 L-5.4,6.4 Z"/></g>';
       }
     }
