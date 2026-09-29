@@ -198,11 +198,9 @@
   .sum-right .row .hl { display: inline-block; width: 1.5em; }
   .sum-right .row .tval { display: inline-block; min-width: 2ch; text-align: right;
     font-variant-numeric: tabular-nums; }
-  /* sunrise/sunset: a fixed-width label keeps the words left-aligned; the clock
-     digits sit in a fixed right-aligned column so am/pm stack on top of each other */
-  .sum-right .sun-group .k { display: inline-block; width: 3.95em; }
-  .sum-right .sun-group .clk { display: inline-block; min-width: 2.9em; text-align: right;
-    font-variant-numeric: tabular-nums; }
+  /* sunrise/sunset: the time follows the word with a normal space (no fixed-width
+     label column). tabular-nums keeps the digits even between the two rows. */
+  .sum-right .sun-group .clk { font-variant-numeric: tabular-nums; }
   /* the ⓘ button now sits beside Sunrise/Sunset (see .sr-ss); reserve room for
      it there so those two rows' times stay clear of it. Daylight runs full width. */
   .sum-right .sr-ss { position: relative; padding-right: 30px; }
@@ -1829,8 +1827,8 @@
         '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t ext-time">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
           '<div class="sr-ss">' +
-            '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
-            '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
+            '<div class="row"><span class="k">Sunrise</span> <span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
+            '<div class="row"><span class="k">Sunset</span> <span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
           '</div>' +
           dayHtml +
         '</div>' +
