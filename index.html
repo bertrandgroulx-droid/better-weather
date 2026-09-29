@@ -163,12 +163,12 @@
   .sum-metrics .k { color: var(--muted); }
   .sum-metrics .moon-line .moon { vertical-align: -0.22em; margin-right: 1px; }
   /* the tappable summary lines: a faint pill + chevron so they read as buttons */
-  .sum-metrics .air-line, .sum-metrics .moon-line { display: block;
+  .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line { display: block;
     width: -webkit-fit-content; width: fit-content; /* own line, but only as wide as its content */
     cursor: pointer;
     background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 8px;
     padding: 2px 9px; margin: 2px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
-  .sum-metrics .air-line:active, .sum-metrics .moon-line:active { background: rgba(255,255,255,0.14); }
+  .sum-metrics .air-line:active, .sum-metrics .moon-line:active, .sum-metrics .day-line:active { background: rgba(255,255,255,0.14); }
   .sum-metrics .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
@@ -277,6 +277,30 @@
   .moon-row .mn { flex: 1; font-weight: 600; }
   .moon-row .md { color: var(--muted); font-variant-numeric: tabular-nums; }
   .moon-row.soon .mn { color: var(--accent); }
+  .sum-metrics .day-line .sun-ico { vertical-align: -0.18em; margin-right: 2px; }
+  /* daylight-over-the-year panel */
+  .day-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
+  .day-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
+  /* the live readout for the scrubbed day */
+  .day-readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px;
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; margin-bottom: 10px; }
+  .day-readout .rd-date { font-weight: 700; font-size: 0.95rem; flex-basis: 100%; }
+  .day-readout .rd-item { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .day-readout .rd-item b { color: var(--text); font-weight: 700; }
+  .day-readout .rd-len b { color: var(--accent); }
+  .day-readout .rd-trend { font-size: 0.78rem; }
+  .day-chart-wrap { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
+  .day-chart { display: block; width: 100%; height: auto; }
+  .day-chart text { fill: var(--muted); font-size: 8px; font-family: inherit; }
+  .day-chart .ax-line { stroke: rgba(255,255,255,0.09); stroke-width: 1; }
+  .day-chart .band { fill: url(#dayGrad); }
+  .day-chart .edge { fill: none; stroke: #ffb733; stroke-width: 1.4; }
+  .day-chart .today-line { stroke: rgba(255,255,255,0.5); stroke-width: 1; stroke-dasharray: 2 2; }
+  .day-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
+  .day-chart .cursor-dot { fill: #fff; stroke: #ffb733; stroke-width: 1.4; }
+  .day-chart .sol-dot { fill: var(--accent); }
+  .day-chart .sol-lbl { fill: var(--text); font-size: 7.5px; }
   .content {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column;
@@ -572,6 +596,7 @@
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase (tap it for the next six months of new &amp; full moons), a custom fog icon, aligned numbers, day markers.</span></span></li>
+        <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for a whole-year chart of the daylight band widening toward summer and pinching toward winter. Drag across it to read any day’s sunrise, sunset, and length. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
         <li><span class="i">📲</span><span><b>Add to your home screen.</b> <span class="d">Runs full-screen like an app, works offline from the last forecast, and quietly updates itself to the latest version.</span></span></li>
@@ -611,6 +636,17 @@
     </div>
   </div>
 
+  <!-- daylight-over-the-year panel -->
+  <div class="backdrop hidden" id="dayBackdrop">
+    <div class="modal day-modal" role="dialog" aria-modal="true" aria-label="Daylight over the year">
+      <div class="modal-head">
+        <h2>Daylight hours</h2>
+        <button class="close" id="dayClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="dayBody"></div>
+    </div>
+  </div>
+
 <script src="radar.js"></script>
 <script>
 (function () {
@@ -628,6 +664,7 @@
     aboutBtn: $("aboutBtn"), aboutBackdrop: $("aboutBackdrop"), aboutClose: $("aboutClose"),
     airBackdrop: $("airBackdrop"), airClose: $("airClose"), airBody: $("airBody"),
     moonBackdrop: $("moonBackdrop"), moonClose: $("moonClose"), moonBody: $("moonBody"),
+    dayBackdrop: $("dayBackdrop"), dayClose: $("dayClose"), dayBody: $("dayBody"),
     radar: $("radar"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
     radarModel: $("radarModel"), tabWeather: $("tabWeather"), tabRadar: $("tabRadar"),
   };
@@ -1120,6 +1157,183 @@
       '<div class="air-foot">Phase times computed on-device (Meeus astronomical algorithms).</div>';
   }
 
+  // "11h 42m" (or "42m" under an hour) from a minute count.
+  function fmtDur(min) {
+    min = Math.max(0, Math.round(min));
+    var h = Math.floor(min / 60), m = min % 60;
+    return h ? h + "h " + m + "m" : m + "m";
+  }
+  // Small gold sun glyph for the Daylight pill (rays + disc), theme-coloured.
+  function sunGlyph() {
+    var rays = "";
+    for (var a = 0; a < 8; a++) {
+      var t = a * Math.PI / 4, cx = 8, cy = 8;
+      rays += '<line x1="' + (cx + 5.3 * Math.cos(t)).toFixed(1) + '" y1="' + (cy + 5.3 * Math.sin(t)).toFixed(1) +
+        '" x2="' + (cx + 7.2 * Math.cos(t)).toFixed(1) + '" y2="' + (cy + 7.2 * Math.sin(t)).toFixed(1) + '"/>';
+    }
+    return '<svg class="sun-ico" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">' +
+      '<circle cx="8" cy="8" r="3.3" fill="#ffd166"/>' +
+      '<g stroke="#ffd166" stroke-width="1.1" stroke-linecap="round">' + rays + '</g></svg>';
+  }
+
+  // Sunrise / sunset for a given UTC calendar day at (lat, lon), via the NOAA
+  // solar-position algorithm. Returns instants (UTC Dates) plus daylight minutes
+  // (an instant difference, so time-zone-independent). Polar day/night fall out
+  // of clamping the sunrise hour-angle: cosH>=1 → 0 min, cosH<=-1 → 1440 min.
+  function solarEvents(lat, lon, dateUTC) {
+    var rad = Math.PI / 180, yr = dateUTC.getUTCFullYear();
+    var dayMs = Date.UTC(yr, dateUTC.getUTCMonth(), dateUTC.getUTCDate());
+    var N = Math.floor((dayMs - Date.UTC(yr, 0, 1)) / 86400000) + 1;
+    var g = 2 * Math.PI / 365 * (N - 1 + 0.5);
+    var eqtime = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g)
+      - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    var decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
+      + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+    var latR = lat * rad;
+    var cosH = Math.cos(90.833 * rad) / (Math.cos(latR) * Math.cos(decl)) - Math.tan(latR) * Math.tan(decl);
+    var polar = cosH >= 1 ? "night" : (cosH <= -1 ? "day" : null);
+    cosH = Math.max(-1, Math.min(1, cosH));
+    var ha = Math.acos(cosH) / rad;                 // degrees
+    var noonMin = 720 - 4 * lon - eqtime;           // solar noon, minutes from UTC midnight
+    return {
+      sunrise: new Date(dayMs + (noonMin - 4 * ha) * 60000),
+      sunset: new Date(dayMs + (noonMin + 4 * ha) * 60000),
+      noon: new Date(dayMs + noonMin * 60000),
+      lenMin: 8 * ha,
+      polar: polar
+    };
+  }
+  // Local wall-clock hour (0–24, fractional) of an instant in time zone `tz`.
+  // Falls back to the location's longitude offset when no zone is known.
+  function localHours(instant, tz, lon) {
+    if (tz) {
+      try {
+        var parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(instant);
+        var h = 0, m = 0;
+        for (var i = 0; i < parts.length; i++) {
+          if (parts[i].type === "hour") h = +parts[i].value;
+          else if (parts[i].type === "minute") m = +parts[i].value;
+        }
+        return (h % 24) + m / 60;
+      } catch (e) { /* fall through */ }
+    }
+    var utcH = instant.getUTCHours() + instant.getUTCMinutes() / 60;
+    return ((utcH + lon / 15) % 24 + 24) % 24;
+  }
+  function clockInTz(instant, tz) {
+    try { return instant.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz || undefined }); }
+    catch (e) { return instant.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+  }
+
+  // Build the whole-year daylight panel: a gold "daylight band" between the
+  // sunrise and sunset curves, with a draggable scrubber that reads out any day.
+  function buildDaylightChart(loc, tz) {
+    if (!loc || loc.lat == null || loc.lon == null) return false;
+    var today = new Date(), yr = today.getFullYear();
+    var days = Math.round((Date.UTC(yr + 1, 0, 1) - Date.UTC(yr, 0, 1)) / 86400000);
+    var srH = [], ssH = [], len = [], sunrise = [], sunset = [];
+    var iMax = 0, iMin = 0;
+    for (var i = 0; i < days; i++) {
+      var ev = solarEvents(loc.lat, loc.lon, new Date(Date.UTC(yr, 0, 1 + i, 12)));
+      // Plot the band symmetric about local solar noon (avoids midnight wrap);
+      // read exact rise/set times from the instants.
+      var noonH = localHours(ev.noon, tz, loc.lon), half = ev.lenMin / 120;
+      srH.push(noonH - half); ssH.push(noonH + half); len.push(ev.lenMin);
+      sunrise.push(ev.sunrise); sunset.push(ev.sunset);
+      if (ev.lenMin > len[iMax]) iMax = i;
+      if (ev.lenMin < len[iMin]) iMin = i;
+    }
+    var todayIdx = Math.max(0, Math.min(days - 1,
+      Math.round((Date.UTC(yr, today.getMonth(), today.getDate()) - Date.UTC(yr, 0, 1)) / 86400000)));
+
+    var W = 364, H = 190, PL = 24, PR = 8, PT = 10, PB = 16;
+    var plotW = W - PL - PR, plotH = H - PT - PB;
+    function X(i) { return PL + (i / (days - 1)) * plotW; }
+    function Y(hr) { return PT + (Math.max(0, Math.min(24, hr)) / 24) * plotH; }
+
+    // daylight band polygon: sunrise edge L→R, then sunset edge R→L
+    var top = "", bot = "", edgeR = "", edgeS = "";
+    for (i = 0; i < days; i++) {
+      var x = X(i).toFixed(1);
+      top += (i ? " " : "") + x + "," + Y(srH[i]).toFixed(1);
+      bot = " " + x + "," + Y(ssH[i]).toFixed(1) + bot;
+      edgeR += (i ? " " : "") + x + "," + Y(srH[i]).toFixed(1);
+      edgeS += (i ? " " : "") + x + "," + Y(ssH[i]).toFixed(1);
+    }
+    // hour gridlines + labels
+    var grid = "", hours = [[6, "6a"], [12, "12p"], [18, "6p"]];
+    for (i = 0; i < hours.length; i++) {
+      var gy = Y(hours[i][0]).toFixed(1);
+      grid += '<line class="ax-line" x1="' + PL + '" y1="' + gy + '" x2="' + (W - PR) + '" y2="' + gy + '"/>' +
+        '<text x="' + (PL - 3) + '" y="' + (Y(hours[i][0]) + 2.6).toFixed(1) + '" text-anchor="end">' + hours[i][1] + '</text>';
+    }
+    // month gridlines + centred initials
+    var mlab = "JFMAMJJASOND", months = "";
+    for (var m = 0; m < 12; m++) {
+      var d0 = Math.round((Date.UTC(yr, m, 1) - Date.UTC(yr, 0, 1)) / 86400000);
+      var d1 = Math.round((Date.UTC(yr, m + 1, 1) - Date.UTC(yr, 0, 1)) / 86400000);
+      months += '<line class="ax-line" x1="' + X(d0).toFixed(1) + '" y1="' + PT + '" x2="' + X(d0).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
+        '<text x="' + X((d0 + d1) / 2).toFixed(1) + '" y="' + (H - PB + 11) + '" text-anchor="middle">' + mlab[m] + '</text>';
+    }
+    var svg =
+      '<svg class="day-chart" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+      '<defs><linearGradient id="dayGrad" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#ffd166" stop-opacity="0.85"/>' +
+      '<stop offset="1" stop-color="#ff9e3d" stop-opacity="0.65"/></linearGradient></defs>' +
+      months + grid +
+      '<polygon class="band" points="' + top + bot + '"/>' +
+      '<polyline class="edge" points="' + edgeR + '"/>' +
+      '<polyline class="edge" points="' + edgeS + '"/>' +
+      '<circle class="sol-dot" cx="' + X(iMax).toFixed(1) + '" cy="' + Y(srH[iMax]).toFixed(1) + '" r="2"/>' +
+      '<circle class="sol-dot" cx="' + X(iMin).toFixed(1) + '" cy="' + Y(srH[iMin]).toFixed(1) + '" r="2"/>' +
+      '<line class="today-line" x1="' + X(todayIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(todayIdx).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
+      '<line class="cursor-line" id="dayCursor" x1="0" y1="' + PT + '" x2="0" y2="' + (H - PB) + '"/>' +
+      '<circle class="cursor-dot" id="dayDotR" r="2.6"/>' +
+      '<circle class="cursor-dot" id="dayDotS" r="2.6"/>' +
+      '</svg>';
+
+    var fLong = new Date(Date.UTC(yr, 0, 1 + iMax)).toLocaleDateString([], { month: "short", day: "numeric" });
+    var fShort = new Date(Date.UTC(yr, 0, 1 + iMin)).toLocaleDateString([], { month: "short", day: "numeric" });
+    els.dayBody.innerHTML =
+      '<p class="day-note">Drag across the year to read any day. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
+      '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + ').</p>' +
+      '<div class="day-readout" id="dayReadout"></div>' +
+      '<div class="day-chart-wrap" id="dayWrap">' + svg + '</div>' +
+      '<div class="air-foot">Sun times computed on-device (NOAA solar algorithm) for ' + (loc.name || "this location") + '.</div>';
+
+    var wrap = $("dayWrap"), cursor = $("dayCursor"), dotR = $("dayDotR"), dotS = $("dayDotS"), readout = $("dayReadout");
+    function setScrub(i) {
+      i = Math.max(0, Math.min(days - 1, i));
+      var x = X(i);
+      cursor.setAttribute("x1", x); cursor.setAttribute("x2", x);
+      dotR.setAttribute("cx", x); dotR.setAttribute("cy", Y(srH[i]));
+      dotS.setAttribute("cx", x); dotS.setAttribute("cy", Y(ssH[i]));
+      var dstr = new Date(Date.UTC(yr, 0, 1 + i)).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+      var delta = i > 0 ? Math.round(len[i] - len[i - 1]) : 0;
+      var trend = delta > 0 ? '<span class="rd-item rd-trend" style="color:#7fd4ff">▲ ' + delta + 'm longer than the day before</span>'
+        : delta < 0 ? '<span class="rd-item rd-trend" style="color:var(--muted)">▼ ' + (-delta) + 'm shorter than the day before</span>'
+        : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length barely changing</span>';
+      readout.innerHTML =
+        '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + '</span>' +
+        '<span class="rd-item">Sunrise <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
+        '<span class="rd-item">Sunset <b>' + clockInTz(sunset[i], tz) + '</b></span>' +
+        '<span class="rd-item rd-len">Daylight <b>' + fmtDur(len[i]) + '</b></span>' +
+        trend;
+    }
+    function scrubFromX(clientX) {
+      var r = wrap.getBoundingClientRect();
+      var px = (clientX - r.left) / r.width * W;
+      setScrub(Math.round((px - PL) / plotW * (days - 1)));
+    }
+    var dragging = false;
+    wrap.addEventListener("pointerdown", function (e) { dragging = true; try { wrap.setPointerCapture(e.pointerId); } catch (_) {} scrubFromX(e.clientX); e.preventDefault(); });
+    wrap.addEventListener("pointermove", function (e) { if (dragging) scrubFromX(e.clientX); });
+    wrap.addEventListener("pointerup", function () { dragging = false; });
+    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    setScrub(todayIdx);
+    return true;
+  }
+
   // Precipitation type word from a WMO code, for the outlook line.
   function precipWord(code) {
     if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
@@ -1332,6 +1546,15 @@
     var moonLabel = ms.waxing ? "Full Moon" : "New Moon";
     var moonDate = (ms.waxing ? ms.nextFull : ms.nextNew)
       .toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: d.timezone || undefined });
+    // Daylight pill: today's day length, tap for the whole-year daylight chart.
+    var dayHtml = "";
+    if (dd.sunrise && dd.sunset && dd.sunrise[ti] && dd.sunset[ti]) {
+      var dayMin = Math.round((new Date(dd.sunset[ti]) - new Date(dd.sunrise[ti])) / 60000);
+      if (dayMin > 0) dayHtml =
+        '<div class="day-line" role="button" tabindex="0" aria-label="Daylight hours — tap for the whole year">' +
+        sunGlyph() + ' <b>Daylight</b> ' + fmtDur(dayMin) +
+        '<span class="air-chev" aria-hidden="true">›</span></div>';
+    }
 
     els.summary.innerHTML =
       '<div class="sum-left">' +
@@ -1346,6 +1569,7 @@
           '<div class="moon-line" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate +
             '<span class="air-chev" aria-hidden="true">›</span></div>' +
+          dayHtml +
         '</div>' +
       '</div>' +
       '<div class="sum-right">' +
@@ -1841,19 +2065,25 @@
   function closeAir() { els.airBackdrop.classList.add("hidden"); }
   function openMoon() { fillMoonModal(); els.moonBackdrop.classList.remove("hidden"); }
   function closeMoon() { els.moonBackdrop.classList.add("hidden"); }
+  function openDay() { if (buildDaylightChart(lastLoc, lastTz)) els.dayBackdrop.classList.remove("hidden"); }
+  function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   els.summary.addEventListener("click", function (e) {
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
+    else if (e.target.closest(".day-line")) openDay();
   });
   els.summary.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     if (e.target.closest(".air-line")) { e.preventDefault(); openAir(); }
     else if (e.target.closest(".moon-line")) { e.preventDefault(); openMoon(); }
+    else if (e.target.closest(".day-line")) { e.preventDefault(); openDay(); }
   });
   els.airClose.addEventListener("click", closeAir);
   els.airBackdrop.addEventListener("click", function (e) { if (e.target === els.airBackdrop) closeAir(); });
   els.moonClose.addEventListener("click", closeMoon);
   els.moonBackdrop.addEventListener("click", function (e) { if (e.target === els.moonBackdrop) closeMoon(); });
+  els.dayClose.addEventListener("click", closeDay);
+  els.dayBackdrop.addEventListener("click", function (e) { if (e.target === els.dayBackdrop) closeDay(); });
   els.searchInput.addEventListener("input", onSearchInput);
   els.searchInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {

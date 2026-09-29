@@ -434,6 +434,41 @@ async function run() {
     await nctx.close();
   }
 
+  // 10) Daylight-over-the-year: a "Daylight" pill opens a year chart whose
+  // scrubber reads out a day, and dragging across the year changes the readout.
+  {
+    const yctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const ypage = await yctx.newPage();
+    await ypage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await ypage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+    await ypage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await ypage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await ypage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await ypage.goto(URL);
+    await ypage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const dpill = await ypage.$eval("#summary .day-line", (e) => e.textContent.trim());
+    assert(/Daylight/.test(dpill) && /\d+m/.test(dpill), `summary shows a Daylight pill with a length, got "${dpill}"`);
+    await ypage.click("#summary .day-line");
+    await ypage.waitForSelector("#dayBackdrop:not(.hidden)", { timeout: 5000 });
+    // the chart drew a daylight band and a full year of month labels
+    assert(await ypage.$("#dayBody .day-chart .band"), "daylight band polygon is drawn");
+    const months = await ypage.$$eval("#dayBody .day-chart text", (ts) => ts.map((t) => t.textContent));
+    assert(["J", "F", "M", "A", "S", "O", "N", "D"].every((x) => months.includes(x)), "month labels J..D present");
+    const today = await ypage.$eval("#dayReadout", (e) => e.textContent);
+    assert(/today/.test(today), `readout starts on today, got "${today.replace(/\s+/g, " ").trim()}"`);
+    // drag from far left (Jan) to sample another day — readout must change
+    const box = await ypage.$eval("#dayWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+    await ypage.mouse.move(box.x + 3, box.y + box.h / 2);
+    await ypage.mouse.down(); await ypage.mouse.move(box.x + 3, box.y + box.h / 2); await ypage.mouse.up();
+    const jan = await ypage.$eval("#dayReadout", (e) => e.textContent);
+    assert(/Jan/.test(jan) && !/today/.test(jan), `scrubbing to the left edge reads a January day, got "${jan.replace(/\s+/g, " ").trim()}"`);
+    // Calgary in January is short — well under 10 h of daylight
+    const jm = jan.match(/Daylight\s+(\d+)h\s+(\d+)m/);
+    const janMin = jm ? (+jm[1]) * 60 + (+jm[2]) : 0;
+    assert(janMin > 0 && janMin < 600, `a Calgary January day is short (<10h), got ${janMin} min`);
+    await yctx.close();
+  }
+
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }
