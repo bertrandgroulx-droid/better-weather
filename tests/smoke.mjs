@@ -508,7 +508,7 @@ async function run() {
     await wpage.goto(URL);
     await wpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
     // the Wind line is a tappable hard metric (has a chevron), not a quiet pill
-    assert(await wpage.$("#summary .wind-line .air-chev"), "wind line shows a tap chevron");
+    assert(await wpage.$("#summary .wind-line.tap"), "wind line is marked tappable (+ cue)");
     await wpage.click("#summary .wind-line");
     await wpage.waitForSelector("#windBackdrop:not(.hidden)", { timeout: 5000 });
     assert(await wpage.$("#windBody .wind-chart .wind-line"), "wind-speed line is drawn");

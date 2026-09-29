@@ -162,22 +162,19 @@
   .sum-metrics b { font-weight: 700; }
   .sum-metrics .k { color: var(--muted); }
   .sum-metrics .moon-line .moon { vertical-align: -0.22em; margin-right: 1px; }
-  /* the tappable summary lines: a faint pill + chevron so they read as buttons */
-  .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { display: block;
-    width: -webkit-fit-content; width: fit-content; /* own line, but only as wide as its content */
-    cursor: pointer;
-    background: transparent; border: 1px solid var(--border); border-radius: 8px;
-    padding: 2px 9px; margin: 2px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
-  .sum-metrics .air-line:active, .sum-metrics .moon-line:active, .sum-metrics .day-line:active, .sum-right .day-line:active { background: rgba(255,255,255,0.14); }
-  .sum-metrics .air-chev, .sum-right .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
-  /* Wind stays a bright hard metric (like POP/Precip) but is tappable for the graph */
-  .sum-metrics .wind-line { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .sum-metrics .wind-line:active { opacity: 0.65; }
-  .sum-metrics .wind-line .dir-arrow { fill: #7fd4ff; vertical-align: -0.32em; margin: 0 1px; }
-  /* the tappable pills read quietly — text matches the muted, normal-weight
-     Sunrise/Sunset rows, with the icons kept bright as the tap cue */
+  /* Tappable summary lines: flat and left-aligned like the other metrics, with a
+     small stylized "+" hanging in the left margin as the "there's more" cue —
+     no pill, no trailing chevron. The margin gutter keeps labels aligned. */
+  .sum-metrics { padding-left: 15px; }
   .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { color: var(--muted); }
   .air-line b, .moon-line b, .day-line b { font-weight: 400; color: inherit; }
+  .sum-metrics .tap, .sum-right .tap { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .sum-metrics .tap:active, .sum-right .tap:active { opacity: 0.55; }
+  .sum-metrics .tap::before, .sum-right .tap::before {
+    content: "+"; position: absolute; left: -14px; top: 0.02em;
+    font-size: 1.02em; line-height: 1.5; font-weight: 300;
+    color: var(--accent); opacity: 0.85; }
+  .sum-metrics .wind-line .dir-arrow { fill: #7fd4ff; vertical-align: -0.32em; margin: 0 1px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
   /* keep the sun rows at the bottom so Sunset aligns with the last left line */
@@ -287,7 +284,7 @@
   .moon-row.soon .mn { color: var(--accent); }
   .day-line .sun-ico { vertical-align: -0.18em; margin-right: 2px; }
   /* Daylight pill sits above the sunrise/sunset rows in the right column */
-  .sum-right .day-line { white-space: nowrap; margin-bottom: 4px; }
+  .sum-right .day-line { white-space: nowrap; margin-top: 3px; }
   /* daylight-over-the-year panel */
   .day-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .day-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
@@ -1744,9 +1741,9 @@
     var airHtml = "";
     var am = airMetric(loc, air, d.timezone);
     if (am) {
-      airHtml = '<div class="air-line" role="button" tabindex="0" aria-label="Air quality — tap for details"><b>Air&nbsp;Quality</b> ' +
+      airHtml = '<div class="air-line tap" role="button" tabindex="0" aria-label="Air quality — tap for details"><b>Air&nbsp;Quality</b> ' +
         '<span class="aqi-dot" style="background:' + am.info.color + '"></span>' + am.display +
-        ' <span class="k">' + am.info.short + '</span><span class="air-chev" aria-hidden="true">›</span></div>';
+        ' <span class="k">' + am.info.short + '</span></div>';
     }
     document.body.classList.toggle("night", c.is_day === 0);
 
@@ -1771,9 +1768,8 @@
     if (dd.sunrise && dd.sunset && dd.sunrise[ti] && dd.sunset[ti]) {
       var dayMin = Math.round((new Date(dd.sunset[ti]) - new Date(dd.sunrise[ti])) / 60000);
       if (dayMin > 0) dayHtml =
-        '<div class="day-line" role="button" tabindex="0" aria-label="Daylight hours — tap for the whole year">' +
-        sunGlyph() + ' <b>Daylight</b> ' + fmtDur(dayMin) +
-        '<span class="air-chev" aria-hidden="true">›</span></div>';
+        '<div class="day-line tap" role="button" tabindex="0" aria-label="Daylight hours — tap for the whole year">' +
+        sunGlyph() + ' <b>Daylight</b> ' + fmtDur(dayMin) + '</div>';
     }
 
     els.summary.innerHTML =
@@ -1783,14 +1779,12 @@
         '<div class="sum-metrics">' +
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
-          '<div class="wind-line" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
+          '<div class="wind-line tap" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
             '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) : '') + '<span class="k">(' + wU() + ')</span> ' +
-            '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL +
-            '<span class="air-chev" aria-hidden="true">›</span></div>' +
+            '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL + '</div>' +
           airHtml +
-          '<div class="moon-line" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
-            moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate +
-            '<span class="air-chev" aria-hidden="true">›</span></div>' +
+          '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
+            moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="sum-right">' +
@@ -1800,9 +1794,9 @@
         '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t">' + hiTime + '</span></div>' +
         '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
-          dayHtml +
           '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
           '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
+          dayHtml +
         '</div>' +
       '</div>';
     els.summary.appendChild(els.aboutBtn); // keep the ⓘ nestled in the card's corner across re-renders
