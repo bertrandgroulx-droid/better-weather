@@ -205,6 +205,21 @@
     font-variant-numeric: tabular-nums; }
   /* keep the aligned sun times clear of the ⓘ button in the card's corner */
   .sum-right .sun-group { padding-right: 26px; }
+  /* Small phones (≤384 px): the two-column summary gets cramped, so scale the
+     card down a touch and drop the low-value H/L time annotations. */
+  @media (max-width: 384px) {
+    .sum-hero .ico { font-size: 2.35rem; }
+    .sum-hero .temp { font-size: 2.4rem; }
+    .sum-metrics { font-size: 0.78rem; }
+    .sum-right { font-size: 0.8rem; }
+    .sum-right .ext-time { display: none; }
+  }
+  @media (max-width: 340px) {
+    .sum-hero .ico { font-size: 2.05rem; }
+    .sum-hero .temp { font-size: 2.1rem; }
+    .sum-metrics { font-size: 0.71rem; padding-left: 12px; }
+    .sum-right { font-size: 0.74rem; }
+  }
 
   /* ---------------- scrolling sections ---------------- */
   .result {
@@ -1808,8 +1823,8 @@
         '<div class="cond">' + w[1] + '</div>' +
         (outlook ? '<div class="fcast ' + (outlook.rain ? "rain" : "dry") + (outlook.soon ? " soon" : "") + '">' + outlook.text + '</div>' : '') +
         '<div class="row"><span class="k">Feels</span> ' + Math.round(c.apparent_temperature) + tU() + '</div>' +
-        '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t">' + hiTime + '</span></div>' +
-        '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t">' + loTime + '</span></div>' +
+        '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t ext-time">' + hiTime + '</span></div>' +
+        '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t ext-time">' + loTime + '</span></div>' +
         '<div class="sun-group">' +
           '<div class="row"><span class="k">Sunrise</span><span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
           '<div class="row"><span class="k">Sunset</span><span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
