@@ -331,7 +331,7 @@
   .wind-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
   .wind-legend .lg-wind { background: #7fd4ff; }
   .wind-legend .lg-gust { background: repeating-linear-gradient(90deg, #8093ad 0 3px, transparent 3px 5px); }
-  .wind-rows { margin-top: 10px; }
+  .wind-rows { margin: 4px 0 12px; }
   .wind-row { display: flex; align-items: center; gap: 9px; background: var(--card-2); border: 1px solid var(--border);
     border-radius: 12px; padding: 11px 14px; margin-top: 8px; font-size: 0.95rem; }
   .wind-row .wind-ico { flex: none; }
@@ -1506,15 +1506,17 @@
       (haveG ? '<circle class="cursor-dot" id="windDotG" r="3"/>' : '') +
       '</svg>';
 
+    // Value rows sit ABOVE the chart so a dragging finger never covers them, and
+    // Wind Gust (the higher reading, drawn on top) is listed first.
     els.windBody.innerHTML =
       '<div class="wind-when" id="windWhen"></div>' +
+      '<div class="wind-rows">' +
+        (haveG ? '<div class="wind-row">' + windGlyph() + '<span class="wr-k">Wind Gust</span><span class="wr-v" id="gustRowV"></span></div>' : '') +
+        '<div class="wind-row">' + windGlyph() + '<span class="wr-k">Wind</span><span class="wr-v" id="windRowV"></span></div>' +
+      '</div>' +
       '<div class="wind-chart-wrap" id="windWrap">' + svg + '</div>' +
       '<div class="wind-legend"><span><i class="lg-wind"></i> Wind</span>' +
-        (haveG ? '<span><i class="lg-gust"></i> Wind Gust</span>' : '') + '</div>' +
-      '<div class="wind-rows">' +
-        '<div class="wind-row">' + windGlyph() + '<span class="wr-k">Wind</span><span class="wr-v" id="windRowV"></span></div>' +
-        (haveG ? '<div class="wind-row">' + windGlyph() + '<span class="wr-k">Wind Gust</span><span class="wr-v" id="gustRowV"></span></div>' : '') +
-      '</div>';
+        (haveG ? '<span><i class="lg-gust"></i> Wind Gust</span>' : '') + '</div>';
 
     var wrap = $("windWrap"), cursor = $("windCursor"), dotW = $("windDotW"), dotG = $("windDotG");
     var whenEl = $("windWhen"), wV = $("windRowV"), gV = $("gustRowV");
