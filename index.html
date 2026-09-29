@@ -150,22 +150,23 @@
     position: relative;
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 14px 16px;
-    display: flex; flex-direction: column;
-    flex: none;
+    /* One 2-column grid shared by the header row and the body, so the right-hand
+       header text (condition + feels) lines up on the same left edge as the
+       right metric column (Sunrise/H/L). The outlook spans both columns. */
+    display: grid; grid-template-columns: max-content 1fr; column-gap: 16px;
+    align-items: center; flex: none;
   }
-  /* header row: current icon + temp on the left; condition + feels-like on the
-     right (the three "current conditions" values live together up here) */
-  .sum-head { display: flex; align-items: center; gap: 8px; }
-  .sum-head-r { margin-left: auto; text-align: right; }
+  .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
+  /* row 1: current icon + temp (left) | condition + feels-like (right) */
+  .sum-hero { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 6px; }
+  .sum-head-r { grid-column: 2; grid-row: 1; }
   .sum-head .cond { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
   .sum-head .feels { font-size: 0.86rem; white-space: nowrap; margin-top: 2px; color: var(--text); }
   .sum-head .feels .k { color: var(--muted); }
-  /* body: the two metric columns, below the full-width outlook. One shared
+  /* row 3: the two metric columns (row 2 is the full-width outlook). One shared
      font-size + line-height so the five rows line up across both columns. */
-  .sum-body { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
-    font-size: 0.86rem; line-height: 1.5; }
-  .sum-left { display: flex; flex-direction: column; }
-  .sum-hero { display: flex; align-items: center; gap: 6px; }
+  .sum-body { font-size: 0.86rem; line-height: 1.5; }
+  .sum-left { grid-column: 1; grid-row: 3; align-self: start; display: flex; flex-direction: column; }
   .sum-hero .ico { font-size: 2.8rem; line-height: 1; }
   .sum-hero .temp { font-size: 2.9rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
   /* metrics column (top-aligned with the right column; typography from .sum-body) */
@@ -190,10 +191,10 @@
     position: relative; top: -0.05em; margin: 0 1px; }
   .sum-metrics .wind-line .gust-ico { stroke: #9fb6d0; vertical-align: -0.4em; margin: 0 1px 0 3px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
-  .sum-right { white-space: nowrap; display: flex; flex-direction: column; }
-  /* full-width precipitation outlook, directly under the header — it spans the
-     whole card so it no longer wraps or squeezes the two columns below it */
-  .fcast { font-size: 0.82rem; font-weight: 600; line-height: 1.32; margin: 4px 2px 9px; white-space: normal; }
+  .sum-right { grid-column: 2; grid-row: 3; align-self: start; white-space: nowrap; display: flex; flex-direction: column; }
+  /* full-width precipitation outlook (row 2), spanning both grid columns so it
+     never wraps or squeezes the two metric columns below it */
+  .fcast { grid-column: 1 / -1; grid-row: 2; font-size: 0.82rem; font-weight: 600; line-height: 1.32; margin: 6px 0 10px; white-space: normal; }
   .fcast.rain { color: #7fd4ff; }
   .fcast.dry { color: var(--muted); }
   /* rain within ~6h: flash the line twice to draw the eye */
