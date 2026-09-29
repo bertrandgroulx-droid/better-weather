@@ -1147,8 +1147,11 @@
       return (p != null && p > wetAmt) || (pop != null && pop >= 50);
     }
     var end = h.time.length, i;
-    if (wet(i0)) { // precipitating now — say when it lets up (imminent → flash)
-      var word = precipWord(h.weather_code[i0]);
+    // "Raining now" is the observed current condition (the same code the summary's
+    // headline shows), not the hourly amount/chance — so the two never disagree.
+    var nowCode = d.current.weather_code;
+    if (nowCode != null && nowCode >= 51) { // precipitating now — say when it lets up (→ flash)
+      var word = precipWord(nowCode);
       for (i = i0 + 1; i < end; i++) if (!wet(i)) return { text: word + " easing by " + hourWord(h.time[i]), rain: true, soon: true };
       return { text: word + " continuing", rain: true, soon: true };
     }

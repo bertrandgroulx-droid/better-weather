@@ -391,6 +391,49 @@ async function run() {
     await octx.close();
   }
 
+  // 9) "Raining now" follows the OBSERVED current condition, not the hourly
+  // amount/chance — so the outlook never contradicts the summary's headline.
+  {
+    const nctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const npage = await nctx.newPage();
+    // nowCode = current condition; hoursWet = whether the coming hours read wet.
+    const nowRaining = (nowCode, hoursWet) => {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], weather_code: [], wind_speed_10m: [], is_day: [] };
+      const start = new Date(now.getTime() - 48 * 3600e3);
+      for (let i = 0; i < 121; i++) { const t = new Date(start.getTime() + i * 3600e3); const off = Math.round((t - now) / 3600e3); const wet = hoursWet && off >= 0; H.time.push(fmt(t)); H.temperature_2m.push(9); H.apparent_temperature.push(7); H.precipitation_probability.push(wet ? 70 : 5); H.precipitation.push(wet ? 0.6 : 0); H.weather_code.push(wet ? 61 : 3); H.wind_speed_10m.push(12); H.is_day.push(1); }
+      const D = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [], precipitation_probability_max: [], wind_speed_10m_max: [], sunrise: [], sunset: [] };
+      const sd = new Date(now.getTime() - 7 * 86400e3);
+      for (let i = 0; i < 23; i++) { const d = new Date(sd.getTime() + i * 86400e3); D.time.push(fmtDate(d)); D.weather_code.push(3); D.temperature_2m_max.push(11); D.temperature_2m_min.push(3); D.precipitation_sum.push(0); D.precipitation_probability_max.push(5); D.wind_speed_10m_max.push(15); const sr = new Date(d); sr.setHours(7, 32); const ss = new Date(d); ss.setHours(19, 20); D.sunrise.push(fmt(sr)); D.sunset.push(fmt(ss)); }
+      return { latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton", current: { time: fmt(now), temperature_2m: 9, apparent_temperature: 7, weather_code: nowCode, wind_speed_10m: 18, precipitation: hoursWet ? 0.6 : 0, is_day: 1 }, hourly: H, daily: D };
+    };
+    await npage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Home", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await npage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await npage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await npage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    // Raining now, then it clears → "easing by".
+    let nf = nowRaining(61, false);
+    await npage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(nf)));
+    await npage.goto(URL);
+    await npage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const easing = await npage.$eval("#summary .fcast", (e) => e.textContent.trim());
+    assert(/easing by/.test(easing), `raining now + clearing reads "easing by", got "${easing}"`);
+    // Raining now, still wet ahead → "continuing".
+    nf = nowRaining(61, true);
+    await npage.reload();
+    await npage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const cont = await npage.$eval("#summary .fcast", (e) => e.textContent.trim());
+    assert(/continuing/.test(cont), `raining now + still wet reads "continuing", got "${cont}"`);
+    // Dry current condition (overcast) even with a wet hour ahead → forward
+    // "possible/likely" wording, never "continuing"/"easing".
+    nf = nowRaining(3, true);
+    await npage.reload();
+    await npage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const dry = await npage.$eval("#summary .fcast", (e) => e.textContent.trim());
+    assert(!/continuing|easing/.test(dry), `dry current condition never says continuing/easing, got "${dry}"`);
+    await nctx.close();
+  }
+
   await browser.close();
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }
