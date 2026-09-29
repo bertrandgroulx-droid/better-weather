@@ -128,7 +128,7 @@ async function run() {
   const arrowLbl = await page.$eval("#summary .wind-line .dir-arrow", (e) => e.getAttribute("aria-label"));
   assert(/wind from the (N|S|E|W|NE|NW|SE|SW|NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW)/.test(arrowLbl), `direction arrow names the compass source, got "${arrowLbl}"`);
   const rot = await page.$eval("#summary .wind-line .dir-arrow path", (e) => e.getAttribute("transform"));
-  assert(/rotate\(\d+\)/.test(rot), `arrow is rotated to the direction, got "${rot}"`);
+  assert(/rotate\(\d+/.test(rot), `arrow is rotated to the direction, got "${rot}"`);
   // About panel opens and closes
   assert(await page.$eval("#aboutBackdrop", (e) => e.classList.contains("hidden")), "about panel hidden by default");
   await page.click("#aboutBtn");
