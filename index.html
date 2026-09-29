@@ -1797,7 +1797,7 @@
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
           '<div class="wind-line tap" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
             '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) + ' ' : '') + windNow + ' <span class="k">' + wU() + '</span>' +
-            (gustNow != null ? gustGlyph() + '<span class="k">to ' + gustNow + '</span>' : '') + '</div>' +
+            (gustNow != null ? gustGlyph() + '<span class="k">' + gustNow + '</span>' : '') + '</div>' +
           airHtml +
           '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             '<b>' + moonLabel + '</b> ' + moonSVG(ms.illum, ms.waxing) + ' ' + moonDate + '</div>' +
