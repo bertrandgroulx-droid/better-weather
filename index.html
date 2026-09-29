@@ -170,6 +170,9 @@
     padding: 2px 9px; margin: 2px 0; line-height: 1.35; -webkit-tap-highlight-color: transparent; }
   .sum-metrics .air-line:active, .sum-metrics .moon-line:active, .sum-metrics .day-line:active, .sum-right .day-line:active { background: rgba(255,255,255,0.14); }
   .sum-metrics .air-chev, .sum-right .air-chev { color: var(--muted); margin-left: 4px; font-size: 0.95em; }
+  /* Wind stays a bright hard metric (like POP/Precip) but is tappable for the graph */
+  .sum-metrics .wind-line { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .sum-metrics .wind-line:active { opacity: 0.65; }
   /* the tappable pills read quietly — text matches the muted, normal-weight
      Sunrise/Sunset rows, with the icons kept bright as the tap cue */
   .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { color: var(--muted); }
@@ -309,6 +312,30 @@
   .day-chart .sol-lbl { fill: var(--text); font-size: 7.5px; }
   .day-chart .dst-line { stroke: rgba(255,255,255,0.30); stroke-width: 0.8; stroke-dasharray: 1.5 2; }
   .day-chart .dst-lbl { fill: var(--muted); font-size: 6.5px; }
+  /* hourly wind panel */
+  .wind-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
+  .wind-when { font-size: 0.9rem; font-weight: 700; color: var(--text); margin: 0 2px 8px; }
+  .wind-chart-wrap { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
+  .wind-chart { display: block; width: 100%; height: auto; }
+  .wind-chart .ax-line { stroke: rgba(255,255,255,0.10); stroke-width: 1; }
+  .wind-chart .wind-band { fill: var(--muted); font-size: 8px; font-family: inherit; }
+  .wind-chart .wind-xlab { fill: var(--muted); font-size: 7.5px; font-family: inherit; }
+  .wind-chart .wind-line { fill: none; stroke: #4bc6dd; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .wind-chart .wind-gustline { fill: none; stroke: #b5c94e; stroke-width: 2; stroke-dasharray: 1.5 2.4; stroke-linecap: round; }
+  .wind-chart .wind-arrow path { fill: #4bc6dd; stroke: #0e2440; stroke-width: 0.5; }
+  .wind-chart .now-line { stroke: rgba(255,255,255,0.55); stroke-width: 1; stroke-dasharray: 2 2; }
+  .wind-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
+  .wind-chart .cursor-dot { fill: #fff; stroke: #0e2440; stroke-width: 1; }
+  .wind-legend { display: flex; gap: 20px; justify-content: center; margin: 10px 0 2px; font-size: 0.82rem; color: var(--muted); }
+  .wind-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .wind-legend .lg-wind { background: #4bc6dd; }
+  .wind-legend .lg-gust { background: repeating-linear-gradient(90deg, #b5c94e 0 3px, transparent 3px 5px); }
+  .wind-rows { margin-top: 10px; }
+  .wind-row { display: flex; align-items: center; gap: 9px; background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 11px 14px; margin-top: 8px; font-size: 0.95rem; }
+  .wind-row .wind-ico { flex: none; }
+  .wind-row .wr-k { font-weight: 700; flex: 1; }
+  .wind-row .wr-v { color: var(--text); font-variant-numeric: tabular-nums; }
   .content {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column;
@@ -602,6 +629,7 @@
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
+        <li><span class="i">🌬️</span><span><b>Wind, hour by hour.</b> <span class="d">Tap the “Wind” line for an hourly graph of wind speed and gusts, with arrows showing direction, Light→Severe bands, a “now” marker, and a scrubber to read any hour.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase (tap it for the next six months of new &amp; full moons), a custom fog icon, aligned numbers, day markers.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for a whole-year chart of the daylight band widening toward summer and pinching toward winter. Drag across it to read any day’s sunrise, sunset, and length. Sun times are computed on-device, so it works offline for any place.</span></span></li>
@@ -655,6 +683,17 @@
     </div>
   </div>
 
+  <!-- hourly wind panel -->
+  <div class="backdrop hidden" id="windBackdrop">
+    <div class="modal wind-modal" role="dialog" aria-modal="true" aria-label="Hourly wind">
+      <div class="modal-head">
+        <h2>Wind &amp; gusts</h2>
+        <button class="close" id="windClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="windBody"></div>
+    </div>
+  </div>
+
 <script src="radar.js"></script>
 <script>
 (function () {
@@ -673,6 +712,7 @@
     airBackdrop: $("airBackdrop"), airClose: $("airClose"), airBody: $("airBody"),
     moonBackdrop: $("moonBackdrop"), moonClose: $("moonClose"), moonBody: $("moonBody"),
     dayBackdrop: $("dayBackdrop"), dayClose: $("dayClose"), dayBody: $("dayBody"),
+    windBackdrop: $("windBackdrop"), windClose: $("windClose"), windBody: $("windBody"),
     radar: $("radar"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
     radarModel: $("radarModel"), tabWeather: $("tabWeather"), tabRadar: $("tabRadar"),
   };
@@ -698,6 +738,7 @@
   var units = localStorage.getItem("bw-units") || "metric"; // "metric" | "imperial"
   var lastLoc = null;
   var lastAir = null; // last air-quality response (for the tap-through panel)
+  var lastData = null; // last forecast response (for the wind-graph panel)
   var lastTz = null; // forecast time zone of the current location (for AQHI detection)
   var lastLoad = 0; // Date.now() of the last successful forecast load (for auto-refresh)
   var refreshing = false;
@@ -868,8 +909,8 @@
     var pu = units === "imperial" ? "inch" : "mm";
     var url = "https://api.open-meteo.com/v1/forecast" +
       "?latitude=" + loc.lat + "&longitude=" + loc.lon +
-      "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day" +
-      "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,is_day" +
+      "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,is_day" +
+      "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day" +
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
@@ -1385,6 +1426,119 @@
     return true;
   }
 
+  // Small wind glyph (two moving-air strokes) for the Wind pill.
+  function windGlyph() {
+    return '<svg class="wind-ico" viewBox="0 0 16 16" width="14" height="12" aria-hidden="true" fill="none" stroke="#8fd3e6" stroke-width="1.3" stroke-linecap="round">' +
+      '<path d="M2 6 H9 a2 2 0 1 0 -2 -2"/><path d="M2 10 H11 a2 2 0 1 1 -2 2"/></svg>';
+  }
+  var WIND_C = "#4bc6dd", GUST_C = "#b5c94e"; // wind (teal), gust (olive)
+  // Interactive hourly wind chart: a wind-speed line with direction arrows, a
+  // dotted gust line, Light/Mod/Strong/Severe bands, a "now" marker, and a
+  // draggable scrubber that reads out wind (speed + direction) and gust.
+  function buildWindChart(d, tz) {
+    var h = d && d.hourly;
+    if (!h || !h.time || !h.wind_speed_10m) return false;
+    var t = h.time, ws = h.wind_speed_10m, wg = h.wind_gusts_10m || [], wd = h.wind_direction_10m || [];
+    var nowIso = d.current.time;
+    var i0 = t.indexOf(nowIso);
+    if (i0 < 0) i0 = t.findIndex(function (x) { return x >= nowIso; });
+    if (i0 < 0) i0 = 0;
+    var span = 25, A = Math.max(0, i0 - 3), B = Math.min(t.length, A + span);
+    A = Math.max(0, B - span); // keep full width near the end of the data
+    var n = B - A;
+    if (n < 2) return false;
+
+    var factor = units === "imperial" ? 0.621371 : 1; // wind band levels are defined in km/h
+    var lvl = [10, 28, 46, 64].map(function (x) { return x * factor; });
+    var names = ["Light", "Mod", "Strong", "Severe"];
+    var maxObs = 0;
+    for (var i = A; i < B; i++) { if (ws[i] != null) maxObs = Math.max(maxObs, ws[i]); if (wg[i] != null) maxObs = Math.max(maxObs, wg[i]); }
+    var yMax = Math.max(74 * factor, maxObs * 1.08);
+
+    var W = 364, H = 200, PL = 42, PR = 10, PT = 12, PB = 20;
+    var plotW = W - PL - PR, plotH = H - PT - PB;
+    function X(i) { return PL + ((i - A) / (n - 1)) * plotW; }
+    function Y(v) { return PT + (1 - Math.max(0, Math.min(yMax, v)) / yMax) * plotH; }
+
+    // band gridlines + names
+    var bands = "";
+    for (i = 0; i < lvl.length; i++) {
+      var by = Y(lvl[i]).toFixed(1);
+      bands += '<line class="ax-line" x1="' + PL + '" y1="' + by + '" x2="' + (W - PR) + '" y2="' + by + '"/>' +
+        '<text class="wind-band" x="' + (PL - 5) + '" y="' + (Y(lvl[i]) + 2.6).toFixed(1) + '" text-anchor="end">' + names[i] + '</text>';
+    }
+    // wind + gust polylines
+    var wPts = "", gPts = "", haveG = false;
+    for (i = A; i < B; i++) {
+      if (ws[i] != null) wPts += (wPts ? " " : "") + X(i).toFixed(1) + "," + Y(ws[i]).toFixed(1);
+      if (wg[i] != null) { gPts += (gPts ? " " : "") + X(i).toFixed(1) + "," + Y(wg[i]).toFixed(1); haveG = true; }
+    }
+    // hour labels + direction arrows every 3 h
+    var xlab = "", arrows = "";
+    for (i = A; i < B; i++) {
+      if ((i - A) % 3 !== 0) continue;
+      xlab += '<text class="wind-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - PB + 12) + '" text-anchor="middle">' + hourLabelShort(t[i]) + '</text>';
+      if (wd[i] != null && ws[i] != null) {
+        var head = (wd[i] + 180) % 360; // point the way the wind blows (from + 180)
+        arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + head.toFixed(0) + ')">' +
+          '<path d="M0,-4.2 L2.6,3 L0,1.3 L-2.6,3 Z"/></g>';
+      }
+    }
+    var svg =
+      '<svg class="wind-chart" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+      bands + xlab +
+      (haveG ? '<polyline class="wind-gustline" points="' + gPts + '"/>' : '') +
+      '<polyline class="wind-line" points="' + wPts + '"/>' + arrows +
+      '<line class="now-line" x1="' + X(i0).toFixed(1) + '" y1="' + PT + '" x2="' + X(i0).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
+      '<line class="cursor-line" id="windCursor" x1="0" y1="' + PT + '" x2="0" y2="' + (H - PB) + '"/>' +
+      '<circle class="cursor-dot" id="windDotW" r="3"/>' +
+      (haveG ? '<circle class="cursor-dot" id="windDotG" r="3"/>' : '') +
+      '</svg>';
+
+    els.windBody.innerHTML =
+      '<div class="wind-when" id="windWhen"></div>' +
+      '<div class="wind-chart-wrap" id="windWrap">' + svg + '</div>' +
+      '<div class="wind-legend"><span><i class="lg-wind"></i> Wind</span>' +
+        (haveG ? '<span><i class="lg-gust"></i> Wind Gust</span>' : '') + '</div>' +
+      '<div class="wind-rows">' +
+        '<div class="wind-row">' + windGlyph() + '<span class="wr-k">Wind</span><span class="wr-v" id="windRowV"></span></div>' +
+        (haveG ? '<div class="wind-row">' + windGlyph() + '<span class="wr-k">Wind Gust</span><span class="wr-v" id="gustRowV"></span></div>' : '') +
+      '</div>';
+
+    var wrap = $("windWrap"), cursor = $("windCursor"), dotW = $("windDotW"), dotG = $("windDotG");
+    var whenEl = $("windWhen"), wV = $("windRowV"), gV = $("gustRowV");
+    function setScrub(i) {
+      i = Math.max(A, Math.min(B - 1, i));
+      var x = X(i);
+      cursor.setAttribute("x1", x); cursor.setAttribute("x2", x);
+      if (ws[i] != null) { dotW.setAttribute("cx", x); dotW.setAttribute("cy", Y(ws[i])); dotW.style.display = ""; } else dotW.style.display = "none";
+      if (dotG) { if (wg[i] != null) { dotG.setAttribute("cx", x); dotG.setAttribute("cy", Y(wg[i])); dotG.style.display = ""; } else dotG.style.display = "none"; }
+      whenEl.textContent = hourLabelLong(t[i]) + (i === i0 ? " · now" : "");
+      var dir = wd[i] != null ? degToCompass(wd[i]) : null;
+      wV.textContent = (ws[i] == null ? "–" : Math.round(ws[i]) + " " + wU()) + (dir ? " " + dir : "");
+      if (gV) gV.textContent = wg[i] == null ? "–" : Math.round(wg[i]) + " " + wU();
+    }
+    function scrubFromX(clientX) {
+      var r = wrap.getBoundingClientRect();
+      var px = (clientX - r.left) / r.width * W;
+      setScrub(A + Math.round((px - PL) / plotW * (n - 1)));
+    }
+    var dragging = false;
+    wrap.addEventListener("pointerdown", function (e) { dragging = true; try { wrap.setPointerCapture(e.pointerId); } catch (_) {} scrubFromX(e.clientX); e.preventDefault(); });
+    wrap.addEventListener("pointermove", function (e) { if (dragging) scrubFromX(e.clientX); });
+    wrap.addEventListener("pointerup", function () { dragging = false; });
+    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    setScrub(i0);
+    return true;
+  }
+  function hourLabelShort(iso) { // "3pm"
+    return new Date(iso).toLocaleTimeString([], { hour: "numeric" }).replace(/\s/g, "").toLowerCase();
+  }
+  function hourLabelLong(iso) { // "Mon 3 PM"
+    var dt = new Date(iso);
+    return dt.toLocaleDateString([], { weekday: "short" }) + " " + dt.toLocaleTimeString([], { hour: "numeric" });
+  }
+
   // Precipitation type word from a WMO code, for the outlook line.
   function precipWord(code) {
     if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
@@ -1615,8 +1769,10 @@
         '<div class="sum-metrics">' +
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
-          '<div><b>Wind</b> ' + (windDir ? windDir + ' ' : '') + '<span class="k">(' + wU() + ')</span> ' +
-            '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL + '</div>' +
+          '<div class="wind-line" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
+            '<b>Wind</b> ' + (windDir ? windDir + ' ' : '') + '<span class="k">(' + wU() + ')</span> ' +
+            '<span class="k">H:</span>' + windH + ' <span class="k">L:</span>' + windL +
+            '<span class="air-chev" aria-hidden="true">›</span></div>' +
           airHtml +
           '<div class="moon-line" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
             moonSVG(ms.illum, ms.waxing) + ' <b>' + moonLabel + '</b> ' + moonDate +
@@ -1920,6 +2076,7 @@
       mergeArchive(d, res[1]);
       lastAir = res[2];
       lastTz = d.timezone || null;
+      lastData = d; // full forecast, for the wind-graph drill-down
       showResult(); // unhide first so the strips have layout to measure
       renderSummary(loc, d, lastAir);
       renderHourly(d);
@@ -2119,16 +2276,20 @@
   function closeMoon() { els.moonBackdrop.classList.add("hidden"); }
   function openDay() { if (buildDaylightChart(lastLoc, lastTz)) els.dayBackdrop.classList.remove("hidden"); }
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
+  function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
+  function closeWind() { els.windBackdrop.classList.add("hidden"); }
   els.summary.addEventListener("click", function (e) {
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
+    else if (e.target.closest(".wind-line")) openWind();
   });
   els.summary.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     if (e.target.closest(".air-line")) { e.preventDefault(); openAir(); }
     else if (e.target.closest(".moon-line")) { e.preventDefault(); openMoon(); }
     else if (e.target.closest(".day-line")) { e.preventDefault(); openDay(); }
+    else if (e.target.closest(".wind-line")) { e.preventDefault(); openWind(); }
   });
   els.airClose.addEventListener("click", closeAir);
   els.airBackdrop.addEventListener("click", function (e) { if (e.target === els.airBackdrop) closeAir(); });
@@ -2136,6 +2297,8 @@
   els.moonBackdrop.addEventListener("click", function (e) { if (e.target === els.moonBackdrop) closeMoon(); });
   els.dayClose.addEventListener("click", closeDay);
   els.dayBackdrop.addEventListener("click", function (e) { if (e.target === els.dayBackdrop) closeDay(); });
+  els.windClose.addEventListener("click", closeWind);
+  els.windBackdrop.addEventListener("click", function (e) { if (e.target === els.windBackdrop) closeWind(); });
   els.searchInput.addEventListener("input", onSearchInput);
   els.searchInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {

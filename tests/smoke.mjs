@@ -16,7 +16,7 @@ function fmtDate(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-"
 // 7 past days + 16 forecast days).
 function buildForecast(tz) {
   const now = new Date(); now.setMinutes(0, 0, 0);
-  const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], weather_code: [], wind_speed_10m: [], is_day: [] };
+  const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], weather_code: [], wind_speed_10m: [], wind_gusts_10m: [], wind_direction_10m: [], is_day: [] };
   const startH = new Date(now.getTime() - 48 * 3600e3);
   for (let i = 0; i < 48 + 1 + 72; i++) {
     const t = new Date(startH.getTime() + i * 3600e3);
@@ -26,6 +26,8 @@ function buildForecast(tz) {
     H.apparent_temperature.push(14 + (hr % 8));
     H.precipitation_probability.push(hr % 100);
     H.precipitation.push(hr % 5 === 0 ? 0.4 : 0);
+    H.wind_gusts_10m.push(18 + (hr % 7));
+    H.wind_direction_10m.push((200 + i * 9) % 360);
     // Foggy overnight + a brief foggy morning (7–9), then clear (10–14) and
     // overcast (15–19). The daily icon should ignore the minority fog AND, since
     // the dry-sky hours are an even clear/overcast mix, read as partly cloudy —
@@ -486,6 +488,40 @@ async function run() {
     const lenOK = /Daylight\s+\d+h\s+\d+m/.test(await ypage.$eval("#dayReadout", (e) => e.textContent));
     assert(lenOK, "a scrubbed day still shows sunrise/sunset/daylight length");
     await yctx.close();
+  }
+
+  // 11) Hourly wind graph: the Wind line opens a modal with a wind + gust chart,
+  // band labels, direction arrows, a now marker, and a scrubbing readout.
+  {
+    const wctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const wpage = await wctx.newPage();
+    await wpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await wpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+    await wpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await wpage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await wpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await wpage.goto(URL);
+    await wpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    // the Wind line is a tappable hard metric (has a chevron), not a quiet pill
+    assert(await wpage.$("#summary .wind-line .air-chev"), "wind line shows a tap chevron");
+    await wpage.click("#summary .wind-line");
+    await wpage.waitForSelector("#windBackdrop:not(.hidden)", { timeout: 5000 });
+    assert(await wpage.$("#windBody .wind-chart .wind-line"), "wind-speed line is drawn");
+    assert(await wpage.$("#windBody .wind-chart .wind-gustline"), "gust line is drawn");
+    assert((await wpage.$$eval("#windBody .wind-chart .wind-arrow", (e) => e.length)) > 0, "direction arrows drawn");
+    assert(await wpage.$("#windBody .wind-chart .now-line"), "now marker drawn");
+    const bands = await wpage.$$eval("#windBody .wind-band", (e) => e.map((t) => t.textContent));
+    assert(["Light", "Mod", "Strong", "Severe"].every((b) => bands.includes(b)), `band labels present, got ${JSON.stringify(bands)}`);
+    const when0 = await wpage.$eval("#windWhen", (e) => e.textContent);
+    assert(/now/.test(when0), `readout starts at now, got "${when0}"`);
+    assert(/\d+ km\/h [NSEW]/.test(await wpage.$eval("#windRowV", (e) => e.textContent)), "wind row shows speed + direction");
+    assert(/\d+ km\/h/.test(await wpage.$eval("#gustRowV", (e) => e.textContent)), "gust row shows speed");
+    // scrubbing to the far right moves off "now"
+    const wbox = await wpage.$eval("#windWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+    await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2);
+    await wpage.mouse.down(); await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2); await wpage.mouse.up();
+    assert(!/now/.test(await wpage.$eval("#windWhen", (e) => e.textContent)), "scrubbing off now updates the readout");
+    await wctx.close();
   }
 
   await browser.close();
