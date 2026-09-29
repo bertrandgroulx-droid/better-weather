@@ -175,6 +175,7 @@
     font-size: 1.15em; line-height: 1; font-weight: 300;
     color: var(--accent); opacity: 0.85; }
   .sum-metrics .wind-line .dir-arrow { fill: #7fd4ff; vertical-align: -0.32em; margin: 0 1px; }
+  .sum-metrics .wind-line .gust-ico { stroke: #9fb6d0; vertical-align: -0.22em; margin: 0 3px 0 6px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
   .sum-right { font-size: 0.86rem; line-height: 1.45; white-space: nowrap; display: flex; flex-direction: column; }
   /* keep the sun rows at the bottom so Sunset aligns with the last left line */
@@ -1222,9 +1223,16 @@
   function dirArrow(fromDeg, label) {
     if (fromDeg == null || isNaN(fromDeg)) return "";
     var head = (Math.round(fromDeg) + 180) % 360; // from → to (flow direction)
+    // Path centroid sits at y≈0.33; rotate about it so the arrow stays visually
+    // centred in its box whatever the direction.
     return '<svg class="dir-arrow" viewBox="-8 -9 16 18" width="14" height="14" role="img"' +
       (label ? ' aria-label="wind from the ' + label + '"' : ' aria-hidden="true"') +
-      '><path transform="rotate(' + head + ')" d="M0,-7 L5,6 L0,2 L-5,6 Z"/></svg>';
+      '><path transform="rotate(' + head + ' 0 0.33)" d="M0,-7 L5,6 L0,2 L-5,6 Z"/></svg>';
+  }
+  // Little wind-gust glyph (moving-air strokes) — replaces the word "gust".
+  function gustGlyph() {
+    return '<svg class="gust-ico" viewBox="0 0 16 16" width="16" height="12" role="img" aria-label="gust" fill="none" stroke-width="1.4" stroke-linecap="round">' +
+      '<path d="M2 6 H9 a2 2 0 1 0 -2 -2"/><path d="M2 10 H11.5 a2 2 0 1 1 -2 2"/></svg>';
   }
   // "11h 42m" (or "42m" under an hour) from a minute count.
   function fmtDur(min) {
@@ -1785,8 +1793,8 @@
           '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
           '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
           '<div class="wind-line tap" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
-            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) : '') + windNow +
-            (gustNow != null ? ' <span class="k">(gust ' + gustNow + ')</span>' : '') +
+            '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) + ' ' : '') + windNow +
+            (gustNow != null ? gustGlyph() + '<span class="k">' + gustNow + '</span>' : '') +
             ' <span class="k">' + wU() + '</span></div>' +
           airHtml +
           '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +

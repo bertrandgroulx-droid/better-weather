@@ -121,8 +121,10 @@ async function run() {
     const div = [...e.querySelectorAll("div")].find((d) => /^Wind/.test(d.textContent));
     return div ? div.textContent.replace(/\s+/g, " ").trim() : "";
   });
-  assert(/^Wind \d+ \(gust \d+\) km\/h$/.test(windLine), `wind line reads "Wind <now> (gust <n>) unit", got "${windLine}"`);
+  assert(/^Wind\s/.test(windLine), `wind line starts with Wind, got "${windLine}"`);
   assert((windLine.match(/km\/h/g) || []).length === 1, `wind unit appears once, got "${windLine}"`);
+  assert(!/gust/i.test(windLine), `the word "gust" is replaced by an icon, got "${windLine}"`);
+  assert(await page.$("#summary .wind-line .gust-ico"), "gust shown as an icon");
   const arrowLbl = await page.$eval("#summary .wind-line .dir-arrow", (e) => e.getAttribute("aria-label"));
   assert(/wind from the (N|S|E|W|NE|NW|SE|SW|NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW)/.test(arrowLbl), `direction arrow names the compass source, got "${arrowLbl}"`);
   const rot = await page.$eval("#summary .wind-line .dir-arrow path", (e) => e.getAttribute("transform"));
