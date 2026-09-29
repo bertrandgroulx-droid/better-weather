@@ -316,7 +316,7 @@
   /* scrub tooltip: rides at the top of the cursor line, on its left (flips right near the edge) */
   .wind-tip { position: absolute; top: 4px; z-index: 2; pointer-events: none; white-space: nowrap;
     background: rgba(14,36,64,0.94); border: 1px solid var(--border); border-radius: 8px;
-    padding: 5px 9px; font-size: 0.74rem; line-height: 1.35; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    padding: 6px 10px; font-size: 0.86rem; line-height: 1.4; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     transform: translateX(calc(-100% - 9px)); }
   .wind-tip.right { transform: translateX(9px); }
   .wind-tip .wt-time { font-weight: 700; color: var(--text); margin-bottom: 1px; }
@@ -327,16 +327,16 @@
   .wind-tip .wt-dot.gust { background: #8093ad; }
   .wind-chart { display: block; width: 100%; height: auto; }
   .wind-chart .ax-line { stroke: rgba(255,255,255,0.10); stroke-width: 1; }
-  .wind-chart .wind-band { fill: var(--muted); font-size: 8px; font-family: inherit; }
-  .wind-chart .wind-xlab { fill: var(--muted); font-size: 7.5px; font-family: inherit; }
+  .wind-chart .wind-band { fill: var(--muted); font-size: 11.5px; font-family: inherit; }
+  .wind-chart .wind-xlab { fill: var(--muted); font-size: 10.5px; font-family: inherit; }
   .wind-chart .wind-line { fill: none; stroke: #7fd4ff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
   .wind-chart .wind-gustline { fill: none; stroke: #8093ad; stroke-width: 1.6; stroke-dasharray: 1.5 2.6; stroke-linecap: round; }
   .wind-chart .wind-arrow path { fill: #7fd4ff; stroke: #0e2440; stroke-width: 0.6; }
   .wind-chart .now-line { stroke: rgba(255,255,255,0.55); stroke-width: 1; stroke-dasharray: 2 2; }
   .wind-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
   .wind-chart .cursor-dot { fill: #fff; stroke: #0e2440; stroke-width: 1; }
-  .wind-legend { display: flex; gap: 20px; justify-content: center; margin: 10px 0 2px; font-size: 0.82rem; color: var(--muted); }
-  .wind-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .wind-legend { display: flex; gap: 22px; justify-content: center; margin: 12px 0 2px; font-size: 0.95rem; color: var(--muted); }
+  .wind-legend i { display: inline-block; width: 18px; height: 5px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .wind-legend .lg-wind { background: #7fd4ff; }
   .wind-legend .lg-gust { background: repeating-linear-gradient(90deg, #8093ad 0 3px, transparent 3px 5px); }
   .content {
@@ -1463,7 +1463,7 @@
     for (var i = A; i < B; i++) { if (ws[i] != null) maxObs = Math.max(maxObs, ws[i]); if (wg[i] != null) maxObs = Math.max(maxObs, wg[i]); }
     var yMax = Math.max(74 * factor, maxObs * 1.08);
 
-    var W = 364, H = 200, PL = 42, PR = 10, PT = 12, PB = 20;
+    var W = 364, H = 256, PL = 48, PR = 16, PT = 16, PB = 30;
     var plotW = W - PL - PR, plotH = H - PT - PB;
     function X(i) { return PL + ((i - A) / (n - 1)) * plotW; }
     function Y(v) { return PT + (1 - Math.max(0, Math.min(yMax, v)) / yMax) * plotH; }
@@ -1473,7 +1473,7 @@
     for (i = 0; i < lvl.length; i++) {
       var by = Y(lvl[i]).toFixed(1);
       bands += '<line class="ax-line" x1="' + PL + '" y1="' + by + '" x2="' + (W - PR) + '" y2="' + by + '"/>' +
-        '<text class="wind-band" x="' + (PL - 5) + '" y="' + (Y(lvl[i]) + 2.6).toFixed(1) + '" text-anchor="end">' + names[i] + '</text>';
+        '<text class="wind-band" x="' + (PL - 6) + '" y="' + (Y(lvl[i]) + 3.9).toFixed(1) + '" text-anchor="end">' + names[i] + '</text>';
     }
     // wind + gust polylines
     var wPts = "", gPts = "", haveG = false;
@@ -1485,7 +1485,7 @@
     var xlab = "", arrows = "";
     for (i = A; i < B; i++) {
       if ((i - A) % 3 !== 0) continue;
-      xlab += '<text class="wind-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - PB + 12) + '" text-anchor="middle">' + hourLabelShort(t[i]) + '</text>';
+      xlab += '<text class="wind-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - PB + 17) + '" text-anchor="middle">' + hourLabelShort(t[i]) + '</text>';
       if (wd[i] != null && ws[i] != null) {
         var head = (Math.round(wd[i]) + 180) % 360; // point the way the wind blows (toward)
         arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + head + ')">' +
