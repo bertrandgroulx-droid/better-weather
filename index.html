@@ -326,7 +326,11 @@
   .day-readout .rd-item { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .day-readout .rd-item b { color: var(--text); font-weight: 700; }
   .day-readout .rd-len b { color: var(--accent); }
-  .day-readout .rd-trend { font-size: 0.78rem; }
+  /* trend sits on its own row (never interleaves with the sun times) and the
+     readout reserves a fixed height, so scrubbing day-to-day never reflows the
+     chart below it as the trend text changes length */
+  .day-readout .rd-trend { font-size: 0.78rem; flex-basis: 100%; }
+  .day-readout { min-height: 6.1rem; align-content: flex-start; }
   .day-chart-wrap { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
   .day-chart { display: block; width: 100%; height: auto; }
   .day-chart text { fill: var(--muted); font-size: 8px; font-family: inherit; }
@@ -1458,7 +1462,7 @@
       var delta = i > 0 ? Math.round(len[i] - len[i - 1]) : 0;
       var trend = delta > 0 ? '<span class="rd-item rd-trend" style="color:#7fd4ff">▲ ' + delta + 'm longer than the day before</span>'
         : delta < 0 ? '<span class="rd-item rd-trend" style="color:var(--muted)">▼ ' + (-delta) + 'm shorter than the day before</span>'
-        : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length barely changing</span>';
+        : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length steady</span>';
       readout.innerHTML =
         '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + '</span>' +
         '<span class="rd-item">Sunrise <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
