@@ -2293,6 +2293,10 @@
       lon = ((lon + 180) % 360 + 360) % 360 - 180;
       var loc = { lat: lat, lon: lon, sub: "",
         name: lat.toFixed(3) + "°, " + lon.toFixed(3) + "°" };
+      // "Forecast here" is a commit: leave the map and land on the weather view,
+      // showing a loading state while the name resolves and the forecast loads.
+      selectTab("weather");
+      setStatus("Loading weather…");
       fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + lat +
         "&longitude=" + lon + "&language=en&format=json")
         .then(function (d) { if (d.results && d.results[0]) loc = omToLoc(d.results[0]); })
