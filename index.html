@@ -420,8 +420,9 @@
   .cond-read .cr-time { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
   .cond-read .cr-time .cr-ic { vertical-align: -0.26em; margin-right: 5px; font-size: 1.15em; }
   .cond-read .cr-time .cr-now { color: var(--accent); }
-  .cond-read .cr-items { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.86rem;
+  .cond-read .cr-items { display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem;
     color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cond-read .cr-line { display: flex; flex-wrap: wrap; gap: 4px 18px; } /* Actual+Feels, then Rain+Chance */
   .cond-read .cr-item b { color: var(--text); font-weight: 700; }
   .cond-read .cr-item.rain b { color: #7fd4ff; }
   .cond-read .cr-sw { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
@@ -1837,10 +1838,14 @@
       var amt = S.precip[idx], pop = S.pop[idx];
       var rainVal = (amt != null && amt > 0) ? precipLabel(amt, false) : "none";
       ci.innerHTML =
-        '<span class="cr-item"><i class="cr-sw actual"></i>Actual <b>' + (S.ta[idx] != null ? Math.round(S.ta[idx]) + tU() : "–") + '</b></span>' +
-        '<span class="cr-item"><i class="cr-sw feels"></i>Feels <b>' + (S.tf[idx] != null ? Math.round(S.tf[idx]) + tU() : "–") + '</b></span>' +
-        '<span class="cr-item rain"><i class="cr-dot"></i>Rain <b>' + rainVal + '</b></span>' +
-        '<span class="cr-item">Chance <b>' + (pop != null ? pop + "%" : "–") + '</b></span>';
+        '<div class="cr-line">' +
+          '<span class="cr-item"><i class="cr-sw actual"></i>Actual <b>' + (S.ta[idx] != null ? Math.round(S.ta[idx]) + tU() : "–") + '</b></span>' +
+          '<span class="cr-item"><i class="cr-sw feels"></i>Feels <b>' + (S.tf[idx] != null ? Math.round(S.tf[idx]) + tU() : "–") + '</b></span>' +
+        '</div>' +
+        '<div class="cr-line">' +
+          '<span class="cr-item rain"><i class="cr-dot"></i>Rain <b>' + rainVal + '</b></span>' +
+          '<span class="cr-item">Chance <b>' + (pop != null ? pop + "%" : "–") + '</b></span>' +
+        '</div>';
     }
     condSyncPicker(day);
   }
