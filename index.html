@@ -373,6 +373,70 @@
   .wind-legend i { display: inline-block; width: 18px; height: 5px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .wind-legend .lg-wind { background: #7fd4ff; }
   .wind-legend .lg-gust { background: repeating-linear-gradient(90deg, #8093ad 0 3px, transparent 3px 5px); }
+
+  /* ---- day conditions panel (tap an hour or a day) ---- */
+  .tapcell { cursor: pointer; }
+  .cond-days { display: flex; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; padding: 2px 0 8px; }
+  .cond-days::-webkit-scrollbar { display: none; }
+  .cd-day { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    min-width: 40px; background: none; border: none; color: var(--muted); font-family: inherit;
+    cursor: pointer; padding: 2px; -webkit-tap-highlight-color: transparent; }
+  .cd-day .cd-dow { font-size: 0.72rem; font-weight: 700; }
+  .cd-day .cd-num { font-size: 1rem; font-weight: 700; color: var(--text);
+    width: 1.9em; height: 1.9em; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+  .cd-day.today .cd-dow { color: var(--accent); }
+  .cd-day.sel .cd-num { background: var(--accent); color: #0b1f3a; }
+  .cond-date { text-align: center; font-weight: 700; font-size: 1rem; margin-top: 2px; }
+  .cond-hl { text-align: center; color: var(--muted); font-size: 0.9rem; margin: 2px 0 10px;
+    font-variant-numeric: tabular-nums; }
+  .cond-hl .cc-ic { vertical-align: -0.26em; margin: 0 5px 0 3px; font-size: 1.1em; }
+  .cond-hl b { color: var(--text); font-weight: 700; }
+  .cond-plot { position: relative; }
+  .cond-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: none; cursor: ew-resize; -webkit-user-select: none; user-select: none; }
+  .cond-scroll::-webkit-scrollbar { display: none; }
+  .cond-track { position: relative; }
+  .cond-icons { position: relative; }
+  .cond-icons .cc-ico { position: absolute; top: 3px; transform: translateX(-50%); font-size: 17px; line-height: 1; }
+  .cond-icons .cc-ico svg { width: 17px; height: 17px; vertical-align: middle; }
+  .cond-svg { display: block; }
+  .cond-svg .cc-grid { stroke: rgba(255,255,255,0.08); stroke-width: 1; }
+  .cond-svg .cc-day { stroke: rgba(255,255,255,0.20); stroke-width: 1; stroke-dasharray: 3 3; }
+  .cond-svg .cc-now { stroke: rgba(255,255,255,0.6); stroke-width: 1; stroke-dasharray: 2 2; }
+  .cond-svg .cc-actual { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+  /* Feels Like shares Actual's colour but is dashed to tell them apart */
+  .cond-svg .cc-feels { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-dasharray: 5 3.5; stroke-linejoin: round; stroke-linecap: round; }
+  .cond-svg .cc-xlab { fill: var(--muted); font-size: 10.5px; font-family: inherit; }
+  /* draggable scrub cursor + value readout */
+  .cond-svg .cc-cursor { stroke: var(--text); stroke-width: 1.2; }
+  .cond-svg .cc-dot { stroke: #0e2440; stroke-width: 1; }
+  .cond-svg .cc-dot.actual { fill: var(--accent); }
+  .cond-svg .cc-dot.feels { fill: #e4eefb; }
+  .cc-tip { position: absolute; z-index: 3; pointer-events: none; white-space: nowrap;
+    background: rgba(8,22,42,0.95); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 9px; font-size: 0.8rem; transform: translateX(-50%); }
+  .cc-tip.left { transform: translateX(calc(-100% - 10px)); }
+  .cc-tip.right { transform: translateX(10px); }
+  .cc-tip .ct-time { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .cc-tip .ct-row { color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.55; }
+  .cc-tip .ct-row b { color: var(--text); font-weight: 700; }
+  .cc-tip .ct-dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .cc-tip .ct-dot.actual { background: var(--accent); }
+  .cc-tip .ct-dot.feels { background: var(--accent); opacity: 0.5; }
+  .cc-tip .ct-dot.rain { background: #4cc9f0; border-radius: 50%; }
+  /* frozen temperature axis on the left: solid near the edge, fading so the line slides under it cleanly */
+  .cond-yaxis { position: absolute; left: 0; top: 0; width: 42px; pointer-events: none; z-index: 2;
+    background: linear-gradient(90deg, #0e2440 0, #0e2440 30px, rgba(14,36,64,0) 42px); }
+  .cc-ylab { position: absolute; left: 2px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted);
+    font-variant-numeric: tabular-nums; }
+  .cc-plab { position: absolute; left: 2px; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #9fc0e0; }
+  /* precip band: clean bars (height = amount, tint = chance) */
+  .cond-precip { position: relative; }
+  .cond-precip .cp-bar { position: absolute; bottom: 0; border-radius: 2px 2px 0 0; }
+  .cond-legend { display: flex; gap: 22px; justify-content: center; margin: 12px 0 2px; font-size: 0.95rem; color: var(--muted); }
+  .cond-legend i { display: inline-block; width: 20px; height: 5px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .cond-legend .lg-actual { background: var(--accent); }
+  .cond-legend .lg-feels { background: repeating-linear-gradient(90deg, var(--accent) 0 5px, transparent 5px 8.5px); }
   .content {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column;
@@ -732,6 +796,17 @@
     </div>
   </div>
 
+  <!-- day conditions panel (tap an hour or a day) -->
+  <div class="backdrop hidden" id="condBackdrop">
+    <div class="modal cond-modal" role="dialog" aria-modal="true" aria-label="Day conditions">
+      <div class="modal-head">
+        <h2 id="condTitle">Conditions</h2>
+        <button class="close" id="condClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="condBody"></div>
+    </div>
+  </div>
+
 <script src="radar.js"></script>
 <script>
 (function () {
@@ -751,6 +826,7 @@
     moonBackdrop: $("moonBackdrop"), moonClose: $("moonClose"), moonBody: $("moonBody"),
     dayBackdrop: $("dayBackdrop"), dayClose: $("dayClose"), dayBody: $("dayBody"),
     windBackdrop: $("windBackdrop"), windClose: $("windClose"), windBody: $("windBody"),
+    condBackdrop: $("condBackdrop"), condClose: $("condClose"), condBody: $("condBody"), condTitle: $("condTitle"),
     radar: $("radar"), frameSlider: $("frameSlider"), frameTime: $("frameTime"),
     radarModel: $("radarModel"), tabWeather: $("tabWeather"), tabRadar: $("tabRadar"),
   };
@@ -766,6 +842,7 @@
   var CONFIG = {
     pastDays: 7, forecastDays: 16,      // forecast API window
     hourlyPast: 48, hourlyFuture: 72,   // hours shown on the hourly strip
+    hourlyFetchFuture: 192,             // hours actually fetched (8 days) for the day-conditions chart
     precip: {                           // water-fill scale [safe, full] per unit
       safeTop: 0.34,                    // fraction of a cell the fill reaches before touching text
       hourly: { metric: [4, 12],  imperial: [0.16, 0.47] },
@@ -952,7 +1029,7 @@
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
-      "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFuture;
+      "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFetchFuture;
     return fetchJsonRetry(url);
   }
 
@@ -1595,6 +1672,237 @@
     return dt.toLocaleDateString([], { weekday: "short" }) + " " + dt.toLocaleTimeString([], { hour: "numeric" });
   }
 
+  // ===== Day-conditions chart =====
+  // Tap an hour or a day to open a scrubbable, multi-day temperature profile:
+  // Actual + Feels Like as two separate lines (no shading), a day tabulator that
+  // follows the view across midnight, and a precip strip below. The track scrolls
+  // horizontally (~one day in view); the day picker and header reflect the centre.
+  var condState = null;
+  function shortHour(hr) { var ap = hr < 12 ? "AM" : "PM", h12 = hr % 12 || 12; return h12 + ap; }
+
+  function buildConditionsChart(d, tz, focusIso) {
+    var h = d && d.hourly;
+    if (!h || !h.time || !h.temperature_2m || h.time.length < 2) return false;
+    var t = h.time, ta = h.temperature_2m, tf = h.apparent_temperature || [];
+    var N = t.length;
+
+    var nowIso = d.current.time;
+    var nowIdx = t.indexOf(nowIso);
+    if (nowIdx < 0) nowIdx = t.findIndex(function (x) { return x >= nowIso; });
+
+    // geometry (pixel space; the track scrolls)
+    var HR = 15, PADX = 46, PT = 14, PB = 24, plotH = 188, H = PT + plotH + PB;
+    var ICON_H = 26, PRECIP_H = 40;
+    var totalW = PADX * 2 + (N - 1) * HR;
+    function X(i) { return PADX + i * HR; }
+
+    // nice 6° (10°F) gridlines spanning both lines
+    var lo = Infinity, hi = -Infinity, i;
+    for (i = 0; i < N; i++) {
+      if (ta[i] != null) { lo = Math.min(lo, ta[i]); hi = Math.max(hi, ta[i]); }
+      if (tf[i] != null) { lo = Math.min(lo, tf[i]); hi = Math.max(hi, tf[i]); }
+    }
+    if (!isFinite(lo)) { lo = 0; hi = 10; }
+    var step = units === "imperial" ? 10 : 6;
+    var gMin = Math.floor((lo - step * 0.4) / step) * step;
+    var gMax = Math.ceil((hi + step * 0.4) / step) * step;
+    if (gMax - gMin < step * 2) gMax = gMin + step * 2;
+    function Y(v) { return PT + (1 - (v - gMin) / (gMax - gMin)) * plotH; }
+
+    var grid = "", ylabs = "";
+    for (var g = gMin; g <= gMax + 0.001; g += step) {
+      grid += '<line class="cc-grid" x1="0" y1="' + Y(g).toFixed(1) + '" x2="' + totalW + '" y2="' + Y(g).toFixed(1) + '"/>';
+      ylabs += '<div class="cc-ylab" style="top:' + (ICON_H + Y(g)).toFixed(1) + 'px">' + Math.round(g) + '°</div>';
+    }
+
+    var dayLines = "", xlabs = "", icons = "", prevDay = null;
+    for (i = 0; i < N; i++) {
+      var hr = +t[i].slice(11, 13);        // location wall-clock hour (tz-safe, from the string)
+      var day = t[i].slice(0, 10);
+      if (day !== prevDay) {
+        if (prevDay !== null) dayLines += '<line class="cc-day" x1="' + X(i).toFixed(1) + '" y1="' + PT + '" x2="' + X(i).toFixed(1) + '" y2="' + (PT + plotH) + '"/>';
+        prevDay = day;
+      }
+      if (hr % 6 === 0) xlabs += '<text class="cc-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + shortHour(hr) + '</text>';
+      if (hr % 3 === 0) icons += '<span class="cc-ico" style="left:' + X(i).toFixed(1) + 'px">' + condIcon(h.weather_code[i], h.is_day[i]) + '</span>';
+    }
+
+    var pa = "", pf = "";
+    for (i = 0; i < N; i++) {
+      if (ta[i] != null) pa += (pa ? " " : "") + X(i).toFixed(1) + "," + Y(ta[i]).toFixed(1);
+      if (tf[i] != null) pf += (pf ? " " : "") + X(i).toFixed(1) + "," + Y(tf[i]).toFixed(1);
+    }
+    var nowLine = (nowIdx >= 0 && nowIdx < N)
+      ? '<line class="cc-now" x1="' + X(nowIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(nowIdx).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' : "";
+
+    var svg =
+      '<svg class="cond-svg" width="' + totalW + '" height="' + H + '" viewBox="0 0 ' + totalW + ' ' + H + '">' +
+        grid + dayLines + nowLine +
+        '<polyline class="cc-feels" points="' + pf + '"/>' +
+        '<polyline class="cc-actual" points="' + pa + '"/>' +
+        '<line class="cc-cursor" id="condCursor" x1="0" y1="' + PT + '" x2="0" y2="' + (PT + plotH) + '" style="display:none"/>' +
+        '<circle class="cc-dot feels" id="condDotF" r="3.3" style="display:none"/>' +
+        '<circle class="cc-dot actual" id="condDotA" r="3.3" style="display:none"/>' +
+        xlabs +
+      '</svg>';
+
+    // precip band: clean bars (height = amount, tint = chance)
+    var scale = precipScaleH(), precip = "";
+    for (i = 0; i < N; i++) {
+      var amt = h.precipitation ? h.precipitation[i] : null;
+      if (amt == null || amt <= 0) continue;
+      var pp = h.precipitation_probability ? h.precipitation_probability[i] : null;
+      var col = WATER_TONE[pp == null ? 1 : (pp < 33 ? 0 : (pp <= 67 ? 1 : 2))];
+      var bh = Math.max(2, waterFrac(amt, scale[0], scale[1]) * PRECIP_H);
+      precip += '<div class="cp-bar" style="left:' + (X(i) - (HR - 2) / 2).toFixed(1) + 'px;width:' + (HR - 2) + 'px;height:' + bh.toFixed(1) + 'px;background:' + col + '"></div>';
+    }
+
+    // day tabulator
+    var days = [], seen = null;
+    for (i = 0; i < N; i++) { var dy = t[i].slice(0, 10); if (dy !== seen) { days.push(dy); seen = dy; } }
+    var todayStr = (nowIdx >= 0 ? t[nowIdx] : nowIso).slice(0, 10);
+    var dayBtns = days.map(function (dy) {
+      var dt = new Date(dy + "T00:00:00");
+      return '<button class="cd-day' + (dy === todayStr ? " today" : "") + '" type="button" data-day="' + dy + '">' +
+        '<span class="cd-dow">' + dt.toLocaleDateString(undefined, { weekday: "narrow" }) + '</span>' +
+        '<span class="cd-num">' + dt.getDate() + '</span></button>';
+    }).join("");
+
+    els.condBody.innerHTML =
+      '<div class="cond-days" id="condDays">' + dayBtns + '</div>' +
+      '<div class="cond-date" id="condDate"></div>' +
+      '<div class="cond-hl" id="condHL"></div>' +
+      '<div class="cond-plot">' +
+        '<div class="cond-scroll" id="condScroll">' +
+          '<div class="cond-track" style="width:' + totalW + 'px">' +
+            '<div class="cond-icons" style="height:' + ICON_H + 'px;width:' + totalW + 'px">' + icons + '</div>' +
+            svg +
+            '<div class="cond-precip" style="height:' + PRECIP_H + 'px;width:' + totalW + 'px">' + precip + '</div>' +
+            '<div class="cc-tip" id="condTip" style="display:none"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="cond-yaxis" style="height:' + (ICON_H + H + PRECIP_H) + 'px">' + ylabs +
+          '<div class="cc-plab" style="top:' + (ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Rain</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cond-legend"><span><i class="lg-actual"></i> Actual</span><span><i class="lg-feels"></i> Feels Like</span></div>';
+
+    // focus index (exact hour, or noon of a tapped day, clamped to range)
+    var fIdx = focusIso ? t.indexOf(focusIso) : -1;
+    if (fIdx < 0 && focusIso) {
+      var fday = focusIso.slice(0, 10);
+      fIdx = t.findIndex(function (x) { return x.slice(0, 10) === fday && x.slice(11, 13) === "12"; });
+      if (fIdx < 0) fIdx = t.findIndex(function (x) { return x.slice(0, 10) === fday; });
+      if (fIdx < 0) fIdx = (fday > days[days.length - 1]) ? N - 1 : 0;
+    }
+    if (fIdx < 0) fIdx = nowIdx >= 0 ? nowIdx : 0;
+
+    condState = { d: d, t: t, N: N, HR: HR, PADX: PADX, PT: PT, ICON_H: ICON_H, X: X, Y: Y,
+      ta: ta, tf: tf, precip: h.precipitation || [], pop: h.precipitation_probability || [],
+      nowIdx: nowIdx, focusIdx: fIdx, idx: fIdx, panDir: 0, vx: 0, vw: 0 };
+    return true;
+  }
+
+  function condDayHL(d, day) {
+    var dd = d.daily; if (!dd || !dd.time) return "";
+    var di = dd.time.indexOf(day); if (di < 0) return "";
+    return '<span class="cc-ic">' + condIcon(dd.weather_code[di], 1) + '</span>' +
+      'H:<b>' + Math.round(dd.temperature_2m_max[di]) + '°</b>&nbsp;&nbsp;L:<b>' + Math.round(dd.temperature_2m_min[di]) + '°</b>';
+  }
+  function condHeaderForDay(day) {
+    var dt = new Date(day + "T00:00:00");
+    var dl = $("condDate"); if (dl) dl.textContent = dt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    var hl = $("condHL"); if (hl) hl.innerHTML = condDayHL(condState.d, day);
+    var days = $("condDays");
+    if (days) {
+      var sel = null;
+      days.querySelectorAll(".cd-day").forEach(function (b) { var on = b.dataset.day === day; b.classList.toggle("sel", on); if (on) sel = b; });
+      if (sel) {
+        var r = sel.getBoundingClientRect(), pr = days.getBoundingClientRect();
+        if (r.left < pr.left + 6) days.scrollLeft += r.left - pr.left - 6;
+        else if (r.right > pr.right - 6) days.scrollLeft += r.right - pr.right + 6;
+      }
+    }
+  }
+  // Move the scrub cursor to hour `idx`: reposition the line + dots, fill the
+  // tooltip (time · Actual · Feels · Rain amount + chance), sync header + picker.
+  function setCondCursor(idx) {
+    var S = condState; if (!S) return;
+    idx = Math.max(0, Math.min(S.N - 1, idx)); S.idx = idx;
+    var x = S.X(idx), iso = S.t[idx], day = iso.slice(0, 10), hr = +iso.slice(11, 13);
+    var cur = $("condCursor"); if (cur) { cur.setAttribute("x1", x); cur.setAttribute("x2", x); cur.style.display = ""; }
+    var da = $("condDotA"), df = $("condDotF");
+    if (da) { if (S.ta[idx] != null) { da.setAttribute("cx", x); da.setAttribute("cy", S.Y(S.ta[idx]).toFixed(1)); da.style.display = ""; } else da.style.display = "none"; }
+    if (df) { if (S.tf[idx] != null) { df.setAttribute("cx", x); df.setAttribute("cy", S.Y(S.tf[idx]).toFixed(1)); df.style.display = ""; } else df.style.display = "none"; }
+    var tip = $("condTip"), sc = $("condScroll");
+    if (tip && sc) {
+      var h12 = hr % 12 || 12, ap = hr < 12 ? "AM" : "PM";
+      var wd = new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" });
+      var amt = S.precip[idx], pop = S.pop[idx];
+      var rain = (amt != null && amt > 0) ? precipLabel(amt, false) + (pop != null ? " · " + pop + "%" : "")
+        : (pop != null ? pop + "% chance" : "—");
+      tip.innerHTML =
+        '<div class="ct-time">' + wd + ' ' + h12 + ' ' + ap + (idx === S.nowIdx ? " · now" : "") + '</div>' +
+        '<div class="ct-row"><i class="ct-dot actual"></i>Actual <b>' + (S.ta[idx] != null ? Math.round(S.ta[idx]) + tU() : "–") + '</b></div>' +
+        '<div class="ct-row"><i class="ct-dot feels"></i>Feels <b>' + (S.tf[idx] != null ? Math.round(S.tf[idx]) + tU() : "–") + '</b></div>' +
+        '<div class="ct-row"><i class="ct-dot rain"></i>Rain <b>' + rain + '</b></div>';
+      tip.style.left = x + "px";
+      tip.style.top = (S.ICON_H + S.PT + 2) + "px";
+      tip.style.display = "";
+      var frac = (x - sc.scrollLeft) / sc.clientWidth;
+      tip.classList.toggle("right", frac < 0.5);   // tip sits right of the line in the left half…
+      tip.classList.toggle("left", frac >= 0.5);   // …and left of it in the right half
+    }
+    condHeaderForDay(day);
+  }
+  function openCond(focusIso) {
+    if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso)) return;
+    els.condBackdrop.classList.remove("hidden");
+    var sc = $("condScroll"), days = $("condDays"), scrubbing = false, panRAF = null;
+    function idxAtVx(vx) { return Math.round((sc.scrollLeft + vx - condState.PADX) / condState.HR); }
+    function scrubAt(clientX) {
+      var r = sc.getBoundingClientRect(), vx = clientX - r.left;
+      condState.vx = vx; condState.vw = r.width;
+      var idx = idxAtVx(vx);
+      setCondCursor(idx);
+      condState.panDir = (vx > r.width - 48 && idx < condState.N - 1) ? 1 : (vx < 48 && idx > 0) ? -1 : 0;
+      if (scrubbing && condState.panDir && !panRAF) panRAF = requestAnimationFrame(edgePan);
+    }
+    function edgePan() {
+      panRAF = null;
+      if (!scrubbing || !condState.panDir) return;
+      sc.scrollLeft += condState.panDir * 3.4;
+      var idx = idxAtVx(condState.vx);
+      setCondCursor(idx);
+      condState.panDir = (condState.vx > condState.vw - 48 && idx < condState.N - 1) ? 1 : (condState.vx < 48 && idx > 0) ? -1 : 0;
+      if (condState.panDir) panRAF = requestAnimationFrame(edgePan);
+    }
+    function endScrub() { scrubbing = false; condState.panDir = 0; if (panRAF) { cancelAnimationFrame(panRAF); panRAF = null; } }
+    sc.addEventListener("pointerdown", function (e) { scrubbing = true; try { sc.setPointerCapture(e.pointerId); } catch (_) {} scrubAt(e.clientX); e.preventDefault(); });
+    sc.addEventListener("pointermove", function (e) { if (scrubbing || e.pointerType === "mouse") scrubAt(e.clientX); });
+    sc.addEventListener("pointerup", endScrub);
+    sc.addEventListener("pointercancel", endScrub);
+    sc.addEventListener("wheel", function (e) {
+      if (sc.scrollWidth <= sc.clientWidth) return;
+      sc.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
+    days.addEventListener("click", function (e) {
+      var b = e.target.closest(".cd-day"); if (!b) return;
+      var day = b.dataset.day;
+      var idx = condState.t.findIndex(function (x) { return x.slice(0, 10) === day && x.slice(11, 13) === "12"; });
+      if (idx < 0) idx = condState.t.findIndex(function (x) { return x.slice(0, 10) === day; });
+      if (idx < 0) return;
+      sc.scrollLeft = Math.max(0, condState.X(idx) - sc.clientWidth / 2);
+      setCondCursor(idx);
+    });
+    requestAnimationFrame(function () {
+      sc.scrollLeft = Math.max(0, condState.X(condState.focusIdx) - sc.clientWidth / 2);
+      setCondCursor(condState.focusIdx);
+    });
+  }
+  function closeCond() { els.condBackdrop.classList.add("hidden"); }
+
   // Precipitation type word from a WMO code, for the outlook line.
   function precipWord(code) {
     if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
@@ -1621,7 +1929,9 @@
       var p = h.precipitation[i], pop = h.precipitation_probability[i];
       return (p != null && p > wetAmt) || (pop != null && pop >= 50);
     }
-    var end = h.time.length, i;
+    // Keep the outlook's hourly horizon at ~72 h even though more is now fetched
+    // for the day-conditions chart, so its tuned wording is unchanged.
+    var end = Math.min(h.time.length, i0 + CONFIG.hourlyFuture + 1), i;
     // "Raining now" is the observed current condition (the same code the summary's
     // headline shows), not the hourly amount/chance — so the two never disagree.
     var nowCode = d.current.weather_code;
@@ -1906,7 +2216,7 @@
       var ht = new Date(h.time[i] + ":00"), midnight = ht.getHours() === 0;
       var label = isNow ? "Now" : (midnight ? ht.toLocaleDateString(undefined, { weekday: "short" }) : fmtHour(h.time[i]));
       html +=
-        '<div class="cell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '">' +
+        '<div class="cell tapcell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '" data-iso="' + h.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this hour">' +
           waterHtml(amt, scale, pop) +
           '<div class="lbl' + (midnight && !isNow ? " day" : "") + '">' + label + '</div>' +
           '<div class="ic">' + condIcon(h.weather_code[i], h.is_day[i]) + '</div>' +
@@ -1972,7 +2282,7 @@
       var code = dayCode[dd.time[i]] != null ? dayCode[dd.time[i]] : dd.weather_code[i];
       var pop = dd.precipitation_probability_max[i] == null ? 0 : dd.precipitation_probability_max[i];
       html +=
-        '<div class="cell' + (isToday ? " today" : "") + '">' +
+        '<div class="cell tapcell' + (isToday ? " today" : "") + '" data-day="' + dd.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this day">' +
           waterHtml(amt, scale, pop) +
           '<div class="lbl">' + name + '</div>' +
           '<div class="ic">' + condIcon(code, 1) + '</div>' +
@@ -2375,6 +2685,35 @@
   els.dayBackdrop.addEventListener("click", function (e) { if (e.target === els.dayBackdrop) closeDay(); });
   els.windClose.addEventListener("click", closeWind);
   els.windBackdrop.addEventListener("click", function (e) { if (e.target === els.windBackdrop) closeWind(); });
+  els.condClose.addEventListener("click", closeCond);
+  els.condBackdrop.addEventListener("click", function (e) { if (e.target === els.condBackdrop) closeCond(); });
+  // Tap an hour or a day cell → open the conditions chart. Ignore drag-scrolls
+  // (desktop) by tracking pointer movement; touch scrolls natively so taps are clean.
+  function bindCellTap(scroller, attr) {
+    // Detect a tap on pointerup: a tap leaves the strip's scroll position and the
+    // press point unchanged. Works whether or not the pointer is captured for
+    // drag-scroll (desktop), and doesn't depend on a click event surviving.
+    var startScroll = 0, downX = 0, downY = 0, armed = false;
+    scroller.addEventListener("pointerdown", function (e) {
+      armed = (e.pointerType !== "mouse" || e.button === 0);
+      startScroll = scroller.scrollLeft; downX = e.clientX; downY = e.clientY;
+    }, true);
+    scroller.addEventListener("pointerup", function (e) {
+      if (!armed) return; armed = false;
+      if (Math.abs(scroller.scrollLeft - startScroll) > 4) return;              // scrolled → swipe, not a tap
+      if (Math.abs(e.clientX - downX) > 10 || Math.abs(e.clientY - downY) > 10) return; // moved → not a tap
+      var el = document.elementFromPoint(e.clientX, e.clientY);
+      var cell = el && el.closest(".tapcell[" + attr + "]");
+      if (cell) openCond(cell.getAttribute(attr));
+    }, true);
+    scroller.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var cell = e.target.closest(".tapcell[" + attr + "]");
+      if (cell) { e.preventDefault(); openCond(cell.getAttribute(attr)); }
+    });
+  }
+  bindCellTap(els.hourly, "data-iso");
+  bindCellTap(els.daily, "data-day");
   els.searchInput.addEventListener("input", onSearchInput);
   els.searchInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
