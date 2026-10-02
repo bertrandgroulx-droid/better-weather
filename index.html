@@ -394,7 +394,8 @@
   .cond-hl .cc-ic { vertical-align: -0.26em; margin: 0 5px 0 3px; font-size: 1.1em; }
   .cond-hl b { color: var(--text); font-weight: 700; }
   .cond-plot { position: relative; }
-  .cond-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: none; cursor: ew-resize; -webkit-user-select: none; user-select: none; }
+  .cond-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; }
+  .cond-scroll.grabbing { cursor: grabbing; }
   .cond-scroll::-webkit-scrollbar { display: none; }
   .cond-track { position: relative; }
   .cond-icons { position: relative; }
@@ -408,11 +409,12 @@
   /* Feels Like shares Actual's colour but is dashed to tell them apart */
   .cond-svg .cc-feels { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-dasharray: 5 3.5; stroke-linejoin: round; stroke-linecap: round; }
   .cond-svg .cc-xlab { fill: var(--muted); font-size: 10.5px; font-family: inherit; }
-  /* draggable scrub cursor + value readout */
-  .cond-svg .cc-cursor { stroke: var(--text); stroke-width: 1.2; }
-  .cond-svg .cc-dot { stroke: #0e2440; stroke-width: 1; }
-  .cond-svg .cc-dot.actual { fill: var(--accent); }
-  .cond-svg .cc-dot.feels { fill: #e4eefb; }
+  /* fixed centre cursor: the bar stays put while you swipe the chart under it */
+  .cond-cursor { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  .cond-cursor .cc-cline { position: absolute; left: 50%; width: 1.4px; transform: translateX(-50%); background: var(--text); opacity: 0.85; }
+  .cond-cursor .cc-cdot { position: absolute; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); border: 1px solid #0e2440; }
+  .cond-cursor .cc-cdot.actual { background: var(--accent); }
+  .cond-cursor .cc-cdot.feels { background: #e4eefb; }
   /* scrubbed-hour readout, laid out above the chart (like the daylight panel) so
      it never covers the lines. Fixed height so values changing never reflow it. */
   .cond-read { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
@@ -1695,8 +1697,9 @@
     var nowIdx = t.indexOf(nowIso);
     if (nowIdx < 0) nowIdx = t.findIndex(function (x) { return x >= nowIso; });
 
-    // geometry (pixel space; the track scrolls)
-    var HR = 15, PADX = 46, PT = 14, PB = 24, plotH = 188, H = PT + plotH + PB;
+    // geometry (pixel space; the track scrolls under a fixed centre cursor, so
+    // PADX also reserves lead/trail room to bring the first/last hour to centre)
+    var HR = 15, PADX = 180, PT = 14, PB = 24, plotH = 188, H = PT + plotH + PB;
     var ICON_H = 26, PRECIP_H = 40;
     var totalW = PADX * 2 + (N - 1) * HR;
     function X(i) { return PADX + i * HR; }
@@ -1745,9 +1748,6 @@
         grid + dayLines + nowLine +
         '<polyline class="cc-feels" points="' + pf + '"/>' +
         '<polyline class="cc-actual" points="' + pa + '"/>' +
-        '<line class="cc-cursor" id="condCursor" x1="0" y1="' + PT + '" x2="0" y2="' + (PT + plotH) + '" style="display:none"/>' +
-        '<circle class="cc-dot feels" id="condDotF" r="3.3" style="display:none"/>' +
-        '<circle class="cc-dot actual" id="condDotA" r="3.3" style="display:none"/>' +
         xlabs +
       '</svg>';
 
@@ -1787,6 +1787,11 @@
         '<div class="cond-yaxis" style="height:' + (ICON_H + H + PRECIP_H) + 'px">' + ylabs +
           '<div class="cc-plab" style="top:' + (ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Rain</div>' +
         '</div>' +
+        '<div class="cond-cursor">' +
+          '<div class="cc-cline" style="top:' + (ICON_H + PT) + 'px;height:' + plotH + 'px"></div>' +
+          '<div class="cc-cdot feels" id="condDotF" style="display:none"></div>' +
+          '<div class="cc-cdot actual" id="condDotA" style="display:none"></div>' +
+        '</div>' +
       '</div>' +
       '<div class="cond-legend"><span><i class="lg-actual"></i> Actual</span><span><i class="lg-feels"></i> Feels Like</span></div>';
 
@@ -1817,16 +1822,15 @@
       else if (r.right > pr.right - 6) days.scrollLeft += r.right - pr.right + 6;
     }
   }
-  // Move the scrub cursor to hour `idx`: reposition the line + dots on the chart,
-  // and fill the fixed readout above it (date/time, Actual, Feels, Rain, Chance).
-  function setCondCursor(idx) {
+  function condCenterIdx(sc) {
+    return Math.max(0, Math.min(condState.N - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2 - condState.PADX) / condState.HR)));
+  }
+  // Fill the fixed readout above the chart for hour `idx` (date/time, Actual,
+  // Feels, Rain, Chance) and highlight that day in the tabulator.
+  function setCondReadout(idx) {
     var S = condState; if (!S) return;
     idx = Math.max(0, Math.min(S.N - 1, idx)); S.idx = idx;
-    var x = S.X(idx), iso = S.t[idx], day = iso.slice(0, 10), hr = +iso.slice(11, 13);
-    var cur = $("condCursor"); if (cur) { cur.setAttribute("x1", x); cur.setAttribute("x2", x); cur.style.display = ""; }
-    var da = $("condDotA"), df = $("condDotF");
-    if (da) { if (S.ta[idx] != null) { da.setAttribute("cx", x); da.setAttribute("cy", S.Y(S.ta[idx]).toFixed(1)); da.style.display = ""; } else da.style.display = "none"; }
-    if (df) { if (S.tf[idx] != null) { df.setAttribute("cx", x); df.setAttribute("cy", S.Y(S.tf[idx]).toFixed(1)); df.style.display = ""; } else df.style.display = "none"; }
+    var iso = S.t[idx], day = iso.slice(0, 10), hr = +iso.slice(11, 13);
     var ct = $("crTime"), ci = $("crItems");
     if (ct) {
       var h12 = hr % 12 || 12, ap = hr < 12 ? "AM" : "PM";
@@ -1849,33 +1853,27 @@
     }
     condSyncPicker(day);
   }
+  // The centre cursor is fixed; swiping moves the chart under it. Read the hour at
+  // the viewport centre, sit the dots on the two lines there, update the readout.
+  function updateCenter() {
+    var S = condState, sc = $("condScroll"); if (!S || !sc) return;
+    var idx = condCenterIdx(sc);
+    var da = $("condDotA"), df = $("condDotF");
+    if (da) { if (S.ta[idx] != null) { da.style.top = (S.ICON_H + S.Y(S.ta[idx])).toFixed(1) + "px"; da.style.display = ""; } else da.style.display = "none"; }
+    if (df) { if (S.tf[idx] != null) { df.style.top = (S.ICON_H + S.Y(S.tf[idx])).toFixed(1) + "px"; df.style.display = ""; } else df.style.display = "none"; }
+    setCondReadout(idx);
+  }
   function openCond(focusIso) {
     if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso)) return;
     els.condBackdrop.classList.remove("hidden");
-    var sc = $("condScroll"), days = $("condDays"), scrubbing = false, panRAF = null;
-    function idxAtVx(vx) { return Math.round((sc.scrollLeft + vx - condState.PADX) / condState.HR); }
-    function scrubAt(clientX) {
-      var r = sc.getBoundingClientRect(), vx = clientX - r.left;
-      condState.vx = vx; condState.vw = r.width;
-      var idx = idxAtVx(vx);
-      setCondCursor(idx);
-      condState.panDir = (vx > r.width - 48 && idx < condState.N - 1) ? 1 : (vx < 48 && idx > 0) ? -1 : 0;
-      if (scrubbing && condState.panDir && !panRAF) panRAF = requestAnimationFrame(edgePan);
-    }
-    function edgePan() {
-      panRAF = null;
-      if (!scrubbing || !condState.panDir) return;
-      sc.scrollLeft += condState.panDir * 3.4;
-      var idx = idxAtVx(condState.vx);
-      setCondCursor(idx);
-      condState.panDir = (condState.vx > condState.vw - 48 && idx < condState.N - 1) ? 1 : (condState.vx < 48 && idx > 0) ? -1 : 0;
-      if (condState.panDir) panRAF = requestAnimationFrame(edgePan);
-    }
-    function endScrub() { scrubbing = false; condState.panDir = 0; if (panRAF) { cancelAnimationFrame(panRAF); panRAF = null; } }
-    sc.addEventListener("pointerdown", function (e) { scrubbing = true; try { sc.setPointerCapture(e.pointerId); } catch (_) {} scrubAt(e.clientX); e.preventDefault(); });
-    sc.addEventListener("pointermove", function (e) { if (scrubbing || e.pointerType === "mouse") scrubAt(e.clientX); });
-    sc.addEventListener("pointerup", endScrub);
-    sc.addEventListener("pointercancel", endScrub);
+    var sc = $("condScroll"), days = $("condDays"), raf = null;
+    sc.addEventListener("scroll", function () { if (raf) return; raf = requestAnimationFrame(function () { raf = null; updateCenter(); }); });
+    // Desktop: click-drag to pan the chart (touch pans natively via touch-action: pan-x).
+    var down = false, sx = 0, sl = 0;
+    sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} sc.classList.add("grabbing"); e.preventDefault(); });
+    sc.addEventListener("pointermove", function (e) { if (down) sc.scrollLeft = sl - (e.clientX - sx); });
+    function up() { if (!down) return; down = false; sc.classList.remove("grabbing"); }
+    sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     sc.addEventListener("wheel", function (e) {
       if (sc.scrollWidth <= sc.clientWidth) return;
       sc.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -1888,11 +1886,11 @@
       if (idx < 0) idx = condState.t.findIndex(function (x) { return x.slice(0, 10) === day; });
       if (idx < 0) return;
       sc.scrollLeft = Math.max(0, condState.X(idx) - sc.clientWidth / 2);
-      setCondCursor(idx);
+      updateCenter();
     });
     requestAnimationFrame(function () {
       sc.scrollLeft = Math.max(0, condState.X(condState.focusIdx) - sc.clientWidth / 2);
-      setCondCursor(condState.focusIdx);
+      updateCenter();
     });
   }
   function closeCond() { els.condBackdrop.classList.add("hidden"); }
