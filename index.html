@@ -400,15 +400,20 @@
   .day-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
   /* the live readout for the scrubbed day: a single column of five fixed rows (date,
      sunrise, sunset, daylight, trend) so its height never changes while scrubbing */
-  .day-readout { display: flex; flex-direction: column; gap: 3px;
+  .day-readout { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
     background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; }
-  .day-readout .rd-date { font-weight: 700; font-size: 0.95rem; margin-bottom: 3px; }
-  .day-readout .rd-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
-    font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.35; }
-  .day-readout .rd-item b { color: var(--text); font-weight: 700; }
+  .day-readout .rd-date { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+  /* the three label | value pairs share one small two-column grid, centred as a block with
+     a fixed gap: labels end on one line, values start on another, and as the screen widens
+     the card's margins take up the slack, not the gap. It's its own box so the longer date
+     and trend lines above and below can't widen its columns. */
+  .day-readout .rd-grid { display: grid; grid-template-columns: max-content max-content; column-gap: 18px; row-gap: 3px; align-items: baseline; }
+  .day-readout .rd-item { display: contents; }
+  .day-readout .rd-item .k { text-align: right; font-size: 0.85rem; color: var(--muted); line-height: 1.35; }
+  .day-readout .rd-item b { text-align: left; font-size: 0.85rem; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.35; }
   .day-readout .rd-len b { color: var(--accent); }
-  .day-readout .rd-trend { display: block; font-size: 0.78rem; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-readout .rd-trend { font-size: 0.78rem; margin-top: 2px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .day-chart-wrap { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
   .day-chart { display: block; width: 100%; height: auto; }
   .day-chart text { fill: var(--muted); font-size: 8px; font-family: inherit; }
@@ -2326,9 +2331,11 @@
         : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length steady</span>';
       readout.innerHTML =
         '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + '</span>' +
-        '<span class="rd-item">Sunrise <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
-        '<span class="rd-item">Sunset <b>' + clockInTz(sunset[i], tz) + '</b></span>' +
-        '<span class="rd-item rd-len">Daylight <b>' + fmtDur(len[i]) + '</b></span>' +
+        '<div class="rd-grid">' +
+          '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
+          '<span class="rd-item"><span class="k">Sunset</span> <b>' + clockInTz(sunset[i], tz) + '</b></span>' +
+          '<span class="rd-item rd-len"><span class="k">Daylight</span> <b>' + fmtDur(len[i]) + '</b></span>' +
+        '</div>' +
         trend;
     }
     function scrubFromX(clientX) {
