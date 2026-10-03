@@ -1023,13 +1023,50 @@
     }
     return rec;
   }
+  // Directional slide feedback for a location swipe. The card nudges out the way you
+  // swiped and dims (but stays visible — never blank), the new place loads, then the
+  // card glides back in from the opposite side. Keeping it dimmed rather than invisible
+  // means there's always something on screen during the fetch, so the swipe reads as a
+  // live response instead of the card vanishing.
+  var swipeDir = null, SWIPE_OFFSET = 34, SWIPE_DIM = "0.4";
+  function swipeSlideOut(dir) {
+    swipeDir = dir;
+    var el = els.summary;
+    el.style.transition = "transform 0.15s ease, opacity 0.15s ease";
+    el.style.transform = "translateX(" + (dir > 0 ? -SWIPE_OFFSET : SWIPE_OFFSET) + "px)";
+    el.style.opacity = SWIPE_DIM;
+  }
+  function swipeSlideIn() { // called from renderSummary once the new card is in the DOM
+    if (swipeDir === null) return;
+    var dir = swipeDir; swipeDir = null;
+    var el = els.summary;
+    // new content is in the DOM at the slid-out spot; jump (still dimmed) to the opposite
+    // side, then glide to centre — the one-frame jump is barely visible at low opacity.
+    el.style.transition = "none";
+    el.style.transform = "translateX(" + (dir > 0 ? SWIPE_OFFSET : -SWIPE_OFFSET) + "px)";
+    el.style.opacity = SWIPE_DIM;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      el.style.transition = "transform 0.22s ease, opacity 0.22s ease";
+      el.style.transform = "translateX(0)"; el.style.opacity = "1";
+    }); });
+  }
+  function swipeSlideReset() { // load failed (no re-render) → ease back to centre
+    if (swipeDir === null) return;
+    swipeDir = null;
+    var el = els.summary;
+    el.style.transition = "transform 0.18s ease, opacity 0.18s ease";
+    el.style.transform = "translateX(0)"; el.style.opacity = "1";
+  }
   function swipeLoc(dir) { // dir: +1 next, -1 previous (wraps)
     var list = swipeLocsFor(lastLoc);
     if (list.length < 2) return;
     var i = list.findIndex(function (r) { return lastLoc && locKey(r) === locKey(lastLoc); });
     if (i < 0) i = 0;
     var ni = (i + dir + list.length) % list.length;
-    if (ni !== i) show(list[ni], true); // silent: keep the current card until the new one loads
+    if (ni === i) return;
+    swipeSlideOut(dir);
+    var p = show(list[ni], true); // silent: keep the card until the new one loads
+    if (p && p.then) p.then(function () { swipeSlideReset(); }); // if it failed, snap back (success resets via renderSummary)
   }
   function swipeDotsHtml(loc) {
     var list = swipeLocsFor(loc);
@@ -2215,6 +2252,7 @@
       swipeDotsHtml(loc);
     // seat the ⓘ vertically centered between Sunrise and Sunset (survives re-renders)
     (els.summary.querySelector(".sr-ss") || els.summary).appendChild(els.aboutBtn);
+    swipeSlideIn(); // if this render came from a location swipe, slide the new card in
   }
 
   function waterFrac(amount, safe, full) {
