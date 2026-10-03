@@ -416,7 +416,7 @@
   .day-readout .rd-trend { font-size: 0.78rem; margin-top: 2px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* the chart scrolls under a fixed centre line; hour labels sit in a frozen axis on the left */
   .day-chart-wrap { position: relative; -webkit-user-select: none; user-select: none; }
-  .day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; padding: 0 50%; }
+  .day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; }
   .day-scroll::-webkit-scrollbar { display: none; }
   .day-chart { display: block; }
   .day-yaxis { position: absolute; left: 0; top: 0; pointer-events: none; background: linear-gradient(90deg, #0e2440 0, #0e2440 22px, rgba(14,36,64,0) 28px); }
@@ -2262,11 +2262,13 @@
         dstList.push({ i: i, delta: off[i] - off[i - 1] });
     }
 
-    // The chart is wider than the screen and scrolls under a fixed centre line (like the
-    // Conditions chart): PXD px per day, drawn at 1:1 pixels so the overlay lines up.
-    var PXD = 2.2, H = 190, PL = 0, PR = 0, PT = 10, PB = 16;
-    var W = Math.round((days - 1) * PXD), plotW = W, plotH = H - PT - PB;
-    function X(i) { return i * PXD; }
+    // The chart is wider than the screen and scrolls under a fixed centre line, built the
+    // same way as the Conditions chart: PXD px per day at 1:1 pixels, with PADX of lead-in
+    // and run-out drawn INSIDE the SVG (not CSS padding, which iOS mishandles on scrollers)
+    // so the first and last day can each sit under the centre line.
+    var PXD = 2.2, PADX = 210, H = 190, PL = 0, PR = 0, PT = 10, PB = 16;
+    var chartW = Math.round((days - 1) * PXD), W = chartW + 2 * PADX, plotW = chartW, plotH = H - PT - PB;
+    function X(i) { return PADX + i * PXD; }
     function Y(hr) { return PT + (Math.max(0, Math.min(24, hr)) / 24) * plotH; }
 
     // daylight band polygon: sunrise edge L→R, then sunset edge R→L
@@ -2282,7 +2284,7 @@
     var grid = "", yaxis = "", hours = [[6, "6a"], [12, "12p"], [18, "6p"]];
     for (i = 0; i < hours.length; i++) {
       var gy = Y(hours[i][0]).toFixed(1);
-      grid += '<line class="ax-line" x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '"/>';
+      grid += '<line class="ax-line" x1="' + PADX + '" y1="' + gy + '" x2="' + (PADX + chartW) + '" y2="' + gy + '"/>';
       // hour labels live in a frozen axis beside the scroller, so they never scroll away
       yaxis += '<text x="24" y="' + (Y(hours[i][0]) + 2.6).toFixed(1) + '" text-anchor="end">' + hours[i][1] + '</text>';
     }
@@ -2367,14 +2369,20 @@
         '</div>' +
         trend;
     }
-    // The chart scrolls under the fixed centre line: the day under the line is read from
-    // scrollLeft (the scroller is padded by half its width on each side, so day 0 can sit
-    // under the line at scrollLeft 0), and on release it settles onto the nearest day.
+    // The chart scrolls under the fixed centre line: the day under the line is whichever
+    // X(i) sits at the viewport's centre, and once motion stops (no finger down) the chart
+    // eases so that day is exactly centred.
+    function centreIdx() { return Math.max(0, Math.min(days - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2 - PADX) / PXD))); }
     var raf = 0, settle = null, interacting = false;
-    function scheduleSettle() { clearTimeout(settle); settle = setTimeout(function () { if (!interacting) sc.scrollTo({ left: Math.round(curI * PXD), behavior: "smooth" }); }, 140); }
+    function doSettle() {
+      settle = null; if (interacting) return;
+      var max = sc.scrollWidth - sc.clientWidth, target = Math.max(0, Math.min(max, X(curI) - sc.clientWidth / 2));
+      if (Math.abs(target - sc.scrollLeft) >= 1) sc.scrollTo({ left: target, behavior: "smooth" });
+    }
+    function scheduleSettle() { clearTimeout(settle); settle = setTimeout(doSettle, 150); }
     sc.addEventListener("scroll", function () {
-      if (raf) return;
-      raf = requestAnimationFrame(function () { raf = 0; setScrub(Math.round(sc.scrollLeft / PXD)); scheduleSettle(); });
+      if (!raf) raf = requestAnimationFrame(function () { raf = 0; setScrub(centreIdx()); });
+      scheduleSettle();
     });
     sc.addEventListener("pointerdown", function () { interacting = true; clearTimeout(settle); });
     sc.addEventListener("pointerup", function () { interacting = false; scheduleSettle(); });
@@ -2386,7 +2394,7 @@
     var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     sc.addEventListener("wheel", function (e) { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { sc.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     setScrub(todayIdx);
-    requestAnimationFrame(function () { sc.scrollLeft = Math.round(todayIdx * PXD); }); // open on today, under the line
+    requestAnimationFrame(function () { sc.scrollLeft = Math.round(X(todayIdx) - sc.clientWidth / 2); }); // open on today, under the line
     return true;
   }
 
