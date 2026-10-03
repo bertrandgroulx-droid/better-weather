@@ -417,7 +417,9 @@
   .cd-day .cd-dow { font-size: 0.72rem; font-weight: 700; }
   .cd-day .cd-num { font-size: 1rem; font-weight: 700; color: var(--text);
     width: 1.9em; height: 1.9em; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+  /* today: the label reads "Today" and the number wears an accent ring; selecting it fills the ring */
   .cd-day.today .cd-dow { color: var(--accent); }
+  .cd-day.today .cd-num { box-shadow: inset 0 0 0 1.5px var(--accent); }
   .cd-day.sel .cd-num { background: var(--accent); color: #0b1f3a; }
   .cond-date { text-align: center; font-weight: 700; font-size: 1rem; margin-top: 2px; }
   .cond-hl { text-align: center; color: var(--muted); font-size: 0.9rem; margin: 2px 0 10px;
@@ -435,7 +437,9 @@
   .cond-svg { display: block; }
   .cond-svg .cc-grid { stroke: rgba(255,255,255,0.08); stroke-width: 1; }
   .cond-svg .cc-day { stroke: rgba(255,255,255,0.20); stroke-width: 1; stroke-dasharray: 3 3; }
-  .cond-svg .cc-now { stroke: rgba(255,255,255,0.6); stroke-width: 1; stroke-dasharray: 2 2; }
+  .cond-svg .cc-now { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.85; }
+  .cond-svg .cc-nowlab { fill: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+  .cond-read .cr-today { color: var(--accent); }
   .cond-svg .cc-actual { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
   /* Feels Like shares Actual's colour but is dashed to tell them apart */
   .cond-svg .cc-feels { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-dasharray: 5 3.5; stroke-linejoin: round; stroke-linecap: round; }
@@ -1890,7 +1894,8 @@
       if (tf[i] != null) pf += (pf ? " " : "") + X(i).toFixed(1) + "," + Y(tf[i]).toFixed(1);
     }
     var nowLine = (nowIdx >= 0 && nowIdx < N)
-      ? '<line class="cc-now" x1="' + X(nowIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(nowIdx).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' : "";
+      ? '<line class="cc-now" x1="' + X(nowIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(nowIdx).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' +
+        '<text class="cc-nowlab" x="' + X(nowIdx).toFixed(1) + '" y="' + (PT + 11) + '" text-anchor="middle">NOW</text>' : "";
 
     var svg =
       '<svg class="cond-svg" width="' + totalW + '" height="' + H + '" viewBox="0 0 ' + totalW + ' ' + H + '">' +
@@ -1918,7 +1923,7 @@
     var dayBtns = days.map(function (dy) {
       var dt = new Date(dy + "T00:00:00");
       return '<button class="cd-day' + (dy === todayStr ? " today" : "") + '" type="button" data-day="' + dy + '">' +
-        '<span class="cd-dow">' + dt.toLocaleDateString(undefined, { weekday: "narrow" }) + '</span>' +
+        '<span class="cd-dow">' + (dy === todayStr ? "Today" : dt.toLocaleDateString(undefined, { weekday: "narrow" })) + '</span>' +
         '<span class="cd-num">' + dt.getDate() + '</span></button>';
     }).join("");
 
@@ -1983,7 +1988,10 @@
     var ct = $("crTime"), ci = $("crItems");
     if (ct) {
       var h12 = hr % 12 || 12, ap = hr < 12 ? "AM" : "PM";
-      var dstr = new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      var isToday = S.nowIdx >= 0 && S.t[S.nowIdx].slice(0, 10) === day;
+      var dstr = isToday
+        ? '<span class="cr-today">Today</span>, ' + new Date(day + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        : new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
       var ico = (S.code[idx] != null) ? '<span class="cr-ic">' + condIcon(S.code[idx], S.isday[idx]) + '</span>' : "";
       ct.innerHTML = ico + dstr + ' · ' + h12 + ' ' + ap + (idx === S.nowIdx ? ' <span class="cr-now">· now</span>' : '');
     }
