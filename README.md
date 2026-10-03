@@ -96,3 +96,9 @@ is served at `https://<your-username>.github.io/better-weather/`.
 
 Weather and geocoding data from the free, open
 [Open-Meteo API](https://open-meteo.com/).
+
+The Moon panel's surface (`moon-texture.jpg`) is the LROC colour map from
+NASA's Scientific Visualization Studio
+[CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) (Lunar Reconnaissance
+Orbiter data; NASA/GSFC, public domain). Phases, libration, rise and set
+times are computed on-device from Meeus, *Astronomical Algorithms*.
