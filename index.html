@@ -152,9 +152,11 @@
     border-radius: var(--radius); padding: 14px 16px;
     /* One 2-column grid shared by the header row and the body, so the right-hand
        header text (condition + feels) lines up on the same left edge as the
-       right metric column (Sunrise/H/L). The outlook spans both columns. */
-    display: grid; grid-template-columns: max-content 1fr; column-gap: 16px;
-    align-items: center; flex: none;
+       right metric column (Sunrise/H/L). The outlook spans both columns.
+       Both columns are content-sized and pushed to the outer edges, so the gap
+       between them flexes with the phone width (space-between). */
+    display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
+    justify-content: space-between; align-items: center; flex: none;
   }
   .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
   /* row 1: current icon + temp (left) | condition + feels-like (right) */
