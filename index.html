@@ -327,16 +327,48 @@
   .air-poll .val b { color: var(--text); font-weight: 700; }
   .air-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.10);
     font-size: 0.72rem; color: var(--muted); text-align: center; }
-  /* moon-phases panel */
+  /* ---------------- Moon panel ---------------- */
   .moon-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
-  .moon-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
-  .moon-row { display: flex; align-items: center; gap: 11px; padding: 9px 2px;
-    border-top: 1px solid rgba(255,255,255,0.07); font-size: 0.92rem; }
-  .moon-row:first-child { border-top: none; }
-  .moon-row .moon { flex: none; width: 20px; height: 20px; }
-  .moon-row .mn { flex: 1; font-weight: 600; }
-  .moon-row .md { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .moon-row.soon .mn { color: var(--accent); }
+  .mo-hero { background: #040a16; border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px 14px; text-align: center; }
+  .mo-hero .mo-moon { display: block; margin: 0 auto 12px; filter: drop-shadow(0 0 18px rgba(200,215,235,0.12)); }
+  .mo-phase { font-size: 1.25rem; font-weight: 700; }
+  .mo-when { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
+  .mo-scrub { position: relative; margin: 10px 0 12px; }
+  .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
+  .mo-cursor i { position: absolute; left: 50%; top: -2px; transform: translateX(-50%); border: 6px solid transparent; border-top: 8px solid var(--accent); border-bottom: 0; }
+  .mo-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; padding: 0 50%; }
+  .mo-scroll::-webkit-scrollbar { display: none; }
+  .mo-track { position: relative; height: 50px; }
+  .mo-track .mt { position: absolute; top: 10px; width: 1px; height: 14px; background: rgba(255,255,255,0.28); }
+  .mo-track .mt-6 { height: 20px; top: 7px; background: rgba(255,255,255,0.45); }
+  .mo-track .mt-day { height: 28px; top: 4px; width: 2px; background: rgba(255,255,255,0.85); }
+  .mo-track .ml { position: absolute; top: 34px; transform: translateX(-50%); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .mo-track .ml-today { color: var(--text); font-weight: 700; }
+  /* stat rows */
+  .mo-stats, .mo-cal, .mo-about { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; }
+  .mo-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 0.95rem; }
+  .mo-row:first-child { border-top: none; }
+  .mo-row span { flex: 1; font-weight: 600; }
+  .mo-row b { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mo-row .moon { flex: none; }
+  .mo-h { font-size: 1.05rem; margin: 16px 2px 8px; }
+  /* calendar */
+  .mc-head { display: flex; align-items: center; padding: 8px 6px; }
+  .mc-title { flex: 1; text-align: center; font-weight: 700; }
+  .mc-nav { background: none; border: 0; color: var(--accent); font-size: 1.5rem; line-height: 1; padding: 2px 12px; cursor: pointer; font-family: inherit; }
+  .mc-dow { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.72rem; color: var(--muted); padding: 2px 6px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .mc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px 6px 10px; }
+  .mc-d { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0 5px; border-radius: 9px; border: 1px solid transparent;
+    background: none; color: var(--text); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mc-d.empty { cursor: default; }
+  .mc-d .mc-n { font-size: 0.82rem; font-weight: 600; }
+  .mc-d.today { background: rgba(255,214,102,0.14); }
+  .mc-d.today .mc-n { color: var(--accent); }
+  .mc-d.sel { border-color: var(--accent); }
+  .mc-ev { border-top: 1px solid rgba(255,255,255,0.08); }
+  .mc-ev .mo-row { cursor: pointer; }
+  .mo-about { padding: 11px 13px; font-size: 0.88rem; line-height: 1.5; color: var(--text); }
   .day-line .sun-ico { vertical-align: -0.18em; margin-right: 2px; }
   /* Daylight row sits below sunrise/sunset; no extra margin so it lines up with
      the fifth left-column row (New Moon) in the balanced two-column body */
@@ -785,7 +817,7 @@
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
-        <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase (tap it for the next six months of new &amp; full moons), a custom fog icon, aligned numbers, day markers.</span></span></li>
+        <li><span class="i">🌙</span><span><b>Handcrafted details.</b> <span class="d">Live moon phase — tap it for the Moon panel: a shaded moon you can scrub hour by hour through the week, illumination, moonrise and moonset for this place, days to the next full and new moon, distance, and a month calendar of phases. A custom fog icon, aligned numbers, day markers.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for a whole-year chart of the daylight band widening toward summer and pinching toward winter. Drag across it to read any day’s sunrise, sunset, and length. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
@@ -819,7 +851,7 @@
   <div class="backdrop hidden" id="moonBackdrop">
     <div class="modal moon-modal" role="dialog" aria-modal="true" aria-label="Moon phases">
       <div class="modal-head">
-        <h2>Moon phases</h2>
+        <h2>Moon</h2>
         <button class="close" id="moonClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="moonBody"></div>
@@ -1543,56 +1575,275 @@
     };
   }
   // Inline SVG moon showing the illuminated fraction and waxing/waning side.
-  function moonSVG(illum, waxing) {
-    var r = 7, c = 8, rx = (r * Math.abs(1 - 2 * illum)).toFixed(2);
+  function moonSVG(illum, waxing, size) {
+    var r = 7, c = 8, rx = (r * Math.abs(1 - 2 * illum)).toFixed(2), px = size || 14;
     var limb = waxing ? 1 : 0;
     var term = illum <= 0.5 ? (waxing ? 0 : 1) : (waxing ? 1 : 0);
     var lit = "M" + c + "," + (c - r) + " A" + r + "," + r + " 0 0 " + limb + " " + c + "," + (c + r) +
       " A" + rx + "," + r + " 0 0 " + term + " " + c + "," + (c - r) + " Z";
-    return '<svg class="moon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
+    return '<svg class="moon" viewBox="0 0 16 16" width="' + px + '" height="' + px + '" aria-hidden="true">' +
       '<circle cx="8" cy="8" r="7" fill="#33425c"/>' +
       (illum > 0.001 ? '<path d="' + lit + '" fill="#ffe9a8"/>' : '') +
       '<circle cx="8" cy="8" r="7" fill="none" stroke="#7f8db0" stroke-width="0.6"/></svg>';
   }
 
-  // Upcoming new and full moons within `months` of `from`, sorted by date.
-  // New moons are integer lunations k; the full moon of a lunation is at k + 0.5.
-  function upcomingMoons(from, months) {
-    var jdNow = from.getTime() / 86400000 + 2440587.5;
-    var jdEnd = jdNow + months * 30.44;
-    var k0 = Math.round((from.getUTCFullYear() + from.getUTCMonth() / 12 - 2000) * 12.3685) - 1;
-    var out = [];
-    for (var k = k0; k <= k0 + months + 3; k++) {
-      var nm = newMoonJDE(k), fm = fullMoonJDE(k + 0.5);
-      if (nm >= jdNow && nm <= jdEnd) out.push({ type: "New Moon", jde: nm });
-      if (fm >= jdNow && fm <= jdEnd) out.push({ type: "Full Moon", jde: fm });
+  // ================= Moon panel =================
+  // Everything here is computed on-device: the Moon's position (Meeus, Astronomical
+  // Algorithms ch. 47, truncated series — a few arc-minutes, plenty for rise/set to the
+  // minute), the Sun's longitude (ch. 25), the true phase angle → illuminated fraction
+  // (ch. 48), moonrise/moonset by scanning the location's local day for horizon
+  // crossings, and the new/full moon instants from ch. 49 above.
+  var RAD = Math.PI / 180;
+  function mnorm(x) { return ((x % 360) + 360) % 360; }
+  function jdOf(d) { return d.getTime() / 86400000 + 2440587.5; }
+  // Periodic terms: [D, M, M', F, Σl (1e-6 deg), Σr (1e-3 km)] and [D, M, M', F, Σb (1e-6 deg)]
+  var MOON_LR = [[0,0,1,0,6288774,-20905355],[2,0,-1,0,1274027,-3699111],[2,0,0,0,658314,-2955968],[0,0,2,0,213618,-569925],
+    [0,1,0,0,-185116,48888],[0,0,0,2,-114332,-3149],[2,0,-2,0,58793,246158],[2,-1,-1,0,57066,-152138],[2,0,1,0,53322,-170733],
+    [2,-1,0,0,45758,-204586],[0,1,-1,0,-40923,-129620],[1,0,0,0,-34720,108743],[0,1,1,0,-30383,104755],[2,0,0,-2,15327,10321],
+    [0,0,1,2,-12528,0],[0,0,1,-2,10980,79661],[4,0,-1,0,10675,-34782],[0,0,3,0,10034,-23210],[4,0,-2,0,8548,-21636],
+    [2,1,-1,0,-7888,24208],[2,1,0,0,-6766,30824],[1,0,-1,0,-5163,-8379],[1,1,0,0,4987,-16675],[2,-1,1,0,4036,-12831],
+    [2,0,2,0,3994,-10445],[4,0,0,0,3861,-11650],[2,0,-3,0,3665,14403],[0,1,-2,0,-2689,-7003],[2,0,-1,2,-2602,0],
+    [2,-1,-2,0,2390,10056],[1,0,1,0,-2348,6322],[2,-2,0,0,2236,-9884]];
+  var MOON_B = [[0,0,0,1,5128122],[0,0,1,1,280602],[0,0,1,-1,277693],[2,0,0,-1,173237],[2,0,-1,1,55413],[2,0,-1,-1,46271],
+    [2,0,0,1,32573],[0,0,2,1,17198],[2,0,1,-1,9266],[0,0,2,-1,8822],[2,-1,0,-1,8216],[2,0,-2,-1,4324],[2,0,1,1,4200],
+    [2,1,0,-1,-3359],[2,-1,-1,1,2463],[2,-1,0,1,2211],[2,-1,-1,-1,2065],[0,1,-1,-1,-1870],[4,0,-1,-1,1828],[0,1,0,1,-1794],
+    [0,0,0,3,-1749],[0,1,-1,1,-1565],[1,0,0,1,-1491],[0,1,1,1,-1475],[0,1,1,-1,-1410],[0,1,0,-1,-1344],[1,0,0,-1,-1335],
+    [0,0,3,1,1107],[4,0,0,-1,1021],[4,0,-1,1,833]];
+  // Geocentric Moon at Julian centuries T: ecliptic lon/lat (deg), distance (km), RA/Dec (deg).
+  function moonPos(T) {
+    var Lp = mnorm(218.3164477 + 481267.88123421 * T - 0.0015786 * T * T);
+    var D  = mnorm(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T);
+    var M  = mnorm(357.5291092 + 35999.0502909 * T - 0.0001536 * T * T);
+    var Mp = mnorm(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T);
+    var F  = mnorm(93.2720950 + 483202.0175233 * T - 0.0036539 * T * T);
+    var A1 = mnorm(119.75 + 131.849 * T), A2 = mnorm(53.09 + 479264.290 * T), A3 = mnorm(313.45 + 481266.484 * T);
+    var E = 1 - 0.002516 * T - 0.0000074 * T * T, i, t, arg, e;
+    var sl = 0, sr = 0, sb = 0;
+    for (i = 0; i < MOON_LR.length; i++) {
+      t = MOON_LR[i]; arg = (t[0] * D + t[1] * M + t[2] * Mp + t[3] * F) * RAD; e = Math.abs(t[1]) === 2 ? E * E : (t[1] ? E : 1);
+      sl += t[4] * e * Math.sin(arg); sr += t[5] * e * Math.cos(arg);
     }
-    out.sort(function (a, b) { return a.jde - b.jde; });
-    return out.map(function (m) {
-      return { type: m.type, date: new Date((m.jde - 2440587.5) * 86400000) };
+    for (i = 0; i < MOON_B.length; i++) {
+      t = MOON_B[i]; arg = (t[0] * D + t[1] * M + t[2] * Mp + t[3] * F) * RAD; e = Math.abs(t[1]) === 2 ? E * E : (t[1] ? E : 1);
+      sb += t[4] * e * Math.sin(arg);
+    }
+    sl += 3958 * Math.sin(A1 * RAD) + 1962 * Math.sin((Lp - F) * RAD) + 318 * Math.sin(A2 * RAD);
+    sb += -2235 * Math.sin(Lp * RAD) + 382 * Math.sin(A3 * RAD) + 175 * Math.sin((A1 - F) * RAD) + 175 * Math.sin((A1 + F) * RAD)
+        + 127 * Math.sin((Lp - Mp) * RAD) - 115 * Math.sin((Lp + Mp) * RAD);
+    var lon = mnorm(Lp + sl / 1e6), lat = sb / 1e6, dist = 385000.56 + sr / 1000;
+    var eps = (23.439291 - 0.0130042 * T) * RAD, lo = lon * RAD, la = lat * RAD;
+    var ra = Math.atan2(Math.sin(lo) * Math.cos(eps) - Math.tan(la) * Math.sin(eps), Math.cos(lo)) / RAD;
+    var dec = Math.asin(Math.sin(la) * Math.cos(eps) + Math.cos(la) * Math.sin(eps) * Math.sin(lo)) / RAD;
+    return { lon: lon, lat: lat, dist: dist, ra: mnorm(ra), dec: dec };
+  }
+  // Sun: apparent ecliptic longitude (deg) and distance (km).
+  function sunPos(T) {
+    var L0 = 280.46646 + 36000.76983 * T, M = (357.52911 + 35999.05029 * T) * RAD;
+    var C = (1.914602 - 0.004817 * T) * Math.sin(M) + 0.019993 * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
+    var e = 0.016708634 - 0.000042037 * T, nu = M + C * RAD;
+    return { lon: mnorm(L0 + C - 0.00569), dist: 149597870.7 * 1.000001018 * (1 - e * e) / (1 + e * Math.cos(nu)) };
+  }
+  function phaseName(elong) {
+    var W = 6.5; // ≈ half a day either side of the exact instant
+    if (elong < W || elong > 360 - W) return "New Moon";
+    if (Math.abs(elong - 90) < W) return "First Quarter";
+    if (Math.abs(elong - 180) < W) return "Full Moon";
+    if (Math.abs(elong - 270) < W) return "Last Quarter";
+    return elong < 90 ? "Waxing Crescent" : elong < 180 ? "Waxing Gibbous" : elong < 270 ? "Waning Gibbous" : "Waning Crescent";
+  }
+  // The Moon at an instant: illuminated fraction (true phase angle), waxing, name, distance.
+  function moonInfo(date) {
+    var T = (jdOf(date) - 2451545) / 36525, m = moonPos(T), s = sunPos(T);
+    var elong = mnorm(m.lon - s.lon);
+    var psi = Math.acos(Math.cos(m.lat * RAD) * Math.cos((m.lon - s.lon) * RAD)); // geocentric elongation
+    var i = Math.atan2(s.dist * Math.sin(psi), m.dist - s.dist * Math.cos(psi));   // phase angle
+    return { illum: (1 + Math.cos(i)) / 2, waxing: elong < 180, elong: elong, name: phaseName(elong), dist: m.dist, pos: m };
+  }
+  // Geocentric altitude (deg) of the Moon from lat/lon at an instant, minus the rise/set
+  // threshold h0 = 0.7275·parallax − 34′ (Meeus ch. 15) — zero at moonrise/moonset.
+  function moonAltRel(ms, lat, lon) {
+    var jd = ms / 86400000 + 2440587.5, T = (jd - 2451545) / 36525, m = moonPos(T);
+    var gmst = mnorm(280.46061837 + 360.98564736629 * (jd - 2451545) + 0.000387933 * T * T);
+    var H = (gmst + lon - m.ra) * RAD, la = lat * RAD, de = m.dec * RAD;
+    var alt = Math.asin(Math.sin(la) * Math.sin(de) + Math.cos(la) * Math.cos(de) * Math.cos(H)) / RAD;
+    var par = Math.asin(6378.14 / m.dist) / RAD;
+    return alt - (0.7275 * par - 0.5667);
+  }
+  // Moonrise / moonset (ms) within [dayStart, dayStart+24h): scan in 10-minute steps,
+  // then bisect each crossing. Either can be null (the Moon skips a rise or set on some days).
+  function moonRiseSet(dayStart, lat, lon) {
+    var step = 600000, out = { rise: null, set: null }, prev = moonAltRel(dayStart, lat, lon), t, cur, a, b, mid, i, v;
+    for (t = dayStart + step; t <= dayStart + 86400000; t += step) {
+      cur = moonAltRel(t, lat, lon);
+      if ((prev < 0) !== (cur < 0)) {
+        a = t - step; b = t;
+        for (i = 0; i < 10; i++) { mid = (a + b) / 2; v = moonAltRel(mid, lat, lon); if ((v < 0) === (prev < 0)) a = mid; else b = mid; }
+        if (prev < 0) { if (out.rise == null) out.rise = (a + b) / 2; } else if (out.set == null) out.set = (a + b) / 2;
+      }
+      prev = cur;
+    }
+    return out;
+  }
+  // Wall-clock parts of an instant in zone tz (browser zone when tz is unknown).
+  function tzParts(instant, tz) {
+    var p = {};
+    try { new Intl.DateTimeFormat("en-US", { timeZone: tz || undefined, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(instant).forEach(function (x) { p[x.type] = x.value; }); }
+    catch (e) { var d = instant; return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), mi: d.getMinutes() }; }
+    return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24, mi: +p.minute };
+  }
+  // The instant (ms) of local midnight starting calendar day y-m-d in zone tz.
+  function localMidnight(y, m, d, tz) {
+    var guess = Date.UTC(y, m - 1, d), off = tzOffsetMin(new Date(guess), tz);
+    if (off == null) off = -new Date(guess).getTimezoneOffset();
+    var t = guess - off * 60000, off2 = tzOffsetMin(new Date(t), tz);
+    if (off2 != null && off2 !== off) t = guess - off2 * 60000; // the midnight itself sits past a clock change
+    return t;
+  }
+  function dayKey(p) { return p.y + "-" + p.m + "-" + p.d; }
+  // A shaded Moon: dark disc, lit portion bounded by the terminator, faint maria/craters
+  // so it reads as a body rather than a symbol.
+  function bigMoonSVG(illum, waxing, size) {
+    var R = 46, c = 50, rx = (R * Math.abs(1 - 2 * illum)).toFixed(2);
+    var limb = waxing ? 1 : 0, term = illum <= 0.5 ? (waxing ? 0 : 1) : (waxing ? 1 : 0);
+    var lit = "M" + c + "," + (c - R) + " A" + R + "," + R + " 0 0 " + limb + " " + c + "," + (c + R) + " A" + rx + "," + R + " 0 0 " + term + " " + c + "," + (c - R) + " Z";
+    var craters = [[36,34,9],[63,42,6],[47,61,11],[68,70,5],[30,56,4],[58,24,4],[41,76,5],[71,55,3],[26,44,3],[52,45,3.5],[64,82,3]];
+    var cr = craters.map(function (k) { return '<circle cx="' + k[0] + '" cy="' + k[1] + '" r="' + k[2] + '"/>'; }).join("");
+    return '<svg class="mo-moon" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' +
+      '<defs><radialGradient id="moLit" cx="42%" cy="38%" r="70%"><stop offset="0" stop-color="#f2f4f7"/><stop offset="1" stop-color="#b9c1cc"/></radialGradient>' +
+      '<radialGradient id="moDark" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#262b34"/><stop offset="1" stop-color="#15181f"/></radialGradient>' +
+      '<clipPath id="moClip"><circle cx="50" cy="50" r="46"/></clipPath></defs>' +
+      '<circle cx="50" cy="50" r="46" fill="url(#moDark)"/>' +
+      (illum > 0.002 ? '<path d="' + lit + '" fill="url(#moLit)"/>' : '') +
+      '<g clip-path="url(#moClip)" fill="rgba(0,0,0,0.085)" stroke="rgba(255,255,255,0.045)" stroke-width="0.7">' + cr + '</g>' +
+      '<circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>';
+  }
+  function fmtKm(km) { return units === "imperial" ? Math.round(km * 0.621371).toLocaleString() + " mi" : Math.round(km).toLocaleString() + " km"; }
+  // Panel state: the selected instant, the scrubber's start, and the calendar month.
+  var moonUI = null, MO_PX = 7, MO_DAYS = 7;
+  function fillMoonModal() {
+    var loc = lastLoc || { lat: 51.05, lon: -114.07 }, tz = lastTz || null, now = new Date();
+    var p0 = tzParts(now, tz), todayMid = localMidnight(p0.y, p0.m, p0.d, tz);
+    moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - 3 * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
+    els.moonBody.innerHTML =
+      '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div></div>' +
+      '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
+      '<div class="mo-stats" id="moStats"></div>' +
+      '<h3 class="mo-h">Calendar</h3><div class="mo-cal" id="moCal"></div>' +
+      '<h3 class="mo-h">About illumination</h3><div class="mo-about">The share of the Moon’s Earth-facing side that is lit by the Sun — 100% at full moon, 0% at new. It is pure geometry: it doesn’t depend on cloud, or on whether the Moon is above your horizon, so it can be well above zero on a night you can’t see the Moon at all.</div>' +
+      '<h3 class="mo-h">About the Moon’s distance</h3><div class="mo-about">The Moon’s orbit is an ellipse, so its distance from Earth changes through the month — from about ' + fmtKm(356500) + ' at its closest (perigee) to ' + fmtKm(406700) + ' at its farthest (apogee), measured centre to centre. A full moon near perigee looks a little larger and brighter: a “supermoon”.</div>' +
+      '<div class="air-foot">Computed on-device from the Moon’s and Sun’s positions (Meeus, <i>Astronomical Algorithms</i>). Rise and set times are for this place.</div>';
+    buildMoonTrack();
+    renderMoonCal();
+    setMoonSel(now.getTime(), true);
+    var sc = $("moScroll");
+    sc.addEventListener("scroll", onMoonScroll);
+    // Desktop: click-drag to pan (touch pans natively via touch-action: pan-x).
+    var down = false, sx = 0, sl = 0;
+    sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
+    sc.addEventListener("pointermove", function (e) { if (down) sc.scrollLeft = sl - (e.clientX - sx); });
+    var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
+    $("moCal").addEventListener("click", onMoonCalClick);
+  }
+  // The hour ticks: a tall tick at each local midnight, day labels centred under each day.
+  function buildMoonTrack() {
+    var U = moonUI, n = MO_DAYS * 24, html = "", i, t, p, cls, lab;
+    for (i = 0; i <= n; i++) {
+      t = U.t0 + i * 3600000; p = tzParts(new Date(t), U.tz);
+      cls = p.h === 0 ? "mt mt-day" : (p.h % 6 === 0 ? "mt mt-6" : "mt");
+      html += '<i class="' + cls + '" style="left:' + (i * MO_PX) + 'px"></i>';
+      if (p.h === 12) {
+        lab = localMidnight(p.y, p.m, p.d, U.tz) === U.todayMid ? "Today" : new Date(t).toLocaleDateString([], { weekday: "short", timeZone: U.tz || undefined });
+        html += '<span class="ml' + (lab === "Today" ? " ml-today" : "") + '" style="left:' + (i * MO_PX) + 'px">' + lab + '</span>';
+      }
+    }
+    var tr = $("moTrack"); tr.style.width = (n * MO_PX) + "px"; tr.innerHTML = html;
+  }
+  function moonScrollFor(ms) { return Math.round((ms - moonUI.t0) / 3600000) * MO_PX; }
+  var moScrollRaf = 0, moSettle = null;
+  function onMoonScroll() {
+    if (moScrollRaf) return;
+    moScrollRaf = requestAnimationFrame(function () {
+      moScrollRaf = 0;
+      var sc = $("moScroll"); if (!sc || !moonUI) return;
+      var h = Math.round(sc.scrollLeft / MO_PX);
+      setMoonSel(moonUI.t0 + Math.max(0, Math.min(MO_DAYS * 24, h)) * 3600000, false);
+      clearTimeout(moSettle);
+      moSettle = setTimeout(function () { var sc2 = $("moScroll"); if (sc2) sc2.scrollTo({ left: moonScrollFor(moonUI.sel), behavior: "smooth" }); }, 140);
     });
   }
-  // Build the moon-phases panel: the next ~6 months of new and full moons.
-  function fillMoonModal() {
-    var now = new Date();
-    var list = upcomingMoons(now, 6);
-    var tz = lastTz || undefined;
-    var thisYear = now.getFullYear();
-    var rows = list.map(function (m, i) {
-      var full = m.type === "Full Moon";
-      var opts = { weekday: "short", month: "short", day: "numeric" };
-      if (m.date.getFullYear() !== thisYear) opts.year = "numeric";
-      opts.timeZone = tz;
-      var when = m.date.toLocaleDateString([], opts);
-      return '<div class="moon-row' + (i === 0 ? " soon" : "") + '">' +
-        moonSVG(full ? 1 : 0, true) +
-        '<span class="mn">' + m.type + '</span>' +
-        '<span class="md">' + when + '</span></div>';
+  // Select an instant (whole hours): update the disc, headline, stats; optionally scroll to it.
+  function setMoonSel(ms, scroll) {
+    var U = moonUI; if (!U) return;
+    U.sel = Math.round(ms / 3600000) * 3600000;
+    var d = new Date(U.sel), mi = moonInfo(d), tz = U.tz || undefined;
+    $("moDisc").innerHTML = bigMoonSVG(mi.illum, mi.waxing, 150);
+    $("moPhase").textContent = mi.name;
+    $("moWhen").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz }) + " at " + d.toLocaleTimeString([], { hour: "numeric", timeZone: tz });
+    // rise/set for the selected local day (cached per day)
+    var p = tzParts(d, U.tz), key = dayKey(p), dayStart = localMidnight(p.y, p.m, p.d, U.tz);
+    if (!U.rs[key]) U.rs[key] = moonRiseSet(dayStart, U.loc.lat, U.loc.lon);
+    var rs = U.rs[key], ev = [];
+    if (rs.rise != null) ev.push({ k: "Moonrise", t: rs.rise });
+    if (rs.set != null) ev.push({ k: "Moonset", t: rs.set });
+    ev.sort(function (a, b) { return a.t - b.t; }); // in the order they happen that day (like a clock)
+    var fullD = nextFullMoon(d), pf = tzParts(fullD, U.tz), daysFull = Math.round((localMidnight(pf.y, pf.m, pf.d, U.tz) - dayStart) / 86400000);
+    var newD = moonState(d).nextNew, pn = tzParts(newD, U.tz), daysNew = Math.round((localMidnight(pn.y, pn.m, pn.d, U.tz) - dayStart) / 86400000);
+    var dayWord = function (n) { return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n + " days"; };
+    var rows = [["Illumination", Math.round(mi.illum * 100) + "%"]];
+    ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz)]); });
+    if (!ev.length) rows.push(["Moonrise / set", "none today"]);
+    rows.push(["Next full moon", dayWord(daysFull)], ["Next new moon", dayWord(daysNew)], ["Distance", fmtKm(mi.dist)]);
+    $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
+    if (scroll) { var sc = $("moScroll"); if (sc) requestAnimationFrame(function () { sc.scrollLeft = moonScrollFor(U.sel); }); }
+    // keep the calendar's selected-day ring in step
+    var cal = $("moCal"); if (cal) { cal.querySelectorAll(".mc-d.sel").forEach(function (x) { x.classList.remove("sel"); }); var c = cal.querySelector('.mc-d[data-day="' + key + '"]'); if (c) c.classList.add("sel"); }
+  }
+  // Month calendar: a phase icon per day (at local noon), today tinted, the scrubbed day ringed,
+  // and the month's new/full moon dates listed beneath.
+  function renderMoonCal() {
+    var U = moonUI, y = U.calY, m = U.calM, tz = U.tz;
+    var first = localMidnight(y, m, 1, tz), dow = tzParts(new Date(first + 43200000), tz), firstDow = new Date(first + 43200000).toLocaleDateString("en-US", { weekday: "short", timeZone: tz || undefined });
+    var dowIdx = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(firstDow);
+    var days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    var pSel = tzParts(new Date(U.sel), tz), selKey = dayKey(pSel), pTod = tzParts(new Date(), tz), todKey = dayKey(pTod);
+    var cells = "", i;
+    for (i = 0; i < dowIdx; i++) cells += '<span class="mc-d empty"></span>';
+    for (i = 1; i <= days; i++) {
+      var noon = localMidnight(y, m, i, tz) + 43200000, mi = moonInfo(new Date(noon)), key = y + "-" + m + "-" + i;
+      cells += '<button type="button" class="mc-d' + (key === todKey ? " today" : "") + (key === selKey ? " sel" : "") + '" data-day="' + key + '" data-ms="' + noon + '">' +
+        '<span class="mc-n">' + i + '</span>' + moonSVG(mi.illum, mi.waxing, 18) + '</button>';
+    }
+    // new / full moons falling in this month
+    var mStart = first, mEnd = localMidnight(y, m, days, tz) + 86400000, ev = [], k0 = Math.round((y + (m - 1) / 12 - 2000) * 12.3685) - 1, k;
+    for (k = k0; k <= k0 + 2; k++) {
+      var nm = (newMoonJDE(k) - 2440587.5) * 86400000, fm = (fullMoonJDE(k + 0.5) - 2440587.5) * 86400000;
+      if (nm >= mStart && nm < mEnd) ev.push(["New Moon", nm, 0]);
+      if (fm >= mStart && fm < mEnd) ev.push(["Full Moon", fm, 1]);
+    }
+    ev.sort(function (a, b) { return a[1] - b[1]; });
+    var evHtml = ev.map(function (e) {
+      return '<div class="mo-row mo-ev" data-ms="' + e[1] + '">' + moonSVG(e[2], true, 16) + '<span>' + e[0] + '</span><b>' +
+        new Date(e[1]).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: tz || undefined }) + '</b></div>';
     }).join("");
-    els.moonBody.innerHTML =
-      '<p class="moon-note">The next six months of new and full moons.</p>' +
-      '<div class="moon-list">' + rows + '</div>' +
-      '<div class="air-foot">Phase times computed on-device (Meeus astronomical algorithms).</div>';
+    var title = new Date(first + 43200000).toLocaleDateString([], { month: "long", year: "numeric", timeZone: tz || undefined });
+    $("moCal").innerHTML =
+      '<div class="mc-head"><button type="button" class="mc-nav" data-nav="-1" aria-label="Previous month">‹</button><span class="mc-title">' + title + '</span><button type="button" class="mc-nav" data-nav="1" aria-label="Next month">›</button></div>' +
+      '<div class="mc-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>' +
+      '<div class="mc-grid">' + cells + '</div>' +
+      (evHtml ? '<div class="mc-ev">' + evHtml + '</div>' : '');
+  }
+  function onMoonCalClick(e) {
+    var U = moonUI, nav = e.target.closest(".mc-nav"), day = e.target.closest(".mc-d[data-ms]"), ev = e.target.closest(".mo-ev[data-ms]");
+    if (nav) { U.calM += +nav.dataset.nav; if (U.calM < 1) { U.calM = 12; U.calY--; } if (U.calM > 12) { U.calM = 1; U.calY++; } renderMoonCal(); return; }
+    var ms = day ? +day.dataset.ms : ev ? +ev.dataset.ms : null;
+    if (ms == null) return;
+    // scrub to that day — rebuilding the strip around it if it's outside the current week
+    if (ms < U.t0 || ms > U.t0 + MO_DAYS * 86400000) {
+      var p = tzParts(new Date(ms), U.tz); U.t0 = localMidnight(p.y, p.m, p.d, U.tz) - 3 * 86400000; buildMoonTrack();
+    }
+    setMoonSel(ms, false);
+    var sc = $("moScroll"); if (sc) sc.scrollTo({ left: moonScrollFor(U.sel), behavior: "smooth" });
+    els.moonBody.closest(".modal").scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // 16-point compass label from a wind direction in degrees (the direction the

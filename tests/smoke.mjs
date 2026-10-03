@@ -164,14 +164,32 @@ async function run() {
   assert(/Moderate/.test(await page.$eval("#airBody .airscale-legend .lg.on", (e) => e.textContent)), "AQHI legend highlights the current band");
   await page.click("#airClose");
   assert(await page.$eval("#airBackdrop", (e) => e.classList.contains("hidden")), "air panel closes");
-  // Moon line taps open a panel listing the next ~6 months of new & full moons.
+  // Moon line taps open the Moon panel: shaded disc, phase, hourly scrubber, stats, calendar.
   assert(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden")), "moon panel hidden by default");
   await page.click("#summary .moon-line");
   assert(!(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "moon panel opens on tap");
-  const moonRows = await page.$$eval("#moonBody .moon-row", (e) => e.map((x) => x.textContent));
-  assert(moonRows.length >= 10 && moonRows.length <= 14, `~6 months of phases, got ${moonRows.length}`);
-  assert(moonRows.some((t) => /New Moon/.test(t)) && moonRows.some((t) => /Full Moon/.test(t)), "lists both new and full moons");
-  assert(await page.$("#moonBody .moon-row.soon"), "the next phase is highlighted");
+  assert(await page.$("#moDisc .mo-moon"), "moon disc rendered");
+  const phase = await page.$eval("#moPhase", (e) => e.textContent);
+  assert(/^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent)$/.test(phase), `phase name, got "${phase}"`);
+  const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
+  assert(stats.some((t) => /^Illumination\d+%$/.test(t)), "illumination row");
+  assert(stats.some((t) => /^(Moonrise|Moonset)\d/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
+  assert(stats.some((t) => /^Next full moon(Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row");
+  assert(stats.some((t) => /^Distance[\d,]+ (km|mi)$/.test(t)), "distance row");
+  assert((await page.$$eval("#moTrack .mt-day", (e) => e.length)) >= 7, "scrubber marks each midnight");
+  const calDays = await page.$$eval("#moCal .mc-d[data-ms]", (e) => e.length);
+  assert(calDays >= 28 && calDays <= 31, `calendar has a cell per day, got ${calDays}`);
+  assert(await page.$("#moCal .mc-d.today"), "today highlighted in the calendar");
+  const evs = await page.$$eval("#moCal .mo-ev", (e) => e.map((x) => x.textContent));
+  assert(evs.some((t) => /New Moon/.test(t)) || evs.some((t) => /Full Moon/.test(t)), "month lists its new/full moons");
+  // scrubbing by scroll changes the selected hour; the calendar's next-month arrow works
+  const when0 = await page.$eval("#moWhen", (e) => e.textContent);
+  await page.$eval("#moScroll", (e) => { e.scrollLeft += 7 * 24 * 2; });
+  await page.waitForTimeout(250);
+  assert((await page.$eval("#moWhen", (e) => e.textContent)) !== when0, "scrubbing moves the selected time");
+  const title0 = await page.$eval("#moCal .mc-title", (e) => e.textContent);
+  await page.click('#moCal .mc-nav[data-nav="1"]');
+  assert((await page.$eval("#moCal .mc-title", (e) => e.textContent)) !== title0, "calendar steps to the next month");
   await page.click("#moonClose");
   assert(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden")), "moon panel closes");
 
