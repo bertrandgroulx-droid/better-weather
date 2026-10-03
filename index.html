@@ -1757,6 +1757,114 @@
       '<circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>';
   }
   function fmtKm(km) { return units === "imperial" ? Math.round(km * 0.621371).toLocaleString() + " mi" : Math.round(km).toLocaleString() + " km"; }
+
+  // ---- photographic Moon: a real sphere rendered from NASA's LRO colour map ----
+  // moon-texture.jpg is the LROC colour map from NASA SVS's CGI Moon Kit (public domain),
+  // an equirectangular map centred on the prime meridian. For each pixel of the disc we
+  // take the sphere normal, apply the Moon's optical libration (Meeus ch. 53) so the face
+  // on show is the one actually turned toward Earth that hour — the "rotate and tilt" —
+  // sample the map, and light it per pixel from the true Sun direction (phase angle +
+  // bright-limb position angle, ch. 48), with a trace of earthshine on the night side.
+  // If the texture isn't available the drawn SVG disc stands in.
+  var moonTex = null, moonTexState = "idle"; // idle | loading | ready | failed
+  function loadMoonTexture(onReady) {
+    if (moonTexState === "ready") { onReady(); return; }
+    if (moonTexState === "failed") return;
+    if (moonTexState === "loading") { moonTexWaiters.push(onReady); return; }
+    moonTexState = "loading"; moonTexWaiters = [onReady];
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        var g = c.getContext("2d"); g.drawImage(img, 0, 0);
+        moonTex = { w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data };
+        moonTexState = "ready";
+      } catch (e) { moonTexState = "failed"; return; } // e.g. a tainted canvas on file://
+      moonTexWaiters.forEach(function (f) { f(); }); moonTexWaiters = [];
+    };
+    img.onerror = function () { moonTexState = "failed"; };
+    img.src = "moon-texture.jpg";
+  }
+  var moonTexWaiters = [];
+  // Optical libration (selenographic lon/lat of the sub-Earth point) and the position angle
+  // of the Moon's axis, degrees. Meeus ch. 53, without the small physical-libration terms.
+  function moonLibration(T, m) {
+    var I = 1.54242 * RAD;
+    var Om = mnorm(125.0445479 - 1934.1362891 * T + 0.0020754 * T * T);
+    var F = mnorm(93.2720950 + 483202.0175233 * T - 0.0036539 * T * T);
+    var W = (m.lon - Om) * RAD, b = m.lat * RAD;
+    var A = Math.atan2(Math.sin(W) * Math.cos(b) * Math.cos(I) - Math.sin(b) * Math.sin(I), Math.cos(W) * Math.cos(b));
+    var l = ((A / RAD - F) % 360 + 540) % 360 - 180;
+    var bp = Math.asin(-Math.sin(W) * Math.cos(b) * Math.sin(I) - Math.sin(b) * Math.cos(I)) / RAD;
+    // position angle of the axis: tan P = (V·cos b' ) with V = Ω + Δψ + σ/sin I … (ch. 53.4, simplified)
+    var eps = (23.439291 - 0.0130042 * T) * RAD, V = Om * RAD;
+    var X = Math.sin(I) * Math.sin(V), Y = Math.sin(I) * Math.cos(V) * Math.cos(eps) - Math.cos(I) * Math.sin(eps);
+    var om = Math.atan2(X, Y), ra = m.ra * RAD;
+    var P = Math.asin(Math.sqrt(X * X + Y * Y) * Math.cos(ra - om) / Math.cos(bp * RAD)) / RAD;
+    return { l: l, b: bp, P: P };
+  }
+  // Position angle of the bright limb (from north through east), Meeus 48.5.
+  function brightLimbAngle(T, m) {
+    var s = sunPos(T), eps = (23.439291 - 0.0130042 * T) * RAD, lo = s.lon * RAD;
+    var ras = Math.atan2(Math.sin(lo) * Math.cos(eps), Math.cos(lo)), decs = Math.asin(Math.sin(eps) * Math.sin(lo));
+    var ram = m.ra * RAD, decm = m.dec * RAD;
+    return Math.atan2(Math.cos(decs) * Math.sin(ras - ram), Math.sin(decs) * Math.cos(decm) - Math.cos(decs) * Math.sin(decm) * Math.cos(ras - ram));
+  }
+  function drawMoonCanvas(cv, date, illum) {
+    var T = (jdOf(date) - 2451545) / 36525, m = moonPos(T), lib = moonLibration(T, m), chi = brightLimbAngle(T, m);
+    var i = Math.acos(2 * illum - 1); // phase angle from the illuminated fraction
+    // Sun direction in the screen frame (x right, y down, z toward the viewer): the bright
+    // limb lies at position angle χ from north through east, and east is screen-left.
+    var ux = -Math.sin(chi), uy = -Math.cos(chi), sx = ux * Math.sin(i), sy = uy * Math.sin(i), sz = Math.cos(i);
+    var S = cv.width, R = S / 2 - 1, cx = S / 2, cy = S / 2, g = cv.getContext("2d"), out = g.createImageData(S, S), o = out.data;
+    var tex = moonTex, tw = tex.w, th = tex.h, td = tex.data;
+    var cP = Math.cos(-lib.P * RAD), sP = Math.sin(-lib.P * RAD), cb = Math.cos(lib.b * RAD), sb = Math.sin(lib.b * RAD), l0 = lib.l * RAD;
+    for (var py = 0; py < S; py++) for (var px = 0; px < S; px++) {
+      var nx = (px + 0.5 - cx) / R, ny = -(py + 0.5 - cy) / R, rr = nx * nx + ny * ny, k = (py * S + px) * 4;
+      if (rr > 1) { o[k + 3] = 0; continue; }
+      var nz = Math.sqrt(1 - rr);
+      // lighting (screen frame; canvas y is down so flip ny back)
+      var lam = nx * sx + (-ny) * sy + nz * sz, shade = Math.max(0, lam);
+      // The lunar surface is strongly back-scattering (the full moon looks flat, not like a
+      // shaded ball), so flatten Lambert's falloff; plus a trace of earthshine on the night side.
+      shade = 0.045 + 0.955 * Math.pow(shade, 0.45);
+      // undo the axis position angle, tilt by the libration latitude, spin by its longitude
+      var x1 = nx * cP - ny * sP, y1 = nx * sP + ny * cP, z1 = nz;
+      var y2 = y1 * cb - z1 * sb, z2 = y1 * sb + z1 * cb, x2 = x1;
+      var lon = Math.atan2(x2, z2) + l0, lat = Math.asin(Math.max(-1, Math.min(1, y2)));
+      var u = ((lon / (2 * Math.PI) + 0.5) % 1 + 1) % 1, v = Math.max(0, Math.min(0.99999, 0.5 - lat / Math.PI));
+      // bilinear sample (wrapping in longitude) so the map isn't blocky when magnified
+      var fx = u * tw - 0.5, fy = v * th - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0;
+      var xa = ((x0 % tw) + tw) % tw, xb = (xa + 1) % tw, ya = Math.max(0, Math.min(th - 1, y0)), yb = Math.min(th - 1, ya + 1);
+      var i00 = (ya * tw + xa) * 4, i10 = (ya * tw + xb) * 4, i01 = (yb * tw + xa) * 4, i11 = (yb * tw + xb) * 4;
+      var w00 = (1 - ax) * (1 - ay), w10 = ax * (1 - ay), w01 = (1 - ax) * ay, w11 = ax * ay;
+      // soft limb: fade the last ~1.5px so the edge isn't jagged
+      var edge = Math.min(1, (1 - Math.sqrt(rr)) * R / 1.5);
+      o[k]     = (td[i00] * w00 + td[i10] * w10 + td[i01] * w01 + td[i11] * w11) * shade;
+      o[k + 1] = (td[i00 + 1] * w00 + td[i10 + 1] * w10 + td[i01 + 1] * w01 + td[i11 + 1] * w11) * shade;
+      o[k + 2] = (td[i00 + 2] * w00 + td[i10 + 2] * w10 + td[i01 + 2] * w01 + td[i11 + 2] * w11) * shade;
+      o[k + 3] = 255 * edge;
+    }
+    g.putImageData(out, 0, 0);
+  }
+  // Render into #moDisc: the photographic sphere when the texture is ready, else the SVG.
+  function renderMoonDisc(date, illum, waxing, size) {
+    var host = $("moDisc"); if (!host) return;
+    if (moonTexState !== "ready") {
+      host.innerHTML = bigMoonSVG(illum, waxing, size);
+      loadMoonTexture(function () { if (moonUI) renderMoonDisc(new Date(moonUI.sel), moonInfo(new Date(moonUI.sel)).illum, waxing, size); });
+      return;
+    }
+    var cv = host.querySelector("canvas");
+    if (!cv) {
+      host.innerHTML = '<canvas class="mo-moon mo-photo" aria-hidden="true"></canvas>'; cv = host.querySelector("canvas");
+      var cr = $("moCredit"); if (cr) cr.textContent = " Moon surface: NASA/GSFC Scientific Visualization Studio, Lunar Reconnaissance Orbiter.";
+    }
+    var px = Math.round(size * Math.min(2, window.devicePixelRatio || 1));
+    if (cv.width !== px || cv.height !== px) { cv.width = px; cv.height = px; }
+    cv.style.width = size + "px"; cv.style.height = size + "px"; // CSS size is independent of the pixel buffer
+    drawMoonCanvas(cv, date, illum);
+  }
   // Panel state: the selected instant, the scrubber's start, and the calendar month.
   var moonUI = null, MO_PX = 7, MO_DAYS = 7;
   function fillMoonModal() {
@@ -1771,7 +1879,7 @@
       '<h3 class="mo-h">Calendar</h3><div class="mo-cal" id="moCal"></div>' +
       '<h3 class="mo-h">About illumination</h3><div class="mo-about">How much of the Moon’s face is in sunlight: 0% at new, 100% at full. Geometry only — cloud and the horizon don’t enter into it.</div>' +
       '<h3 class="mo-h">About distance</h3><div class="mo-about">Centre to centre. The orbit is oval, so each month it swings between about ' + fmtKm(356500) + ' (perigee) and ' + fmtKm(406700) + ' (apogee); a full moon at the near end is a “supermoon”.</div>' +
-      '<div class="air-foot">Computed on-device from the Moon’s and Sun’s positions (Meeus, <i>Astronomical Algorithms</i>). Rise and set times are for this place.</div>';
+      '<div class="air-foot">Computed on-device from the Moon’s and Sun’s positions (Meeus, <i>Astronomical Algorithms</i>). Rise and set times are for this place.<span id="moCredit"></span></div>';
     buildMoonTrack();
     renderMoonCal();
     setMoonSel(now.getTime(), true);
@@ -1823,7 +1931,7 @@
     var U = moonUI; if (!U) return;
     U.sel = Math.round(ms / 3600000) * 3600000;
     var d = new Date(U.sel), mi = moonInfo(d), tz = U.tz || undefined;
-    $("moDisc").innerHTML = bigMoonSVG(mi.illum, mi.waxing, 150);
+    renderMoonDisc(d, mi.illum, mi.waxing, 150);
     $("moPhase").textContent = mi.name;
     $("moWhen").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz }) + " at " + d.toLocaleTimeString([], { hour: "numeric", timeZone: tz });
     // rise/set for the selected local day (cached per day)
