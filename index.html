@@ -361,7 +361,11 @@
   .mo-row .mo-dt { font-size: 0.78em; opacity: 0.65; font-weight: 400; margin-right: 2px; }
   /* distance scale: perigee at the left end, apogee at the right, today's value marked */
   .mo-dist { padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); }
-  .mo-dist .md-head { font-weight: 600; font-size: 0.95rem; }
+  .mo-dist .md-head { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
+  .mo-dist .md-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .mo-dist .md-seg button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 600;
+    padding: 3px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mo-dist .md-seg button.on { background: var(--accent); color: #0b1f3a; }
   .mo-dist .md-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); margin: 30px 7px 8px; }
   .mo-dist .md-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, rgba(255,214,102,0.35), var(--accent)); }
   .mo-dist .md-mark { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0e2440; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(255,214,102,0.35); }
@@ -1867,6 +1871,7 @@
   }
   // Panel state: the selected instant, the scrubber's start, and the calendar month.
   var moonUI = null, MO_PX = 7, MO_DAYS = 7;
+  var moonDistMode = localStorage.getItem("bw-moon-dist") || "cc"; // "cc" centre to centre | "ss" surface to surface
   function fillMoonModal() {
     var loc = lastLoc || { lat: 51.05, lon: -114.07 }, tz = lastTz || null, now = new Date();
     var p0 = tzParts(now, tz), todayMid = localMidnight(p0.y, p0.m, p0.d, tz);
@@ -1878,7 +1883,7 @@
       '<div class="mo-stats" id="moStats"></div>' +
       '<h3 class="mo-h">Calendar</h3><div class="mo-cal" id="moCal"></div>' +
       '<h3 class="mo-h">About illumination</h3><div class="mo-about">How much of the Moon’s face is in sunlight: 0% at new, 100% at full. Geometry only — cloud and the horizon don’t enter into it.</div>' +
-      '<h3 class="mo-h">About distance</h3><div class="mo-about">Centre to centre. The orbit is oval, so each month it swings between about ' + fmtKm(356500) + ' (perigee) and ' + fmtKm(406700) + ' (apogee); a full moon at the near end is a “supermoon”.</div>' +
+      '<h3 class="mo-h">About distance</h3><div class="mo-about">The orbit is oval, so each month the Moon swings between about ' + fmtKm(356500) + ' (perigee) and ' + fmtKm(406700) + ' (apogee), centre to centre; a full moon at the near end is a “supermoon”. “Surface” on the scale measures from the ground here to the ground there — about ' + fmtKm(8108) + ' less.</div>' +
       '<div class="air-foot">Computed on-device from the Moon’s and Sun’s positions (Meeus, <i>Astronomical Algorithms</i>). Rise and set times are for this place.<span id="moCredit"></span></div>';
     buildMoonTrack();
     renderMoonCal();
@@ -1892,6 +1897,12 @@
     var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     $("moCal").addEventListener("click", onMoonCalClick);
     $("moNow").addEventListener("click", moonGoNow);
+    $("moStats").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-dm]"); if (!b || b.dataset.dm === moonDistMode) return;
+      moonDistMode = b.dataset.dm;
+      try { localStorage.setItem("bw-moon-dist", moonDistMode); } catch (_) {}
+      setMoonSel(moonUI.sel, false);
+    });
   }
   function moonGoNow() {
     var U = moonUI, now = Date.now(); if (!U) return;
@@ -1952,11 +1963,16 @@
     ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz)]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
     rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)]);
-    // Distance as a scale from perigee to apogee with a marker (and the figure) at today's value
-    var PERI = 356500, APO = 406700, f = Math.max(0, Math.min(1, (mi.dist - PERI) / (APO - PERI))), pct = (f * 100).toFixed(1);
+    // Distance as a scale from perigee to apogee with a marker (and the figure) at today's
+    // value. Centre to centre by default; "Surface" subtracts both radii (Earth 6371 km +
+    // Moon 1737 km), which moves the ends of the scale as well as the marker's figure.
+    var ss = moonDistMode === "ss", off = ss ? 6371 + 1737.4 : 0;
+    var PERI = 356500 - off, APO = 406700 - off, dist = mi.dist - off;
+    var f = Math.max(0, Math.min(1, (dist - PERI) / (APO - PERI))), pct = (f * 100).toFixed(1);
     var lblPct = (Math.max(0.13, Math.min(0.87, f)) * 100).toFixed(1); // keep the floating figure inside the bar
-    var distHtml = '<div class="mo-dist"><div class="md-head">Distance</div>' +
-      '<div class="md-bar"><i class="md-fill" style="width:' + pct + '%"></i><i class="md-mark" style="left:' + pct + '%"></i><span class="md-val" style="left:' + lblPct + '%">' + fmtKm(mi.dist) + '</span></div>' +
+    var distHtml = '<div class="mo-dist"><div class="md-head"><span>Distance</span>' +
+      '<div class="md-seg" role="group" aria-label="Measure distance"><button type="button" data-dm="cc"' + (ss ? '' : ' class="on"') + '>Centre</button><button type="button" data-dm="ss"' + (ss ? ' class="on"' : '') + '>Surface</button></div></div>' +
+      '<div class="md-bar"><i class="md-fill" style="width:' + pct + '%"></i><i class="md-mark" style="left:' + pct + '%"></i><span class="md-val" style="left:' + lblPct + '%">' + fmtKm(dist) + '</span></div>' +
       '<div class="md-ends"><span>' + fmtKm(PERI) + '<small>closest · perigee</small></span><span>' + fmtKm(APO) + '<small>farthest · apogee</small></span></div></div>';
     $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("") + distHtml;
     // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
