@@ -1758,8 +1758,8 @@
       '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
       '<div class="mo-stats" id="moStats"></div>' +
       '<h3 class="mo-h">Calendar</h3><div class="mo-cal" id="moCal"></div>' +
-      '<h3 class="mo-h">About illumination</h3><div class="mo-about">The share of the Moon’s Earth-facing side that is lit by the Sun — 100% at full moon, 0% at new. It is pure geometry: it doesn’t depend on cloud, or on whether the Moon is above your horizon, so it can be well above zero on a night you can’t see the Moon at all.</div>' +
-      '<h3 class="mo-h">About the Moon’s distance</h3><div class="mo-about">The Moon’s orbit is an ellipse, so its distance from Earth changes through the month — from about ' + fmtKm(356500) + ' at its closest (perigee) to ' + fmtKm(406700) + ' at its farthest (apogee), measured centre to centre. A full moon near perigee looks a little larger and brighter: a “supermoon”.</div>' +
+      '<h3 class="mo-h">About illumination</h3><div class="mo-about">How much of the Moon’s face is in sunlight: 0% at new, 100% at full. Geometry only — cloud and the horizon don’t enter into it.</div>' +
+      '<h3 class="mo-h">About distance</h3><div class="mo-about">Centre to centre. The orbit is oval, so each month it swings between about ' + fmtKm(356500) + ' (perigee) and ' + fmtKm(406700) + ' (apogee); a full moon at the near end is a “supermoon”.</div>' +
       '<div class="air-foot">Computed on-device from the Moon’s and Sun’s positions (Meeus, <i>Astronomical Algorithms</i>). Rise and set times are for this place.</div>';
     buildMoonTrack();
     renderMoonCal();
