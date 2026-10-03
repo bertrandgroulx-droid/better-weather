@@ -398,19 +398,17 @@
   /* daylight-over-the-year panel */
   .day-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .day-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
-  /* the live readout for the scrubbed day */
-  .day-readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px;
+  /* the live readout for the scrubbed day: a single column of five fixed rows (date,
+     sunrise, sunset, daylight, trend) so its height never changes while scrubbing */
+  .day-readout { display: flex; flex-direction: column; gap: 3px;
     background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; }
-  .day-readout .rd-date { font-weight: 700; font-size: 0.95rem; flex-basis: 100%; }
-  .day-readout .rd-item { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .day-readout .rd-date { font-weight: 700; font-size: 0.95rem; margin-bottom: 3px; }
+  .day-readout .rd-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.35; }
   .day-readout .rd-item b { color: var(--text); font-weight: 700; }
   .day-readout .rd-len b { color: var(--accent); }
-  /* trend sits on its own row (never interleaves with the sun times) and the
-     readout reserves a fixed height, so scrubbing day-to-day never reflows the
-     chart below it as the trend text changes length */
-  .day-readout .rd-trend { font-size: 0.78rem; flex-basis: 100%; }
-  .day-readout { min-height: 6.1rem; align-content: flex-start; }
+  .day-readout .rd-trend { display: block; font-size: 0.78rem; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .day-chart-wrap { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
   .day-chart { display: block; width: 100%; height: auto; }
   .day-chart text { fill: var(--muted); font-size: 8px; font-family: inherit; }
