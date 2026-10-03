@@ -2751,8 +2751,9 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
-  // A short horizontal flick on the card acts like tapping the arrow in that direction
-  // (swipe left → next, right → previous). The card itself never moves; the matching
+  // A short horizontal flick on the card acts like tapping the arrow you flicked towards
+  // (swipe right → the right/next arrow, left → previous). The card itself never moves,
+  // so this matches the arrows rather than a "drag the page" convention; the matching
   // arrow flashes so it's clear what fired. Vertical gestures are left to scroll the page.
   var sumSX = 0, sumSY = 0, sumT0 = 0, sumMoved = false, sumDown = false;
   els.summary.addEventListener("pointerdown", function (e) {
@@ -2767,7 +2768,7 @@
     if (e.target.closest(".sum-nav")) return; // the arrow's own click handles it
     var dx = e.clientX - sumSX, dy = e.clientY - sumSY;
     if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - sumT0 > 700) return;
-    var dir = dx < 0 ? 1 : -1;
+    var dir = dx > 0 ? 1 : -1; // flick towards the right arrow → next, towards the left → previous
     var arrow = els.summary.querySelector(".sum-nav" + (dir > 0 ? ".next" : ".prev"));
     if (!arrow || arrow.disabled) return; // nothing further that way
     arrow.classList.add("pressed");
