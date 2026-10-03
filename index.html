@@ -157,6 +157,8 @@
        between them flexes with the phone width (space-between). */
     display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
     justify-content: space-between; align-items: center; flex: none;
+    /* a horizontal flick steps between saved places; vertical gestures still scroll the page */
+    touch-action: pan-y; -webkit-user-select: none; user-select: none;
   }
   /* Tall, narrow edge arrows that step through saved places (only rendered when ≥2).
      They sit inside the card's side padding so the two content columns keep their width.
@@ -173,7 +175,7 @@
   .sum-nav.next { right: -4px; }
   .sum-nav svg { width: 10px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .sum-nav:hover { opacity: 0.9; }
-  .sum-nav:active { opacity: 1; color: #a9c8ee; }
+  .sum-nav:active, .sum-nav.pressed { opacity: 1; color: #a9c8ee; } /* .pressed = fired by a swipe */
   .sum-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; opacity: 1; }
   .sum-nav[disabled] { opacity: 0.12; cursor: default; pointer-events: none; }
   .summary.nav-loading .sum-nav:not([disabled]) { opacity: 0.25; } /* the next place is loading */
@@ -2749,9 +2751,34 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
+  // A short horizontal flick on the card acts like tapping the arrow in that direction
+  // (swipe left → next, right → previous). The card itself never moves; the matching
+  // arrow flashes so it's clear what fired. Vertical gestures are left to scroll the page.
+  var sumSX = 0, sumSY = 0, sumT0 = 0, sumMoved = false, sumDown = false;
+  els.summary.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    sumDown = true; sumMoved = false; sumSX = e.clientX; sumSY = e.clientY; sumT0 = Date.now();
+  });
+  els.summary.addEventListener("pointermove", function (e) {
+    if (sumDown && (Math.abs(e.clientX - sumSX) > 10 || Math.abs(e.clientY - sumSY) > 10)) sumMoved = true;
+  });
+  els.summary.addEventListener("pointerup", function (e) {
+    if (!sumDown) return; sumDown = false;
+    if (e.target.closest(".sum-nav")) return; // the arrow's own click handles it
+    var dx = e.clientX - sumSX, dy = e.clientY - sumSY;
+    if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - sumT0 > 700) return;
+    var dir = dx < 0 ? 1 : -1;
+    var arrow = els.summary.querySelector(".sum-nav" + (dir > 0 ? ".next" : ".prev"));
+    if (!arrow || arrow.disabled) return; // nothing further that way
+    arrow.classList.add("pressed");
+    setTimeout(function () { arrow.classList.remove("pressed"); }, 220);
+    navLoc(dir);
+  });
+  els.summary.addEventListener("pointercancel", function () { sumDown = false; });
   els.summary.addEventListener("click", function (e) {
     var nav = e.target.closest(".sum-nav");
     if (nav) { if (!nav.disabled) navLoc(+nav.dataset.dir); return; } // edge arrows: previous / next saved place
+    if (sumMoved) return; // the gesture was a swipe, not a tap on a detail line
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
