@@ -157,7 +157,15 @@
        between them flexes with the phone width (space-between). */
     display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
     justify-content: space-between; align-items: center; flex: none;
+    /* a horizontal swipe here pages between places; vertical still scrolls the page */
+    touch-action: pan-y; -webkit-user-select: none; user-select: none;
   }
+  .section > h2 { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+  /* paging: the real view and its fixed ghost clone move together under the finger */
+  .result.paging { will-change: transform; }
+  .result.page-ghost { pointer-events: none; z-index: 5; margin: 0; will-change: transform; }
+  /* while paging the two cards' edge arrows would meet in the seam as an "X" — hide them */
+  .result.paging .sum-nav, .result.page-ghost .sum-nav { visibility: hidden; }
   /* Tall, narrow edge arrows that step through saved places (only rendered when ≥2).
      The visible chevron is 10×36, but the tap target is a full-height slab that runs from
      the screen edge (8px page gutter, body is overflow-x hidden so it's still hittable)
@@ -785,7 +793,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across. A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them — or just tap the left or right half of the card. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger), or use the slim edge arrows / tap either half of the card. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
@@ -1100,6 +1108,129 @@
     var prev = n.list[n.i - 1], next = n.list[n.i + 1];
     return '<button type="button" class="sum-nav prev" data-dir="-1"' + (prev ? ' aria-label="Previous place: ' + esc(prev.name) + '"' : ' disabled aria-hidden="true"') + '>' + CHEV_L + '</button>' +
            '<button type="button" class="sum-nav next" data-dir="1"'  + (next ? ' aria-label="Next place: ' + esc(next.name) + '"' : ' disabled aria-hidden="true"') + '>' + CHEV_R + '</button>';
+  }
+  // ---- page between places: the whole weather view slides out and the neighbour's
+  //      fully rendered view slides in under the finger (Apple-Weather style) ----
+  // What makes this feel solid is that the neighbour is ALREADY rendered: after each
+  // load we quietly prefetch the previous/next place's forecast into viewCache, so a
+  // swipe has real content to reveal. Mechanics: on a horizontal drag we clone the
+  // current view as a fixed-position "ghost" over the real view, paint the neighbour
+  // into the real view parked one page-width to the side, and move both with the
+  // finger. Release past ~30% (or a flick) animates the hand-off and commits; otherwise
+  // both ease back and the current place is repainted under the ghost.
+  var viewCache = {}, VIEW_FRESH_MS = 15 * 60 * 1000;
+  function cachePut(loc, d, air) { viewCache[locKey(loc)] = { d: d, air: air, ts: Date.now() }; }
+  function cacheGet(loc) { return viewCache[locKey(loc)] || null; }
+  function fetchView(loc) { // the same three requests show() makes, merged, cached
+    return Promise.all([getWeather(loc), getArchive(loc).catch(function () { return null; }), getAir(loc).catch(function () { return null; })])
+      .then(function (res) { mergeArchive(res[0], res[1]); cachePut(loc, res[0], res[2]); return cacheGet(loc); });
+  }
+  var prefetchTimer = null;
+  function prefetchNeighbours() {
+    clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(function () {
+      var n = navIndex(lastLoc); if (n.i < 0) return;
+      [n.list[n.i - 1], n.list[n.i + 1]].forEach(function (loc) {
+        if (!loc) return;
+        var e = cacheGet(loc);
+        if (!e || Date.now() - e.ts > VIEW_FRESH_MS) fetchView(loc).catch(function () {});
+      });
+    }, 600); // let the place on screen finish first
+  }
+  function paintView(loc, e) { // render only — no state change, no network
+    renderSummary(loc, e.d, e.air);
+    renderHourly(e.d);
+    renderDaily(e.d);
+    layoutStrips();
+  }
+  function commitView(loc, e) { // the painted neighbour becomes the current place
+    lastLoc = loc; saveLoc(loc);
+    els.cityName.textContent = loc.name;
+    lastData = e.d; lastAir = e.air; lastTz = e.d.timezone || null; lastLoad = e.ts;
+    radar.recenter(loc); radar.setTz(lastTz);
+    if (Date.now() - e.ts > VIEW_FRESH_MS) show(loc, true); // stale prefetch → quiet refresh in place
+    prefetchNeighbours();
+  }
+  var pager = null, pagerSwiped = false, PAGE_SLOP = 8;
+  function pagerStart(e) {
+    if (pager || navBusy || !loaded || currentTab !== "weather") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.target.closest(".scroller, .track, button, a, input, .sum-nav")) return; // strips scroll themselves; controls are taps
+    pager = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: Date.now(), active: false, dir: 0, target: null, dx: 0 };
+  }
+  function pagerActivate(e) {
+    var r = els.result.getBoundingClientRect();
+    pager.active = true; pager.W = r.width;
+    // a fixed clone of the current view sits exactly over the real one and is what the
+    // finger drags out; it never takes input
+    var g = els.result.cloneNode(true);
+    g.querySelectorAll("[id]").forEach(function (n) { n.removeAttribute("id"); });
+    var src = els.result.querySelectorAll(".scroller"), dst = g.querySelectorAll(".scroller");
+    // ids are stripped from the clone, so sizing keyed on ids (#hourly/#daily heights) is
+    // copied across inline, along with each strip's scroll position
+    pager.scroll = []; src.forEach(function (s, i) {
+      pager.scroll.push(s.scrollLeft);
+      if (dst[i]) { dst[i].style.height = s.getBoundingClientRect().height + "px"; dst[i].scrollLeft = s.scrollLeft; }
+    });
+    g.className = "result page-ghost"; g.style.cssText = "position:fixed;left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;";
+    document.body.appendChild(g);
+    pager.ghost = g;
+    els.result.classList.add("paging");
+    try { els.result.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  function pagerAim(dir) { // choose (and paint) the neighbour for this drag direction
+    if (pager.dir === dir) return;
+    pager.dir = dir;
+    var n = navIndex(lastLoc), loc = n.i < 0 ? null : n.list[n.i + dir], e = loc ? cacheGet(loc) : null;
+    pager.target = (loc && e) ? { loc: loc, e: e } : null;
+    pager.pending = (loc && !e) ? loc : null; // exists but not prefetched yet
+    if (pager.pending) fetchView(pager.pending).catch(function () {});
+    if (pager.target) { paintView(loc, e); els.result.style.visibility = ""; }
+    else els.result.style.visibility = "hidden"; // nothing that way: rubber-band over the background
+  }
+  function pagerMove(e) {
+    if (!pager || e.pointerId !== pager.id) return;
+    var dx = e.clientX - pager.x0, dy = e.clientY - pager.y0;
+    if (!pager.active) {
+      if (Math.abs(dx) < PAGE_SLOP && Math.abs(dy) < PAGE_SLOP) return;
+      if (Math.abs(dx) <= Math.abs(dy)) { pager = null; return; } // vertical: let the page scroll
+      pagerActivate(e);
+    }
+    e.preventDefault();
+    if (dx !== 0) pagerAim(dx < 0 ? 1 : -1);
+    var eff = pager.target ? dx : dx * 0.3; // no neighbour → resistance
+    pager.dx = dx;
+    pager.ghost.style.transform = "translateX(" + eff + "px)";
+    if (pager.target) els.result.style.transform = "translateX(" + (eff + (pager.dir > 0 ? pager.W : -pager.W)) + "px)";
+  }
+  function pagerEnd(e) {
+    if (!pager || e.pointerId !== pager.id) return;
+    var p = pager; pager = null;
+    if (!p.active) return; // a tap — fall through to clicks
+    pagerSwiped = true; setTimeout(function () { pagerSwiped = false; }, 0);
+    var dt = Math.max(Date.now() - p.t0, 1), vx = p.dx / dt;
+    var go = p.target && (Math.abs(p.dx) > p.W * 0.3 || (Math.abs(vx) > 0.5 && Math.abs(p.dx) > 30));
+    var ease = "transform 0.28s cubic-bezier(.2,.8,.2,1)";
+    p.ghost.style.transition = ease; els.result.style.transition = ease;
+    if (go) {
+      p.ghost.style.transform = "translateX(" + (p.dir > 0 ? -p.W : p.W) + "px)";
+      els.result.style.transform = "translateX(0)";
+    } else {
+      p.ghost.style.transform = "translateX(0)";
+      if (p.target) els.result.style.transform = "translateX(" + (p.dir > 0 ? p.W : -p.W) + "px)";
+    }
+    setTimeout(function () {
+      if (go) commitView(p.target.loc, p.target.e);
+      else if (p.target) { // put the current place back under the ghost, where it was
+        paintView(lastLoc, { d: lastData, air: lastAir, ts: lastLoad });
+        els.result.querySelectorAll(".scroller").forEach(function (s, i) { if (p.scroll[i] != null) s.scrollLeft = p.scroll[i]; });
+      }
+      els.result.style.transition = ""; els.result.style.transform = ""; els.result.style.visibility = "";
+      els.result.classList.remove("paging");
+      p.ghost.remove();
+      // released over a neighbour that hadn't loaded yet: go there the ordinary way
+      if (!go && p.pending && (Math.abs(p.dx) > p.W * 0.3 || Math.abs(vx) > 0.5)) navLoc(p.dir);
+    }, 300);
   }
   function swipeDotsHtml(loc) {
     var list = swipeLocsFor(loc);
@@ -2623,6 +2754,8 @@
       lastAir = res[2];
       lastTz = d.timezone || null;
       lastData = d; // full forecast, for the wind-graph drill-down
+      cachePut(loc, d, lastAir); // feeds the swipe-between-places pager
+      prefetchNeighbours();
       showResult(); // unhide first so the strips have layout to measure
       renderSummary(loc, d, lastAir);
       renderHourly(d);
@@ -2805,6 +2938,7 @@
   function setUnits(u) {
     units = u;
     localStorage.setItem("bw-units", u);
+    viewCache = {}; // prefetched views are in the old units
     els.unitC.classList.toggle("active", u === "metric");
     els.unitF.classList.toggle("active", u === "imperial");
     updateInfoUnits();
@@ -2900,7 +3034,14 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
+  // Swipe between places: the whole view pages (see pagerStart). Starts on the summary
+  // card and section headings (touch-action: pan-y there); the strips keep their own scroll.
+  els.result.addEventListener("pointerdown", pagerStart);
+  els.result.addEventListener("pointermove", pagerMove);
+  els.result.addEventListener("pointerup", pagerEnd);
+  els.result.addEventListener("pointercancel", pagerEnd);
   els.summary.addEventListener("click", function (e) {
+    if (pagerSwiped) return; // the click trailing a page swipe
     var nav = e.target.closest(".sum-nav");
     if (nav) { if (!nav.disabled) navLoc(+nav.dataset.dir); return; } // edge arrows: previous / next saved place
     if (e.target.closest("#aboutBtn")) return; // ⓘ has its own handler
