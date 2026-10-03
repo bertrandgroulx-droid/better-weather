@@ -157,6 +157,8 @@
        between them flexes with the phone width (space-between). */
     display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
     justify-content: space-between; align-items: center; flex: none;
+    /* horizontal drags drive the location swipe; vertical gestures still scroll the page */
+    touch-action: pan-y; -webkit-user-select: none; user-select: none; will-change: transform;
   }
   .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
   /* row 1: current icon + temp (left) | condition + feels-like (right) */
@@ -1023,50 +1025,49 @@
     }
     return rec;
   }
-  // Directional slide feedback for a location swipe. The card nudges out the way you
-  // swiped and dims (but stays visible — never blank), the new place loads, then the
-  // card glides back in from the opposite side. Keeping it dimmed rather than invisible
-  // means there's always something on screen during the fetch, so the swipe reads as a
-  // live response instead of the card vanishing.
-  var swipeDir = null, SWIPE_OFFSET = 34, SWIPE_DIM = "0.4";
-  function swipeSlideOut(dir) {
-    swipeDir = dir;
-    var el = els.summary;
-    el.style.transition = "transform 0.15s ease, opacity 0.15s ease";
-    el.style.transform = "translateX(" + (dir > 0 ? -SWIPE_OFFSET : SWIPE_OFFSET) + "px)";
-    el.style.opacity = SWIPE_DIM;
+  // Finger-tracking swipe through saved locations. The card follows your finger 1:1
+  // while you drag (set by the pointer handlers via sumSetX); release past a threshold
+  // (or with a flick) commits to the next/previous place, otherwise it springs back.
+  // swipePending carries a committed direction across the async load so renderSummary
+  // can glide the freshly-loaded card into place.
+  var swipePending = null;
+  function sumCardW() { var r = els.summary.getBoundingClientRect(); return r.width || 320; }
+  function sumSetX(dx) { // live finger tracking — dim a touch as the card leaves centre
+    var o = 1 - Math.min(Math.abs(dx) / sumCardW(), 1) * 0.4;
+    els.summary.style.transition = "none";
+    els.summary.style.transform = "translateX(" + dx + "px)";
+    els.summary.style.opacity = o.toFixed(3);
   }
-  function swipeSlideIn() { // called from renderSummary once the new card is in the DOM
-    if (swipeDir === null) return;
-    var dir = swipeDir; swipeDir = null;
+  function sumSpringBack() { // under threshold / cancel → ease back to centre
     var el = els.summary;
-    // new content is in the DOM at the slid-out spot; jump (still dimmed) to the opposite
-    // side, then glide to centre — the one-frame jump is barely visible at low opacity.
-    el.style.transition = "none";
-    el.style.transform = "translateX(" + (dir > 0 ? SWIPE_OFFSET : -SWIPE_OFFSET) + "px)";
-    el.style.opacity = SWIPE_DIM;
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      el.style.transition = "transform 0.22s ease, opacity 0.22s ease";
-      el.style.transform = "translateX(0)"; el.style.opacity = "1";
-    }); });
-  }
-  function swipeSlideReset() { // load failed (no re-render) → ease back to centre
-    if (swipeDir === null) return;
-    swipeDir = null;
-    var el = els.summary;
-    el.style.transition = "transform 0.18s ease, opacity 0.18s ease";
+    el.style.transition = "transform 0.22s cubic-bezier(.22,.61,.36,1), opacity 0.22s ease";
     el.style.transform = "translateX(0)"; el.style.opacity = "1";
   }
-  function swipeLoc(dir) { // dir: +1 next, -1 previous (wraps)
+  function sumCommit(dir) { // dir: +1 next, -1 previous (wraps). Called from pointerup.
     var list = swipeLocsFor(lastLoc);
-    if (list.length < 2) return;
+    if (list.length < 2) { sumSpringBack(); return; }
     var i = list.findIndex(function (r) { return lastLoc && locKey(r) === locKey(lastLoc); });
     if (i < 0) i = 0;
     var ni = (i + dir + list.length) % list.length;
-    if (ni === i) return;
-    swipeSlideOut(dir);
+    if (ni === i) { sumSpringBack(); return; }
+    var w = sumCardW(), el = els.summary;
+    swipePending = dir;
+    // carry the card the rest of the way off in the direction it's already moving,
+    // dimming (never fully blank) while the new place loads underneath.
+    el.style.transition = "transform 0.16s ease-out, opacity 0.16s ease-out";
+    el.style.transform = "translateX(" + (dir > 0 ? -w * 0.55 : w * 0.55) + "px)";
+    el.style.opacity = "0.35";
     var p = show(list[ni], true); // silent: keep the card until the new one loads
-    if (p && p.then) p.then(function () { swipeSlideReset(); }); // if it failed, snap back (success resets via renderSummary)
+    if (p && p.then) p.then(null, function () { swipePending = null; sumSpringBack(); });
+  }
+  function swipeSlideIn() { // called from renderSummary once the new card is in the DOM
+    if (swipePending === null) return;
+    swipePending = null;
+    var el = els.summary; // card currently sits off-centre showing the new data
+    requestAnimationFrame(function () {
+      el.style.transition = "transform 0.24s cubic-bezier(.22,.61,.36,1), opacity 0.24s ease";
+      el.style.transform = "translateX(0)"; el.style.opacity = "1";
+    });
   }
   function swipeDotsHtml(loc) {
     var list = swipeLocsFor(loc);
@@ -2749,21 +2750,40 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
-  // Swipe the summary card left/right to move through saved locations.
-  var sumSX = 0, sumSY = 0, sumMoved = false, sumT0 = 0, sumActive = false;
+  // Swipe the summary card left/right to move through saved locations. The card tracks
+  // the finger in real time; a horizontal intent captures the pointer, a vertical one is
+  // left to scroll the page. Release commits past a threshold or on a flick.
+  // sumPhase: idle | detect (direction not yet decided) | dragx (tracking) | scroll (gave up to page)
+  var sumSX = 0, sumSY = 0, sumT0 = 0, sumDX = 0, sumPhase = "idle", sumMoved = false;
   els.summary.addEventListener("pointerdown", function (e) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    sumActive = true; sumMoved = false; sumSX = e.clientX; sumSY = e.clientY; sumT0 = Date.now();
+    if (swipePending !== null) return; // a commit is mid-flight; ignore new grabs
+    sumPhase = "detect"; sumMoved = false; sumDX = 0;
+    sumSX = e.clientX; sumSY = e.clientY; sumT0 = Date.now();
   });
   els.summary.addEventListener("pointermove", function (e) {
-    if (sumActive && (Math.abs(e.clientX - sumSX) > 10 || Math.abs(e.clientY - sumSY) > 10)) sumMoved = true;
-  });
-  els.summary.addEventListener("pointerup", function (e) {
-    if (!sumActive) return; sumActive = false;
+    if (sumPhase === "idle" || sumPhase === "scroll") return;
     var dx = e.clientX - sumSX, dy = e.clientY - sumSY;
-    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - sumT0 < 800) swipeLoc(dx < 0 ? 1 : -1);
+    if (sumPhase === "detect") {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // wait for a clear intent
+      if (Math.abs(dx) <= Math.abs(dy) || swipeLocsFor(lastLoc).length < 2) { sumPhase = "scroll"; return; }
+      sumPhase = "dragx"; sumMoved = true;
+      try { els.summary.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    sumDX = dx; sumSetX(dx); e.preventDefault(); // 1:1 with the finger
   });
-  els.summary.addEventListener("pointercancel", function () { sumActive = false; });
+  function sumPointerEnd() {
+    if (sumPhase !== "dragx") { sumPhase = "idle"; return; }
+    sumPhase = "idle";
+    var w = sumCardW(), dt = Math.max(Date.now() - sumT0, 1), vx = sumDX / dt; // px/ms
+    if (Math.abs(sumDX) > w * 0.22 || (Math.abs(vx) > 0.4 && Math.abs(sumDX) > 24)) sumCommit(sumDX < 0 ? 1 : -1);
+    else sumSpringBack();
+  }
+  els.summary.addEventListener("pointerup", sumPointerEnd);
+  els.summary.addEventListener("pointercancel", function () {
+    if (sumPhase === "dragx") sumSpringBack();
+    sumPhase = "idle";
+  });
   els.summary.addEventListener("click", function (e) {
     if (sumMoved) return; // the gesture was a swipe, not a tap
     if (e.target.closest(".air-line")) openAir();
