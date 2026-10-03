@@ -176,7 +176,7 @@
   .sum-nav.next { right: -8px; width: 20px; } /* right column's ink sits 1–2px further out than the left's */
   .sum-nav svg { width: 10px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .sum-nav:hover { opacity: 0.9; }
-  .sum-nav:active { opacity: 1; color: #a9c8ee; }
+  .sum-nav:active, .sum-nav.pressed { opacity: 1; color: #a9c8ee; } /* .pressed = fired by a tap on that half of the card */
   .sum-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; opacity: 1; }
   .sum-nav[disabled] { opacity: 0.12; cursor: default; pointer-events: none; }
   .summary.nav-loading .sum-nav:not([disabled]) { opacity: 0.25; } /* the next place is loading */
@@ -764,7 +764,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across. A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them — or just tap the left or right half of the card.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
@@ -2755,11 +2755,25 @@
   els.summary.addEventListener("click", function (e) {
     var nav = e.target.closest(".sum-nav");
     if (nav) { if (!nav.disabled) navLoc(+nav.dataset.dir); return; } // edge arrows: previous / next saved place
+    if (e.target.closest("#aboutBtn")) return; // ⓘ has its own handler
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
     else if (e.target.closest(".wind-line")) openWind();
+    else navHalf(e.clientX); // anywhere else on the card: left half → previous, right half → next
   });
+  // A tap on the card's left or right half acts like its edge arrow, so stepping between
+  // places isn't confined to the narrow arrow strips. Click-only (no pointer tracking), so
+  // scrolling the page across the card never fires it. The arrow flashes to show what fired.
+  function navHalf(clientX) {
+    var r = els.summary.getBoundingClientRect();
+    var dir = clientX < r.left + r.width / 2 ? -1 : 1;
+    var arrow = els.summary.querySelector(".sum-nav" + (dir > 0 ? ".next" : ".prev"));
+    if (!arrow || arrow.disabled) return; // one place only, or nothing further that way
+    arrow.classList.add("pressed");
+    setTimeout(function () { arrow.classList.remove("pressed"); }, 220);
+    navLoc(dir);
+  }
   els.summary.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     if (e.target.closest(".air-line")) { e.preventDefault(); openAir(); }
