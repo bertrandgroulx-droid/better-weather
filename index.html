@@ -3455,17 +3455,23 @@
     // auto-scroll the list when hovering near its top/bottom edge
     var lr = els.results.getBoundingClientRect();
     if (y < lr.top + 24) els.results.scrollTop -= 6; else if (y > lr.bottom - 24) els.results.scrollTop += 6;
-    // keep the lifted row within the span of the saved rows (not over the header / off the end)
+    // Everything below works in LAYOUT coordinates (offsetTop), not on-screen rectangles:
+    // a neighbour that is still sliding into its new slot has a stale rectangle for up to
+    // 160ms, and judging by that could swap the rows straight back on the next move.
     var items = els.results.querySelectorAll("li.rc-item"), first = items[0], last = items[items.length - 1];
-    var top = first.getBoundingClientRect().top - (first === li ? recOffset(li) : 0);
-    var bottom = last.getBoundingClientRect().bottom - (last === li ? recOffset(li) : 0);
-    y = Math.max(top + recDrag.grabY, Math.min(bottom - (recDrag.h - recDrag.grabY), y));
-    // swap with the neighbour whose midpoint the pointer has crossed (one hop per move)
+    // where the finger wants the lifted row's top to be, in layout coords
+    var vTop = li.offsetTop + recOffset(li) + (y - recDrag.grabY - li.getBoundingClientRect().top);
+    // keep it within the span of the saved rows (not over the header / off the end)
+    vTop = Math.max(first.offsetTop, Math.min(last.offsetTop + last.offsetHeight - recDrag.h, vTop));
+    var vBottom = vTop + recDrag.h;
+    // swap with a neighbour once the lifted ROW's edge crosses that neighbour's slot midpoint
+    // (one hop per move) — judged by the row, not the finger, so a row grabbed near its
+    // bottom can still reach the top slot, and vice versa
     var prev = li.previousElementSibling, next = li.nextElementSibling;
-    if (prev && prev.classList.contains("rc-item") && y < prev.getBoundingClientRect().top + prev.offsetHeight / 2) recFlip(prev, function () { li.parentNode.insertBefore(li, prev); });
-    else if (next && next.classList.contains("rc-item") && y > next.getBoundingClientRect().bottom - next.offsetHeight / 2) recFlip(next, function () { li.parentNode.insertBefore(next, li); });
-    // the lifted row tracks the finger relative to wherever it now sits in the list
-    li.style.transform = "translateY(" + (y - recDrag.grabY - li.getBoundingClientRect().top + recOffset(li)) + "px)";
+    if (prev && prev.classList.contains("rc-item") && vTop < prev.offsetTop + prev.offsetHeight / 2) recFlip(prev, function () { li.parentNode.insertBefore(li, prev); });
+    else if (next && next.classList.contains("rc-item") && vBottom > next.offsetTop + next.offsetHeight / 2) recFlip(next, function () { li.parentNode.insertBefore(next, li); });
+    // the lifted row is drawn at vTop, relative to whichever slot it now occupies
+    li.style.transform = "translateY(" + (vTop - li.offsetTop) + "px)";
   }
   function recOffset(li) { // current translateY, so the rect→target math stays stable across moves
     var m = /translateY\((-?[\d.]+)px\)/.exec(li.style.transform || ""); return m ? parseFloat(m[1]) : 0;
