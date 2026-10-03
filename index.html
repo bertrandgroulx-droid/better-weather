@@ -164,34 +164,20 @@
   /* paging: the real view and its fixed ghost clone move together under the finger */
   .result.paging { will-change: transform; }
   .result.page-ghost { pointer-events: none; z-index: 5; margin: 0; will-change: transform; }
-  /* while paging the two cards' edge arrows would meet in the seam as an "X" — hide them */
-  .result.paging .sum-nav, .result.page-ghost .sum-nav { visibility: hidden; }
-  /* Tall, narrow edge arrows that step through saved places (only rendered when ≥2).
-     The visible chevron is 10×36, but the tap target is a full-height slab that runs from
-     the screen edge (8px page gutter, body is overflow-x hidden so it's still hittable)
-     to where the content ink begins (≥13px inside the card at every phone width) — the
-     most forgiveness available without sitting under any content. A disabled arrow
-     (nothing further in that direction) fades almost out — no wrap. */
-  .sum-nav {
-    position: absolute; top: 6px; bottom: 6px;
-    width: 22px; padding: 0; margin: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: none; border: 0; border-radius: 8px; cursor: pointer;
-    color: #7fa8d8; opacity: 0.55; -webkit-tap-highlight-color: transparent;
-    transition: opacity 0.15s ease, color 0.15s ease;
-  }
-  .sum-nav.prev { left: -8px; }
-  .sum-nav.next { right: -8px; width: 20px; } /* right column's ink sits 1–2px further out than the left's */
-  .sum-nav svg { width: 10px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .sum-nav:hover { opacity: 0.9; }
-  .sum-nav:active, .sum-nav.pressed { opacity: 1; color: #a9c8ee; } /* .pressed = fired by a tap on that half of the card */
-  .sum-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; opacity: 1; }
-  .sum-nav[disabled] { opacity: 0.12; cursor: default; pointer-events: none; }
-  .summary.nav-loading .sum-nav:not([disabled]) { opacity: 0.25; } /* the next place is loading */
+  /* Card rows: 1 page dots (top) · 2 hero + condition · 3 outlook · 4 metric columns ·
+     5 the place's name, centred at the bottom so the card always says where it is. */
+  .sum-loc { grid-column: 1 / -1; grid-row: 5; margin-top: 6px; text-align: center;
+    font-size: 0.82rem; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    /* width:0 + min-width:100% keeps this long nowrap line out of the max-content column
+       sizing (otherwise a street address would widen the whole card); it then fills the
+       card's width and truncates with an ellipsis */
+    width: 0; min-width: 100%; }
+  .sum-loc .sl-sub { color: var(--muted); font-weight: 500; }
   .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
   /* row 1: current icon + temp (left) | condition + feels-like (right) */
-  .sum-hero { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 6px; }
-  .sum-head-r { grid-column: 2; grid-row: 1; }
+  .sum-hero { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; }
+  .sum-head-r { grid-column: 2; grid-row: 2; }
   .sum-head .cond { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
   .sum-head .feels { font-size: 0.86rem; white-space: nowrap; margin-top: 2px; color: var(--text); }
   .sum-head .feels .k { color: var(--muted); }
@@ -199,13 +185,13 @@
      font-size + line-height so the five rows line up across both columns. */
   .sum-body { font-size: 0.86rem; line-height: 1.5; }
   /* swipe-through-locations dots (only shown when ≥2 saved places) */
-  .sum-dots { grid-column: 1 / -1; grid-row: 4; display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+  .sum-dots { grid-column: 1 / -1; grid-row: 1; display: flex; gap: 6px; justify-content: center; margin: -4px 0 6px; }
   .sum-dots .sd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.4; }
   .sum-dots .sd-dot.on { background: var(--text); opacity: 0.9; }
   /* the device's current location: an accent ring, filled when it's the place on screen */
   .sum-dots .sd-dot.geo { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 0.75; }
   .sum-dots .sd-dot.geo.on { background: var(--accent); opacity: 1; }
-  .sum-left { grid-column: 1; grid-row: 3; align-self: start; display: flex; flex-direction: column; }
+  .sum-left { grid-column: 1; grid-row: 4; align-self: start; display: flex; flex-direction: column; }
   .sum-hero .ico { font-size: 2.8rem; line-height: 1; }
   .sum-hero .temp { font-size: 2.9rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
   /* metrics column (top-aligned with the right column; typography from .sum-body) */
@@ -230,10 +216,10 @@
     position: relative; top: -0.05em; margin: 0 1px; }
   .sum-metrics .wind-line .gust-ico { stroke: #9fb6d0; vertical-align: -0.4em; margin: 0 1px 0 3px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
-  .sum-right { grid-column: 2; grid-row: 3; align-self: start; white-space: nowrap; display: flex; flex-direction: column; }
+  .sum-right { grid-column: 2; grid-row: 4; align-self: start; white-space: nowrap; display: flex; flex-direction: column; }
   /* full-width precipitation outlook (row 2), spanning both grid columns so it
      never wraps or squeezes the two metric columns below it */
-  .fcast { grid-column: 1 / -1; grid-row: 2; font-size: 0.82rem; font-weight: 600; line-height: 1.32; margin: 6px 0 10px; white-space: normal; text-align: center; }
+  .fcast { grid-column: 1 / -1; grid-row: 3; font-size: 0.82rem; font-weight: 600; line-height: 1.32; margin: 6px 0 10px; white-space: normal; text-align: center; }
   .fcast.rain { color: #d4ecff; } /* bright, faint-blue tint keeps the rain cue */
   .fcast.dry { color: #eaf1fb; }  /* bright near-white */
   /* rain within ~6h: flash the line twice to draw the eye */
@@ -793,7 +779,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across. A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger), or use the slim edge arrows / tap either half of the card. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); the dots at the top of the card show where you are, and its name sits along the bottom. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
@@ -1100,14 +1086,10 @@
     var done = function () { navBusy = false; els.summary.classList.remove("nav-loading"); };
     if (p && p.then) p.then(done, done); else done();
   }
-  var CHEV_L = '<svg viewBox="0 0 10 36" aria-hidden="true"><path d="M8 2 2 18l6 16"/></svg>';
-  var CHEV_R = '<svg viewBox="0 0 10 36" aria-hidden="true"><path d="M2 2l6 16-6 16"/></svg>';
-  function navArrowsHtml(loc) {
-    var n = navIndex(loc);
-    if (n.list.length < 2 || n.i < 0) return "";
-    var prev = n.list[n.i - 1], next = n.list[n.i + 1];
-    return '<button type="button" class="sum-nav prev" data-dir="-1"' + (prev ? ' aria-label="Previous place: ' + esc(prev.name) + '"' : ' disabled aria-hidden="true"') + '>' + CHEV_L + '</button>' +
-           '<button type="button" class="sum-nav next" data-dir="1"'  + (next ? ' aria-label="Next place: ' + esc(next.name) + '"' : ' disabled aria-hidden="true"') + '>' + CHEV_R + '</button>';
+  // The place's name along the bottom of the card (the header pill truncates long
+  // addresses, and once you can page between places the card itself must say where it is).
+  function sumLocHtml(loc) {
+    return '<div class="sum-loc">' + esc(loc.name) + (loc.sub ? ' <span class="sl-sub">· ' + esc(loc.sub) + '</span>' : '') + '</div>';
   }
   // ---- page between places: the whole weather view slides out and the neighbour's
   //      fully rendered view slides in under the finger (Apple-Weather style) ----
@@ -1155,7 +1137,7 @@
   function pagerStart(e) {
     if (pager || navBusy || !loaded || currentTab !== "weather") return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (e.target.closest(".scroller, .track, button, a, input, .sum-nav")) return; // strips scroll themselves; controls are taps
+    if (e.target.closest(".scroller, .track, button, a, input")) return; // strips scroll themselves; controls are taps
     pager = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: Date.now(), active: false, dir: 0, target: null, dx: 0 };
   }
   function pagerActivate(e) {
@@ -2465,8 +2447,8 @@
           '</div>' +
         '</div>' +
       '</div>' +
-      swipeDotsHtml(loc) +
-      navArrowsHtml(loc);
+      swipeDotsHtml(loc) + // grid row 1 (top) — DOM order doesn't matter on the card grid
+      sumLocHtml(loc);     // grid row 5 (bottom)
     // seat the ⓘ vertically centered between Sunrise and Sunset (survives re-renders)
     (els.summary.querySelector(".sr-ss") || els.summary).appendChild(els.aboutBtn);
   }
@@ -3042,27 +3024,12 @@
   els.result.addEventListener("pointercancel", pagerEnd);
   els.summary.addEventListener("click", function (e) {
     if (pagerSwiped) return; // the click trailing a page swipe
-    var nav = e.target.closest(".sum-nav");
-    if (nav) { if (!nav.disabled) navLoc(+nav.dataset.dir); return; } // edge arrows: previous / next saved place
     if (e.target.closest("#aboutBtn")) return; // ⓘ has its own handler
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
     else if (e.target.closest(".wind-line")) openWind();
-    else navHalf(e.clientX); // anywhere else on the card: left half → previous, right half → next
   });
-  // A tap on the card's left or right half acts like its edge arrow, so stepping between
-  // places isn't confined to the narrow arrow strips. Click-only (no pointer tracking), so
-  // scrolling the page across the card never fires it. The arrow flashes to show what fired.
-  function navHalf(clientX) {
-    var r = els.summary.getBoundingClientRect();
-    var dir = clientX < r.left + r.width / 2 ? -1 : 1;
-    var arrow = els.summary.querySelector(".sum-nav" + (dir > 0 ? ".next" : ".prev"));
-    if (!arrow || arrow.disabled) return; // one place only, or nothing further that way
-    arrow.classList.add("pressed");
-    setTimeout(function () { arrow.classList.remove("pressed"); }, 220);
-    navLoc(dir);
-  }
   els.summary.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     if (e.target.closest(".air-line")) { e.preventDefault(); openAir(); }
