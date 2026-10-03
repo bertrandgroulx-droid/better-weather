@@ -460,7 +460,14 @@
   .st-svg .st-lab-here { fill: #fff; font-size: 5.6px; font-weight: 700; }
   .st-svg .st-sub { fill: var(--accent); stroke: #0e2440; stroke-width: 1; }
   .st-svg .st-obs { fill: #fff; stroke: #0e2440; stroke-width: 1; }
-  @media (max-width: 360px) { .day-sun .st-svg { width: 150px; height: 102px; } }
+  /* narrow phones: the side-by-side card squeezes the text to ~110px, so stack it —
+     globe centred on top, the two readings side by side beneath */
+  @media (max-width: 380px) {
+    .day-sun { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 10px 10px; }
+    .day-sun .st-svg { width: 100%; max-width: 230px; height: auto; aspect-ratio: 176 / 120; align-self: center; }
+    .day-sun .st-txt { flex-direction: row; gap: 12px; }
+    .day-sun .st-row { flex: 1; min-width: 0; }
+  }
   /* hourly wind panel: bright sky-blue wind line, a quiet recessive gust line */
   .wind-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .cond-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill row so ✕ sits in the corner */
