@@ -403,7 +403,7 @@
   .day-readout { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
     background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; }
-  .day-readout .rd-date { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+  .day-readout .rd-date { font-weight: 700; font-size: 1.2rem; margin-bottom: 4px; }
   /* the three label | value pairs share one small two-column grid, centred as a block with
      a fixed gap: labels end on one line, values start on another, and as the screen widens
      the card's margins take up the slack, not the gap. It's its own box so the longer date
@@ -439,7 +439,8 @@
   .day-sun .st-dot-obs { background: #fff; }
   .st-svg .st-sun { fill: var(--accent); filter: drop-shadow(0 0 6px rgba(255,214,102,0.55)); }
   .st-svg .st-ray { stroke: var(--accent); stroke-width: 1.2; opacity: 0.9; }
-  .st-svg .st-ray-obs { stroke: #fff; stroke-width: 1; opacity: 0.75; stroke-dasharray: 3 2; }
+  .st-svg .st-ray-obs { stroke: var(--accent); stroke-width: 1.1; opacity: 0.8; stroke-dasharray: 3 2.5; }
+  .st-svg .st-ray-bg { stroke: var(--accent); stroke-width: 0.7; opacity: 0.16; }
   .st-svg .st-axis { stroke: rgba(255,255,255,0.7); stroke-width: 1; }
   .st-svg .st-n { fill: var(--text); font-size: 7px; font-weight: 700; font-family: inherit; }
   .st-svg .st-equator { stroke: rgba(255,255,255,0.55); stroke-width: 1; }
@@ -1713,10 +1714,16 @@
       '<defs><radialGradient id="stEarth" cx="40%" cy="38%" r="70%"><stop offset="0" stop-color="#4f8fd6"/><stop offset="1" stop-color="#1b3f73"/></radialGradient>' +
       '<clipPath id="stClip"><circle cx="' + cx + '" cy="' + cy + '" r="' + R + '"/></clipPath>' +
       '<linearGradient id="stNight" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#020812" stop-opacity="0.78"/><stop offset="0.86" stop-color="#020812" stop-opacity="0.78"/><stop offset="1" stop-color="#020812" stop-opacity="0"/></linearGradient></defs>' +
-      // sun and its rays (level): one to the overhead point, one to the observer
+      // sunlight arrives in parallel (the Sun is effectively at infinity): a field of faint
+      // level rays from the right edge to the globe, with two picked out — the one that
+      // lands on the overhead point and the one that lands on the observer at noon
+      [-40, -27, -14, 14, 27, 40].map(function (dy) {
+        var y = cy + dy, hit = Math.abs(dy) < R ? cx + Math.sqrt(R * R - dy * dy) : cx - R; // stop at the limb, or pass behind
+        return '<line class="st-ray-bg" x1="' + W + '" y1="' + y + '" x2="' + hit.toFixed(1) + '" y2="' + y + '"/>';
+      }).join("") +
       '<circle class="st-sun" cx="' + sunX + '" cy="' + cy + '" r="9"/>' +
-      '<line class="st-ray" x1="' + (sunX - 10) + '" y1="' + cy + '" x2="' + (cx + R) + '" y2="' + cy + '"/>' +
-      '<line class="st-ray st-ray-obs" x1="' + (sunX - 10) + '" y1="' + oy.toFixed(1) + '" x2="' + ox.toFixed(1) + '" y2="' + oy.toFixed(1) + '"/>' +
+      '<line class="st-ray" x1="' + W + '" y1="' + cy + '" x2="' + (cx + R) + '" y2="' + cy + '"/>' +
+      '<line class="st-ray st-ray-obs" x1="' + W + '" y1="' + oy.toFixed(1) + '" x2="' + ox.toFixed(1) + '" y2="' + oy.toFixed(1) + '"/>' +
       // Earth, in a group rotated by the declination so the north pole leans toward the Sun when δ > 0
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#stEarth)"/>' +
       '<g transform="translate(' + cx + ',' + cy + ') rotate(' + decl.toFixed(2) + ')">' +
