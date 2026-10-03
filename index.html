@@ -443,10 +443,10 @@
   .st-svg .st-ray-bg { stroke: var(--accent); stroke-width: 0.7; opacity: 0.16; }
   .st-svg .st-axis { stroke: rgba(255,255,255,0.7); stroke-width: 1; }
   .st-svg .st-n { fill: var(--text); font-size: 7px; font-weight: 700; font-family: inherit; }
-  .st-svg .st-equator { stroke: rgba(255,255,255,0.55); stroke-width: 1; }
+  .st-svg .st-equator { stroke: rgba(255,255,255,0.5); stroke-width: 1; }
   .st-svg .st-tropic { stroke: rgba(255,214,102,0.55); stroke-width: 0.8; stroke-dasharray: 2 2; }
-  .st-svg .st-polar { stroke: rgba(255,255,255,0.22); stroke-width: 0.7; stroke-dasharray: 1.5 2; }
-  .st-svg .st-here { stroke: #fff; stroke-width: 0.9; opacity: 0.7; }
+  .st-svg .st-here { stroke: #fff; stroke-width: 1.1; opacity: 0.9; }
+  .st-svg .st-lab { fill: #fff; font-size: 5.6px; font-family: inherit; letter-spacing: 0.02em; paint-order: stroke; stroke: rgba(4,10,22,0.85); stroke-width: 2px; }
   .st-svg .st-sub { fill: var(--accent); stroke: #0e2440; stroke-width: 1; }
   .st-svg .st-obs { fill: #fff; stroke: #0e2440; stroke-width: 1; }
   @media (max-width: 360px) { .day-sun .st-svg { width: 150px; height: 102px; } }
@@ -1696,48 +1696,53 @@
     var T = (jdOf(date) - 2451545) / 36525, s = sunPos(T), eps = (23.439291 - 0.0130042 * T) * RAD;
     return Math.asin(Math.sin(eps) * Math.sin(s.lon * RAD)) / RAD;
   }
-  // Earth's tilt made visible: a side view with the Sun off to the right and its rays
-  // coming in level. The axis leans by the day's declination (toward the Sun in June,
-  // away in December, upright at the equinoxes); the equator, tropics and polar circles
-  // are drawn on; the night half is shaded; a gold dot marks where the Sun is overhead
-  // and a white dot the observer's latitude at noon, each with its own ray — so the angle
-  // the white ray makes with the ground is the noon sun height here.
+  // Earth's tilt made visible — from the familiar frame. Earth stays upright (north up,
+  // latitude lines level, your line always in the same place) and it's the SUNLIGHT that
+  // tilts: the rays come in from above the equator in June and from below in December,
+  // by the day's declination. The equator and tropics are drawn on and labelled, the night
+  // half is shaded (its edge tilts with the light, so polar night/day falls out of it), a
+  // gold dot marks where the Sun is straight overhead and a white dot marks you at noon,
+  // each on its own ray — the angle your ray meets the ground at is the noon sun height.
   function sunTiltSVG(lat, decl) {
-    var W = 176, H = 120, cx = 60, cy = 60, R = 46, d = decl * RAD, f0 = lat * RAD;
-    var par = function (phi, cls) { // a parallel of latitude phi (deg) in the Earth's own frame
-      var p = phi * RAD, hw = R * Math.cos(p), y = -R * Math.sin(p);
-      return '<line class="' + cls + '" x1="' + (-hw).toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + hw.toFixed(1) + '" y2="' + y.toFixed(1) + '"/>';
+    var W = 176, H = 120, cx = 58, cy = 60, R = 46, d = decl * RAD, f0 = lat * RAD;
+    var ux = Math.cos(d), uy = -Math.sin(d), nx = -uy, ny = ux; // toward the Sun, and perpendicular
+    var par = function (phi, cls, label) { // a level parallel of latitude, optionally labelled at its left end
+      var p = phi * RAD, hw = R * Math.cos(p), y = cy - R * Math.sin(p);
+      return '<line class="' + cls + '" x1="' + (cx - hw).toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + (cx + hw).toFixed(1) + '" y2="' + y.toFixed(1) + '"/>' +
+        (label ? '<text class="st-lab" x="' + (cx - hw + 3).toFixed(1) + '" y="' + (y - 2.2).toFixed(1) + '">' + label + '</text>' : '');
     };
-    var ox = cx + R * Math.cos(f0 - d), oy = cy - R * Math.sin(f0 - d); // observer at local noon, screen coords
-    var sunX = 158;
+    var ray = function (t, cls, endX, endY) { // a ray parallel to the sunlight, offset t from the centre line
+      var sx = cx + 150 * ux + t * nx, sy = cy + 150 * uy + t * ny;
+      if (endX == null) { var hit = Math.sqrt(Math.max(0, R * R - t * t)); endX = cx + t * nx + hit * ux; endY = cy + t * ny + hit * uy; }
+      return '<line class="' + cls + '" x1="' + sx.toFixed(1) + '" y1="' + sy.toFixed(1) + '" x2="' + endX.toFixed(1) + '" y2="' + endY.toFixed(1) + '"/>';
+    };
+    var ox = cx + R * Math.cos(f0), oy = cy - R * Math.sin(f0); // you, at local noon (on the sunward limb)
+    var tObs = (ox - cx) * nx + (oy - cy) * ny;                 // your ray's offset from the centre line
+    var subX = cx + R * ux, subY = cy + R * uy;                 // where the Sun is straight overhead
+    var sunX = cx + 98 * ux, sunY = cy + 98 * uy;
     return '<svg class="st-svg" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
       '<defs><radialGradient id="stEarth" cx="40%" cy="38%" r="70%"><stop offset="0" stop-color="#4f8fd6"/><stop offset="1" stop-color="#1b3f73"/></radialGradient>' +
       '<clipPath id="stClip"><circle cx="' + cx + '" cy="' + cy + '" r="' + R + '"/></clipPath>' +
       '<linearGradient id="stNight" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#020812" stop-opacity="0.78"/><stop offset="0.86" stop-color="#020812" stop-opacity="0.78"/><stop offset="1" stop-color="#020812" stop-opacity="0"/></linearGradient></defs>' +
-      // sunlight arrives in parallel (the Sun is effectively at infinity): a field of faint
-      // level rays from the right edge to the globe, with two picked out — the one that
-      // lands on the overhead point and the one that lands on the observer at noon
-      [-40, -27, -14, 14, 27, 40].map(function (dy) {
-        var y = cy + dy, hit = Math.abs(dy) < R ? cx + Math.sqrt(R * R - dy * dy) : cx - R; // stop at the limb, or pass behind
-        return '<line class="st-ray-bg" x1="' + W + '" y1="' + y + '" x2="' + hit.toFixed(1) + '" y2="' + y + '"/>';
-      }).join("") +
-      '<circle class="st-sun" cx="' + sunX + '" cy="' + cy + '" r="9"/>' +
-      '<line class="st-ray" x1="' + W + '" y1="' + cy + '" x2="' + (cx + R) + '" y2="' + cy + '"/>' +
-      '<line class="st-ray st-ray-obs" x1="' + W + '" y1="' + oy.toFixed(1) + '" x2="' + ox.toFixed(1) + '" y2="' + oy.toFixed(1) + '"/>' +
-      // Earth, in a group rotated by the declination so the north pole leans toward the Sun when δ > 0
+      // sunlight: a field of faint parallel rays tilted by the declination, two picked out
+      [-40, -27, -14, 14, 27, 40].map(function (t) { return ray(t, "st-ray-bg"); }).join("") +
+      '<circle class="st-sun" cx="' + sunX.toFixed(1) + '" cy="' + sunY.toFixed(1) + '" r="9"/>' +
+      ray(0, "st-ray", subX, subY) +
+      ray(tObs, "st-ray st-ray-obs", ox, oy) +
+      // Earth, upright
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#stEarth)"/>' +
-      '<g transform="translate(' + cx + ',' + cy + ') rotate(' + decl.toFixed(2) + ')">' +
-        par(66.56, "st-polar") + par(-66.56, "st-polar") + par(23.44, "st-tropic") + par(-23.44, "st-tropic") + par(0, "st-equator") +
-        par(lat, "st-here") +
-        '<line class="st-axis" x1="0" y1="' + (-R - 7) + '" x2="0" y2="' + (R + 7) + '"/>' +
-        '<text class="st-n" x="0" y="' + (-R - 9) + '" text-anchor="middle">N</text>' +
+      par(23.44, "st-tropic") + par(-23.44, "st-tropic") + par(0, "st-equator", "equator") +
+      par(lat, "st-here", "you · " + Math.round(Math.abs(lat)) + "°" + (lat >= 0 ? "N" : "S")) +
+      '<line class="st-axis" x1="' + cx + '" y1="' + (cy - R - 6) + '" x2="' + cx + '" y2="' + (cy + R + 6) + '"/>' +
+      '<text class="st-n" x="' + cx + '" y="' + (cy - R - 8) + '" text-anchor="middle">N</text>' +
+      // night side: the half facing away from the Sun, so its edge tilts with the light
+      '<g transform="rotate(' + (-decl).toFixed(2) + ' ' + cx + ' ' + cy + ')" clip-path="url(#stClip)">' +
+        '<rect x="' + (cx - R - 4) + '" y="' + (cy - R - 20) + '" width="' + (R * 1.1 + 4).toFixed(1) + '" height="' + (2 * R + 40) + '" fill="url(#stNight)"/>' +
       '</g>' +
-      // night side (screen-space: away from the Sun), clipped to the globe
-      '<rect x="' + (cx - R) + '" y="' + (cy - R) + '" width="' + (R * 1.08).toFixed(1) + '" height="' + (2 * R) + '" fill="url(#stNight)" clip-path="url(#stClip)"/>' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" stroke="rgba(255,255,255,0.18)"/>' +
-      // overhead point and the observer at noon
-      '<circle class="st-sub" cx="' + (cx + R) + '" cy="' + cy + '" r="3.2"/>' +
-      '<circle class="st-obs" cx="' + ox.toFixed(1) + '" cy="' + oy.toFixed(1) + '" r="3"/>' +
+      // the overhead point and you
+      '<circle class="st-sub" cx="' + subX.toFixed(1) + '" cy="' + subY.toFixed(1) + '" r="3.2"/>' +
+      '<circle class="st-obs" cx="' + ox.toFixed(1) + '" cy="' + oy.toFixed(1) + '" r="3.2"/>' +
       '</svg>';
   }
   function fmtLat(x) { var a = Math.abs(x); return (a < 0.05 ? "0°" : a.toFixed(1) + "°" + (x > 0 ? "N" : "S")); }
@@ -2328,8 +2333,8 @@
       var moving = Math.abs(dir) < 0.02 ? "turning" : (dir > 0 ? "moving north" : "moving south");
       sunCard.innerHTML = sunTiltSVG(loc.lat, dc) +
         '<div class="st-txt">' +
-          '<div class="st-row"><span class="st-dot st-dot-sun"></span>Sun overhead at <b>' + fmtLat(dc) + '</b><small>' + moving + ' · between the tropics, 23.4°N–23.4°S</small></div>' +
-          '<div class="st-row"><span class="st-dot st-dot-obs"></span>Noon sun here <b>' + Math.max(0, noonAlt).toFixed(0) + '°</b> high<small>' + (noonAlt <= 0 ? 'the Sun doesn’t rise today' : noonAlt >= 89.5 ? 'straight overhead' : '90° would be straight overhead') + '</small></div>' +
+          '<div class="st-row"><span class="st-dot st-dot-sun"></span>Sun overhead at <b>' + fmtLat(dc) + '</b><small>' + moving + ' · it stays between the dashed tropics</small></div>' +
+          '<div class="st-row"><span class="st-dot st-dot-obs"></span>Noon sun here <b>' + Math.max(0, noonAlt).toFixed(0) + '°</b> high<small>' + (noonAlt <= 0 ? 'the Sun doesn’t rise today' : noonAlt >= 89.5 ? 'straight overhead' : 'your ray’s angle to the ground · 90° = overhead') + '</small></div>' +
         '</div>';
       var dstr = dayMid(i).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
       var delta = i > 0 ? Math.round(len[i] - len[i - 1]) : 0;
