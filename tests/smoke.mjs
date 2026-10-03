@@ -504,10 +504,10 @@ async function run() {
     assert(await ypage.$("#dayBody .day-chart .band"), "daylight band polygon is drawn");
     const months = await ypage.$$eval("#dayBody .day-chart text", (ts) => ts.map((t) => t.textContent));
     assert(["J", "F", "M", "A", "S", "O", "N", "D"].every((x) => months.includes(x)), "month labels J..D present");
-    // a DST zone shows exactly two clock-change markers in a 12-month window,
-    // one +1h (spring forward) and one -1h (fall back)
+    // a DST zone shows a clock-change marker at each shift across the two years of data
+    // (a year each way from today): two springs forward, two falls back
     const dstN = await ypage.$$eval("#dayBody .dst-line", (e) => e.length);
-    assert(dstN === 2, `two DST markers for a daylight-saving zone, got ${dstN}`);
+    assert(dstN === 4, `four DST markers across two years for a daylight-saving zone, got ${dstN}`);
     const dstLbls = await ypage.$$eval("#dayBody .dst-lbl", (e) => e.map((t) => t.textContent));
     assert(dstLbls.some((s) => /^\+1h$/.test(s)) && dstLbls.some((s) => /^−1h$/.test(s)), `DST labels are +1h and -1h, got ${JSON.stringify(dstLbls)}`);
     const today = await ypage.$eval("#dayReadout", (e) => e.textContent);

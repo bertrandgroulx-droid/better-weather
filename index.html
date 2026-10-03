@@ -2239,10 +2239,12 @@
   // sunrise and sunset curves, with a draggable scrubber that reads out any day.
   function buildDaylightChart(loc, tz) {
     if (!loc || loc.lat == null || loc.lon == null) return false;
-    // A rolling 12-month window centred on today: six months back, six forward.
+    // Data for a year each way from today. The screen always shows a full 12 months —
+    // six either side of the day under the centre line — and sliding the band moves that
+    // line up to six months into the past or the future.
     var today = new Date();
     var todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-    var HALF = 182, days = HALF * 2 + 1, todayIdx = HALF;
+    var HALF = 365, days = HALF * 2 + 1, todayIdx = HALF, WINDOW = 365; // WINDOW = days visible at once
     var startUTC = todayUTC - HALF * 86400000;
     function dayNoon(i) { return new Date(startUTC + i * 86400000 + 43200000); }
     function dayMid(i) { return new Date(startUTC + i * 86400000); }
@@ -2267,15 +2269,16 @@
         dstList.push({ i: i, delta: off[i] - off[i - 1] });
     }
 
-    // The chart is wider than the screen and scrolls under a fixed centre line, built the
-    // same way as the Conditions chart: PXD px per day at 1:1 pixels, with PADX of lead-in
-    // and run-out drawn INSIDE the SVG (not CSS padding, which iOS mishandles on scrollers)
-    // so the first and last day can each sit under the centre line.
-    var PXD = 2.2, PADX = 210, H = 190, PL = 0, PR = 0, PT = 10, PB = 16;
-    var chartW = Math.round((days - 1) * PXD), W = chartW + 2 * PADX, plotW = chartW, plotH = H - PT - PB;
-    function X(i) { return PADX + i * PXD; }
+    // The band is drawn at 1:1 pixels, PXD px per day, where PXD is chosen so that exactly
+    // WINDOW days fill the scroller's width — so a full year is always on screen and the
+    // chart (two years wide) slides under the fixed centre line. No lead-in is needed:
+    // with the line limited to ±6 months, the window's edges meet the data's ends exactly.
+    // PXD depends on the scroller's width, so the SVG is built by layout() once visible.
+    var H = 190, PT = 10, PB = 16, plotH = H - PT - PB, PXD = 1, W = days - 1;
+    function X(i) { return i * PXD; }
     function Y(hr) { return PT + (Math.max(0, Math.min(24, hr)) / 24) * plotH; }
 
+    function buildSvg() {
     // daylight band polygon: sunrise edge L→R, then sunset edge R→L
     var top = "", bot = "", edgeR = "", edgeS = "";
     for (i = 0; i < days; i++) {
@@ -2285,18 +2288,16 @@
       edgeR += (i ? " " : "") + x + "," + Y(srH[i]).toFixed(1);
       edgeS += (i ? " " : "") + x + "," + Y(ssH[i]).toFixed(1);
     }
-    // hour gridlines + labels
-    var grid = "", yaxis = "", hours = [[6, "6a"], [12, "12p"], [18, "6p"]];
-    for (i = 0; i < hours.length; i++) {
-      var gy = Y(hours[i][0]).toFixed(1);
-      grid += '<line class="ax-line" x1="' + PADX + '" y1="' + gy + '" x2="' + (PADX + chartW) + '" y2="' + gy + '"/>';
-      // hour labels live in a frozen axis beside the scroller, so they never scroll away
-      yaxis += '<text x="24" y="' + (Y(hours[i][0]) + 2.6).toFixed(1) + '" text-anchor="end">' + hours[i][1] + '</text>';
+    // hour gridlines (the labels live in a frozen axis beside the scroller)
+    var grid = "";
+    for (i = 0; i < HOURS.length; i++) {
+      var gy = Y(HOURS[i][0]).toFixed(1);
+      grid += '<line class="ax-line" x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '"/>';
     }
     // month gridlines + centred initials, walked across the (year-crossing) window
     var mlab = "JFMAMJJASOND", months = "";
     var s0 = dayMid(0), sy = s0.getUTCFullYear(), sm = s0.getUTCMonth();
-    for (var k = 0; k < 14; k++) {
+    for (var k = 0; k < 26; k++) { // every month across the two years of data
       var mS = (Date.UTC(sy, sm + k, 1) - startUTC) / 86400000;
       var mE = (Date.UTC(sy, sm + k + 1, 1) - startUTC) / 86400000;
       if (mE <= 0 || mS >= days - 1) continue;
@@ -2305,12 +2306,18 @@
       if (hi - lo >= 12) // only label a month with enough room to read
         months += '<text x="' + X((lo + hi) / 2).toFixed(1) + '" y="' + (H - PB + 11) + '" text-anchor="middle">' + mlab[(sm + k) % 12] + '</text>';
     }
+    // a dot on every solstice in the two years (each local longest / shortest day)
+    var solDots = "";
+    for (i = 1; i < days - 1; i++) {
+      var peak = len[i] > len[i - 1] && len[i] >= len[i + 1], trough = len[i] < len[i - 1] && len[i] <= len[i + 1];
+      if (peak || trough) solDots += '<circle class="sol-dot" cx="' + X(i).toFixed(1) + '" cy="' + Y(srH[i]).toFixed(1) + '" r="2"/>';
+    }
     // clock-change markers: a dotted line at each shift, with the ±hours label
     var dstHtml = "";
     for (i = 0; i < dstList.length; i++) {
       var dx = X(dstList[i].i), dhr = dstList[i].delta / 60;
       var lbl = (dhr > 0 ? "+" : "−") + (Math.abs(dhr) % 1 === 0 ? Math.abs(dhr) : Math.abs(dhr).toFixed(1)) + "h";
-      var lx = Math.max(PL + 9, Math.min(W - PR - 9, dx));
+      var lx = Math.max(9, Math.min(W - 9, dx));
       dstHtml += '<line class="dst-line" x1="' + dx.toFixed(1) + '" y1="' + PT + '" x2="' + dx.toFixed(1) + '" y2="' + (H - PB) + '"/>' +
         '<text class="dst-lbl" x="' + lx.toFixed(1) + '" y="' + (PT - 2.5) + '" text-anchor="middle">' + lbl + '</text>';
     }
@@ -2323,21 +2330,24 @@
       '<polygon class="band" points="' + top + bot + '"/>' +
       '<polyline class="edge" points="' + edgeR + '"/>' +
       '<polyline class="edge" points="' + edgeS + '"/>' +
-      '<circle class="sol-dot" cx="' + X(iMax).toFixed(1) + '" cy="' + Y(srH[iMax]).toFixed(1) + '" r="2"/>' +
-      '<circle class="sol-dot" cx="' + X(iMin).toFixed(1) + '" cy="' + Y(srH[iMin]).toFixed(1) + '" r="2"/>' +
+      solDots +
       dstHtml +
       '<line class="today-line" x1="' + X(todayIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(todayIdx).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
       '</svg>';
+    return svg;
+    }
+    var HOURS = [[6, "6a"], [12, "12p"], [18, "6p"]], yaxis = "";
+    for (i = 0; i < HOURS.length; i++) yaxis += '<text x="24" y="' + (Y(HOURS[i][0]) + 2.6).toFixed(1) + '" text-anchor="end">' + HOURS[i][1] + '</text>';
 
     var fLong = dayMid(iMax).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     var fShort = dayMid(iMin).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     els.dayBody.innerHTML =
-      '<p class="day-note">Today starts under the line — six months back, six ahead. Slide the chart to read any day. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
+      '<p class="day-note">A full year on screen — six months either side of the line, which starts on today. Slide the band to move the line up to six months into the past or future. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
       '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + ').' +
       (dstList.length ? ' Dotted lines mark the clock changes (daylight saving).' : '') + '</p>' +
       '<div class="day-readout" id="dayReadout"></div>' +
       '<div class="day-chart-wrap" id="dayWrap">' +
-        '<div class="day-scroll" id="dayScroll">' + svg + '</div>' +
+        '<div class="day-scroll" id="dayScroll"></div>' +
         '<svg class="day-yaxis" width="28" height="' + H + '" viewBox="0 0 28 ' + H + '" aria-hidden="true">' + yaxis + '</svg>' +
         '<div class="day-cursor" aria-hidden="true"><i class="dc-line" style="top:' + PT + 'px;height:' + plotH + 'px"></i><i class="dc-dot" id="dayDotR"></i><i class="dc-dot" id="dayDotS"></i></div>' +
       '</div>' +
@@ -2377,7 +2387,16 @@
     // The chart scrolls under the fixed centre line: the day under the line is whichever
     // X(i) sits at the viewport's centre, and once motion stops (no finger down) the chart
     // eases so that day is exactly centred.
-    function centreIdx() { return Math.max(0, Math.min(days - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2 - PADX) / PXD))); }
+    function centreIdx() { return Math.max(0, Math.min(days - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2) / PXD))); }
+    // Size the band so WINDOW days span the scroller, draw it, and keep the current day
+    // under the line. Runs once the panel is visible (width known) and again on resize.
+    function layout() {
+      var cw = sc.clientWidth || 328;
+      PXD = cw / WINDOW; W = (days - 1) * PXD;
+      sc.innerHTML = buildSvg();
+      sc.scrollLeft = Math.round(X(curI) - cw / 2);
+      setScrub(curI);
+    }
     var raf = 0, settle = null, interacting = false;
     function doSettle() {
       settle = null; if (interacting) return;
@@ -2399,9 +2418,13 @@
     var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     sc.addEventListener("wheel", function (e) { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { sc.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     setScrub(todayIdx);
-    requestAnimationFrame(function () { sc.scrollLeft = Math.round(X(todayIdx) - sc.clientWidth / 2); }); // open on today, under the line
+    requestAnimationFrame(layout); // the panel is unhidden right after this returns, so the width is known by then
+    if (dayResize) window.removeEventListener("resize", dayResize);
+    dayResize = function () { if (!els.dayBackdrop.classList.contains("hidden")) layout(); };
+    window.addEventListener("resize", dayResize);
     return true;
   }
+  var dayResize = null;
 
   // Interactive hourly wind chart: a wind-speed line with direction arrows, a
   // dotted gust line, Light/Mod/Strong/Severe bands, a "now" marker, and a
