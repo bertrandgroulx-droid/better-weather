@@ -1032,7 +1032,7 @@
     return MAPBOX_TOKEN ? mapboxGeocode(q, count) : openMeteoGeocode(q, count);
   }
 
-  // ---- recent searches (localStorage) ----
+  // ---- saved places (localStorage; key kept as "bw-recents" so existing lists survive) ----
   function getRecents() {
     try { return JSON.parse(localStorage.getItem("bw-recents") || "[]"); } catch (e) { return []; }
   }
@@ -2583,7 +2583,7 @@
       (removable ? '<span class="rc-grip" aria-label="Drag to reorder" title="Drag to reorder"><i></i><i></i><i></i></span>' : '') +
       '<span class="rc-name">' + esc(loc.name) +
       (loc.sub ? ' <span class="sub">' + esc(loc.sub) + '</span>' : '') + '</span>' +
-      (removable ? '<button type="button" class="rc-del" data-del="' + i + '" aria-label="Remove from recent searches">✕</button>' : '') +
+      (removable ? '<button type="button" class="rc-del" data-del="' + i + '" aria-label="Remove from saved places">✕</button>' : '') +
       '</li>';
   }
 
@@ -2604,7 +2604,7 @@
     var recents = getRecents();
     var html = GEO_LI;
     if (recents.length) {
-      html += '<li class="rc-head">Recent<span class="rc-clear" data-clear="1">Clear all</span></li>';
+      html += '<li class="rc-head">Saved<span class="rc-clear" data-clear="1">Clear all</span></li>';
       recents.forEach(function (loc, i) { html += itemHtml(loc, i, true); });
     }
     els.results.innerHTML = html;
