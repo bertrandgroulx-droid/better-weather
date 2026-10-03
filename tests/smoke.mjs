@@ -512,15 +512,14 @@ async function run() {
     assert(dstLbls.some((s) => /^\+1h$/.test(s)) && dstLbls.some((s) => /^−1h$/.test(s)), `DST labels are +1h and -1h, got ${JSON.stringify(dstLbls)}`);
     const today = await ypage.$eval("#dayReadout", (e) => e.textContent);
     assert(/today/.test(today), `readout starts on today, got "${today.replace(/\s+/g, " ").trim()}"`);
-    // today sits in the middle: its marker line is at the horizontal centre of
-    // the plot (viewBox 0..364, left pad 24, right pad 8 → centre x ≈ 190)
-    const todayX = await ypage.$eval("#dayCursor", (e) => +e.getAttribute("x1"));
-    assert(Math.abs(todayX - 190) < 2, `today's marker is centred (x≈190), got ${todayX}`);
-    // dragging to each edge reads a different, non-today day ~6 months out
-    const box = await ypage.$eval("#dayWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
-    const scrubTo = async (fx) => { const x = box.x + box.w * fx; await ypage.mouse.move(x, box.y + box.h / 2); await ypage.mouse.down(); await ypage.mouse.move(x, box.y + box.h / 2); await ypage.mouse.up(); return ypage.$eval("#dayReadout .rd-date", (e) => e.textContent.trim()); };
-    const left = await scrubTo(0.01);
-    const right = await scrubTo(0.99);
+    // the chart scrolls under a fixed centre line and opens with today's marker under it
+    await ypage.waitForTimeout(100);
+    const offset = await ypage.evaluate(() => { const t = document.querySelector("#dayScroll .today-line").getBoundingClientRect(); const l = document.querySelector(".day-cursor .dc-line").getBoundingClientRect(); return t.left - (l.left + l.width / 2); });
+    assert(Math.abs(offset) < 2, `today's marker opens under the centre line, got offset ${offset.toFixed(1)}px`);
+    // scrolling to each end reads a different, non-today day ~6 months out
+    const scrollTo = async (fx) => { await ypage.$eval("#dayScroll", (e, f) => { e.scrollLeft = f * (e.scrollWidth - e.clientWidth); }, fx); await ypage.waitForTimeout(350); return ypage.$eval("#dayReadout .rd-date", (e) => e.textContent.trim()); };
+    const left = await scrollTo(0);
+    const right = await scrollTo(1);
     assert(!/today/.test(left) && !/today/.test(right), `edges are not today, got "${left}" / "${right}"`);
     assert(left !== right, `the two edges are different days, got "${left}" / "${right}"`);
     // the readout still carries a full sunrise/sunset/length line off-centre
