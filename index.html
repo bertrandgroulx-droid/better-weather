@@ -166,14 +166,15 @@
   .result.page-ghost { pointer-events: none; z-index: 5; margin: 0; will-change: transform; }
   /* Card rows: 1 page dots (top) · 2 hero + condition · 3 outlook · 4 metric columns ·
      5 the place's name, centred at the bottom so the card always says where it is. */
-  .sum-loc { grid-column: 1 / -1; grid-row: 5; margin-top: 6px; text-align: center;
-    font-size: 0.82rem; font-weight: 600; color: var(--text);
+  /* a quiet footer: context only — the weather above is what matters */
+  .sum-loc { grid-column: 1 / -1; grid-row: 5; margin-top: 8px; text-align: center;
+    font-size: 0.7rem; font-weight: 500; color: var(--muted); opacity: 0.85; letter-spacing: 0.01em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     /* width:0 + min-width:100% keeps this long nowrap line out of the max-content column
        sizing (otherwise a street address would widen the whole card); it then fills the
        card's width and truncates with an ellipsis */
     width: 0; min-width: 100%; }
-  .sum-loc .sl-sub { color: var(--muted); font-weight: 500; }
+  .sum-loc .sl-sub { opacity: 0.8; font-weight: 400; }
   .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
   /* row 1: current icon + temp (left) | condition + feels-like (right) */
   .sum-hero { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; }
