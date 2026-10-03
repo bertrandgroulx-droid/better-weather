@@ -447,7 +447,7 @@
   .day-sun .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
   .day-sun .st-dot-sun { background: var(--accent); }
   .day-sun .st-dot-obs { background: #fff; }
-  .st-svg .st-sun { fill: var(--accent); filter: drop-shadow(0 0 6px rgba(255,214,102,0.55)); }
+  .st-svg .st-sunlab { fill: rgba(255,214,102,0.7); font-size: 5.4px; font-family: inherit; letter-spacing: 0.08em; text-transform: uppercase; }
   .st-svg .st-ray { stroke: var(--accent); stroke-width: 1.2; opacity: 0.9; }
   .st-svg .st-ray-obs { stroke: var(--accent); stroke-width: 1.1; opacity: 0.8; stroke-dasharray: 3 2.5; }
   .st-svg .st-ray-bg { stroke: var(--accent); stroke-width: 0.7; opacity: 0.16; }
@@ -1727,24 +1727,30 @@
       return '<path class="' + cls + '" d="M' + (cx - hw).toFixed(1) + ',' + y.toFixed(1) + ' A' + hw.toFixed(1) + ',' + ry.toFixed(1) + ' 0 0 0 ' + (cx + hw).toFixed(1) + ',' + y.toFixed(1) + '"/>' +
         (label ? '<text class="st-lab' + (cls === "st-here" ? " st-lab-here" : "") + '" x="' + (cx - hw + 3).toFixed(1) + '" y="' + (cls === "st-here" ? y + 9 : y - 2).toFixed(1) + '">' + label + '</text>' : ''); // "you" sits under its line, clear of the grid labels above
     };
-    var ray = function (t, cls, endX, endY) { // a ray parallel to the sunlight, offset t from the centre line
+    // A beam of sunlight, parallel to all the others, offset t from the centre beam; drawn
+    // from off the right edge to where it lands, with an arrowhead at the landing end.
+    var ray = function (t, cls, marker, endX, endY) {
       var sx = cx + 150 * ux + t * nx, sy = cy + 150 * uy + t * ny;
       if (endX == null) { var hit = Math.sqrt(Math.max(0, R * R - t * t)); endX = cx + t * nx + hit * ux; endY = cy + t * ny + hit * uy; }
-      return '<line class="' + cls + '" x1="' + sx.toFixed(1) + '" y1="' + sy.toFixed(1) + '" x2="' + endX.toFixed(1) + '" y2="' + endY.toFixed(1) + '"/>';
+      return '<line class="' + cls + '" marker-end="url(#' + marker + ')" x1="' + sx.toFixed(1) + '" y1="' + sy.toFixed(1) + '" x2="' + endX.toFixed(1) + '" y2="' + endY.toFixed(1) + '"/>';
     };
     var ox = cx + R * Math.cos(f0), oy = cy - R * Math.sin(f0); // you, at local noon (on the sunward limb)
-    var tObs = (ox - cx) * nx + (oy - cy) * ny;                 // your ray's offset from the centre line
+    var tObs = (ox - cx) * nx + (oy - cy) * ny;                 // your beam's offset from the centre beam
     var subX = cx + R * ux, subY = cy + R * uy;                 // where the Sun is straight overhead
-    var sunX = cx + 98 * ux, sunY = cy + 98 * uy;
     return '<svg class="st-svg" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
       '<defs><radialGradient id="stEarth" cx="40%" cy="38%" r="70%"><stop offset="0" stop-color="#4f8fd6"/><stop offset="1" stop-color="#1b3f73"/></radialGradient>' +
       '<clipPath id="stClip"><circle cx="' + cx + '" cy="' + cy + '" r="' + R + '"/></clipPath>' +
-      '<linearGradient id="stNight" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#020812" stop-opacity="0.78"/><stop offset="0.86" stop-color="#020812" stop-opacity="0.78"/><stop offset="1" stop-color="#020812" stop-opacity="0"/></linearGradient></defs>' +
-      // sunlight: a field of faint parallel rays tilted by the declination, two picked out
-      [-40, -27, -14, 14, 27, 40].map(function (t) { return ray(t, "st-ray-bg"); }).join("") +
-      '<circle class="st-sun" cx="' + sunX.toFixed(1) + '" cy="' + sunY.toFixed(1) + '" r="9"/>' +
-      ray(0, "st-ray", subX, subY) +
-      ray(tObs, "st-ray st-ray-obs", ox, oy) +
+      '<linearGradient id="stNight" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#020812" stop-opacity="0.78"/><stop offset="0.86" stop-color="#020812" stop-opacity="0.78"/><stop offset="1" stop-color="#020812" stop-opacity="0"/></linearGradient>' +
+      // the Sun itself is far off to the right: show its light arriving, not a disc
+      '<radialGradient id="stGlow" cx="1" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffd166" stop-opacity="0.3"/><stop offset="0.5" stop-color="#ffd166" stop-opacity="0.08"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>' +
+      '<marker id="stArr" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0.6 L5.4,3 L0,5.4 Z" fill="#ffd166"/></marker>' +
+      '<marker id="stArrBg" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0.6 L5.4,3 L0,5.4 Z" fill="#ffd166" fill-opacity="0.35"/></marker></defs>' +
+      '<rect x="' + (W - 60) + '" y="0" width="60" height="' + H + '" fill="url(#stGlow)"/>' +
+      '<text class="st-sunlab" x="' + (W - 3) + '" y="' + (H - 4) + '" text-anchor="end">sunlight</text>' +
+      // parallel beams tilted by the declination, two picked out: to the overhead point, and to you
+      [-40, -27, -14, 14, 27, 40].map(function (t) { return ray(t, "st-ray-bg", "stArrBg"); }).join("") +
+      ray(0, "st-ray", "stArr", subX, subY) +
+      ray(tObs, "st-ray st-ray-obs", "stArr", ox, oy) +
       // Earth, upright
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#stEarth)"/>' +
       // night side: the half facing away from the Sun, so its edge tilts with the light
