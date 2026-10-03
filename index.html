@@ -286,6 +286,8 @@
   .about-list .i { font-size: 1.05rem; flex: none; }
   .about-list b { font-weight: 700; }
   .about-list .d { color: var(--muted); }
+  .about-build { margin-top: 6px; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .about-build button { background: none; border: 1px solid var(--border); border-radius: 999px; color: var(--accent); font: inherit; font-size: 0.72rem; padding: 2px 9px; cursor: pointer; }
   .about-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.10);
     font-size: 0.8rem; color: var(--muted); text-align: center; }
   .about-foot .about-src { font-size: 0.74rem; line-height: 1.55; margin-bottom: 8px; }
@@ -889,6 +891,9 @@
           Radar imagery from <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> · Map &amp; address search from <a href="https://www.mapbox.com" target="_blank" rel="noopener">Mapbox</a>.
         </div>
         <div>Better Weather</div>
+        <!-- which build this is: the page's Last-Modified (GitHub Pages sets it to the publish
+             time), plus a one-tap way to pull the newest version past the offline cache -->
+        <div class="about-build">Build <span id="aboutBuild">—</span> · <button type="button" id="aboutReload">Reload latest</button></div>
       </div>
     </div>
   </div>
@@ -3566,8 +3571,25 @@
   els.closeModal.addEventListener("click", closeModal);
   els.backdrop.addEventListener("click", function (e) { if (e.target === els.backdrop) closeModal(); });
   // About panel
-  function openAbout() { els.aboutBackdrop.classList.remove("hidden"); }
+  function openAbout() {
+    // build stamp: when this copy of the page was published
+    var b = $("aboutBuild");
+    if (b) {
+      var lm = new Date(document.lastModified);
+      b.textContent = isNaN(lm) ? "unknown" : lm.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    els.aboutBackdrop.classList.remove("hidden");
+  }
   function closeAbout() { els.aboutBackdrop.classList.add("hidden"); }
+  // "Reload latest": ask the service worker to update, then reload past any cached copy
+  var ar = $("aboutReload");
+  if (ar) ar.addEventListener("click", function () {
+    ar.textContent = "Reloading…";
+    var done = function () { location.reload(); };
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+      navigator.serviceWorker.getRegistration().then(function (r) { return r ? r.update() : null; }).then(done, done);
+    } else done();
+  });
   els.aboutBtn.addEventListener("click", openAbout);
   els.aboutClose.addEventListener("click", closeAbout);
   els.aboutBackdrop.addEventListener("click", function (e) { if (e.target === els.aboutBackdrop) closeAbout(); });
