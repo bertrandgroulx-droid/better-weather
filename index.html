@@ -440,8 +440,6 @@
   /* precip band: clean bars (height = amount, tint = chance) */
   .cond-precip { position: relative; }
   .cond-precip .cp-bar { position: absolute; bottom: 0; border-radius: 2px 2px 0 0; }
-  /* highlight the hour-column under the centre cursor so it's clear which bar you're on */
-  .cond-precip .cc-slot { position: absolute; bottom: 0; height: 100%; border-radius: 3px; background: rgba(255,255,255,0.11); }
   .cond-legend { display: flex; gap: 22px; justify-content: center; margin: 12px 0 2px; font-size: 0.95rem; color: var(--muted); }
   .cond-legend i { display: inline-block; width: 20px; height: 5px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .cond-legend .lg-actual { background: var(--accent); }
@@ -1784,9 +1782,7 @@
           '<div class="cond-track" style="width:' + totalW + 'px">' +
             '<div class="cond-icons" style="height:' + ICON_H + 'px;width:' + totalW + 'px">' + icons + '</div>' +
             svg +
-            '<div class="cond-precip" style="height:' + PRECIP_H + 'px;width:' + totalW + 'px">' +
-              '<div class="cc-slot" id="condSlot" style="display:none;width:' + HR + 'px"></div>' + precip +
-            '</div>' +
+            '<div class="cond-precip" style="height:' + PRECIP_H + 'px;width:' + totalW + 'px">' + precip + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="cond-yaxis" style="height:' + (ICON_H + H + PRECIP_H) + 'px">' + ylabs +
@@ -1863,8 +1859,6 @@
   function updateCenter() {
     var S = condState, sc = $("condScroll"); if (!S || !sc) return;
     var idx = condCenterIdx(sc);
-    var slot = $("condSlot");
-    if (slot) { slot.style.left = (S.X(idx) - S.HR / 2).toFixed(1) + "px"; slot.style.display = ""; }
     var da = $("condDotA"), df = $("condDotF");
     if (da) { if (S.ta[idx] != null) { da.style.top = (S.ICON_H + S.Y(S.ta[idx])).toFixed(1) + "px"; da.style.display = ""; } else da.style.display = "none"; }
     if (df) { if (S.tf[idx] != null) { df.style.top = (S.ICON_H + S.Y(S.tf[idx])).toFixed(1) + "px"; df.style.display = ""; } else df.style.display = "none"; }
@@ -1874,7 +1868,26 @@
     if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso)) return;
     els.condBackdrop.classList.remove("hidden");
     var sc = $("condScroll"), days = $("condDays"), raf = null;
-    sc.addEventListener("scroll", function () { if (raf) return; raf = requestAnimationFrame(function () { raf = null; updateCenter(); }); });
+    // When scrolling stops (and no finger is down), ease to centre the nearest hour
+    // so the cursor comes to rest exactly on a bar. Only acts after motion ends, so
+    // it never fights an in-progress swipe.
+    var settleTimer = null, interacting = false;
+    function scheduleSettle() { if (settleTimer) clearTimeout(settleTimer); settleTimer = setTimeout(doSettle, 150); }
+    function doSettle() {
+      settleTimer = null;
+      if (interacting) return;
+      var idx = condCenterIdx(sc), max = sc.scrollWidth - sc.clientWidth;
+      var target = Math.max(0, Math.min(max, condState.X(idx) - sc.clientWidth / 2));
+      if (Math.abs(target - sc.scrollLeft) < 1) return;
+      sc.scrollTo({ left: target, behavior: "smooth" });
+    }
+    sc.addEventListener("scroll", function () {
+      if (!raf) raf = requestAnimationFrame(function () { raf = null; updateCenter(); });
+      scheduleSettle();
+    });
+    sc.addEventListener("pointerdown", function () { interacting = true; if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; } });
+    sc.addEventListener("pointerup", function () { interacting = false; scheduleSettle(); });
+    sc.addEventListener("pointercancel", function () { interacting = false; scheduleSettle(); });
     // Desktop: click-drag to pan the chart (touch pans natively via touch-action: pan-x).
     var down = false, sx = 0, sl = 0;
     sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} sc.classList.add("grabbing"); e.preventDefault(); });
