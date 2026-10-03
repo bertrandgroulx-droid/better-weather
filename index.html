@@ -157,9 +157,26 @@
        between them flexes with the phone width (space-between). */
     display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
     justify-content: space-between; align-items: center; flex: none;
-    /* horizontal drags drive the location swipe; vertical gestures still scroll the page */
-    touch-action: pan-y; -webkit-user-select: none; user-select: none; will-change: transform;
   }
+  /* Tall, narrow edge arrows that step through saved places (only rendered when ≥2).
+     They sit inside the card's side padding so the two content columns keep their width.
+     A disabled arrow (nothing further in that direction) fades almost out — no wrap. */
+  .sum-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 72px; padding: 0; margin: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: 0; border-radius: 8px; cursor: pointer;
+    color: #7fa8d8; opacity: 0.55; -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s ease, color 0.15s ease;
+  }
+  .sum-nav.prev { left: -4px; }
+  .sum-nav.next { right: -4px; }
+  .sum-nav svg { width: 10px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .sum-nav:hover { opacity: 0.9; }
+  .sum-nav:active { opacity: 1; color: #a9c8ee; }
+  .sum-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; opacity: 1; }
+  .sum-nav[disabled] { opacity: 0.12; cursor: default; pointer-events: none; }
+  .summary.nav-loading .sum-nav:not([disabled]) { opacity: 0.25; } /* the next place is loading */
   .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
   /* row 1: current icon + temp (left) | condition + feels-like (right) */
   .sum-hero { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 6px; }
@@ -744,7 +761,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across. A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
@@ -1014,9 +1031,9 @@
     } catch (e) { /* storage may be unavailable */ }
   }
 
-  // ---- swipe between saved locations on the summary card ----
+  // ---- step between saved locations on the summary card (edge arrows + dots) ----
   function locKey(x) { return (((x && x.name) || "") + "|" + ((x && x.sub) || "")).toLowerCase(); }
-  // Ordered list to swipe through: the saved recents, plus the current place if it
+  // Ordered list to step through: the saved recents, plus the current place if it
   // isn't among them (e.g. "My location").
   function swipeLocsFor(loc) {
     var rec = getRecents();
@@ -1025,49 +1042,31 @@
     }
     return rec;
   }
-  // Finger-tracking swipe through saved locations. The card follows your finger 1:1
-  // while you drag (set by the pointer handlers via sumSetX); release past a threshold
-  // (or with a flick) commits to the next/previous place, otherwise it springs back.
-  // swipePending carries a committed direction across the async load so renderSummary
-  // can glide the freshly-loaded card into place.
-  var swipePending = null;
-  function sumCardW() { var r = els.summary.getBoundingClientRect(); return r.width || 320; }
-  function sumSetX(dx) { // live finger tracking — dim a touch as the card leaves centre
-    var o = 1 - Math.min(Math.abs(dx) / sumCardW(), 1) * 0.4;
-    els.summary.style.transition = "none";
-    els.summary.style.transform = "translateX(" + dx + "px)";
-    els.summary.style.opacity = o.toFixed(3);
+  // Step through saved locations with the tall edge arrows on the summary card.
+  // No wrap-around: an arrow is only enabled when there's a place in that direction.
+  var navBusy = false;
+  function navIndex(loc) {
+    var list = swipeLocsFor(loc);
+    return { list: list, i: list.findIndex(function (r) { return loc && locKey(r) === locKey(loc); }) };
   }
-  function sumSpringBack() { // under threshold / cancel → ease back to centre
-    var el = els.summary;
-    el.style.transition = "transform 0.22s cubic-bezier(.22,.61,.36,1), opacity 0.22s ease";
-    el.style.transform = "translateX(0)"; el.style.opacity = "1";
+  function navLoc(dir) { // dir: -1 previous, +1 next
+    if (navBusy) return;
+    var n = navIndex(lastLoc), ni = n.i + dir;
+    if (n.i < 0 || ni < 0 || ni >= n.list.length) return;
+    navBusy = true;
+    els.summary.classList.add("nav-loading");
+    var p = show(n.list[ni], true); // silent: keep the current card until the new one loads
+    var done = function () { navBusy = false; els.summary.classList.remove("nav-loading"); };
+    if (p && p.then) p.then(done, done); else done();
   }
-  function sumCommit(dir) { // dir: +1 next, -1 previous (wraps). Called from pointerup.
-    var list = swipeLocsFor(lastLoc);
-    if (list.length < 2) { sumSpringBack(); return; }
-    var i = list.findIndex(function (r) { return lastLoc && locKey(r) === locKey(lastLoc); });
-    if (i < 0) i = 0;
-    var ni = (i + dir + list.length) % list.length;
-    if (ni === i) { sumSpringBack(); return; }
-    var w = sumCardW(), el = els.summary;
-    swipePending = dir;
-    // carry the card the rest of the way off in the direction it's already moving,
-    // dimming (never fully blank) while the new place loads underneath.
-    el.style.transition = "transform 0.16s ease-out, opacity 0.16s ease-out";
-    el.style.transform = "translateX(" + (dir > 0 ? -w * 0.55 : w * 0.55) + "px)";
-    el.style.opacity = "0.35";
-    var p = show(list[ni], true); // silent: keep the card until the new one loads
-    if (p && p.then) p.then(null, function () { swipePending = null; sumSpringBack(); });
-  }
-  function swipeSlideIn() { // called from renderSummary once the new card is in the DOM
-    if (swipePending === null) return;
-    swipePending = null;
-    var el = els.summary; // card currently sits off-centre showing the new data
-    requestAnimationFrame(function () {
-      el.style.transition = "transform 0.24s cubic-bezier(.22,.61,.36,1), opacity 0.24s ease";
-      el.style.transform = "translateX(0)"; el.style.opacity = "1";
-    });
+  var CHEV_L = '<svg viewBox="0 0 10 36" aria-hidden="true"><path d="M8 2 2 18l6 16"/></svg>';
+  var CHEV_R = '<svg viewBox="0 0 10 36" aria-hidden="true"><path d="M2 2l6 16-6 16"/></svg>';
+  function navArrowsHtml(loc) {
+    var n = navIndex(loc);
+    if (n.list.length < 2 || n.i < 0) return "";
+    var prev = n.list[n.i - 1], next = n.list[n.i + 1];
+    return '<button type="button" class="sum-nav prev" data-dir="-1"' + (prev ? ' aria-label="Previous place: ' + esc(prev.name) + '"' : ' disabled aria-hidden="true"') + '>' + CHEV_L + '</button>' +
+           '<button type="button" class="sum-nav next" data-dir="1"'  + (next ? ' aria-label="Next place: ' + esc(next.name) + '"' : ' disabled aria-hidden="true"') + '>' + CHEV_R + '</button>';
   }
   function swipeDotsHtml(loc) {
     var list = swipeLocsFor(loc);
@@ -2250,10 +2249,10 @@
           '</div>' +
         '</div>' +
       '</div>' +
-      swipeDotsHtml(loc);
+      swipeDotsHtml(loc) +
+      navArrowsHtml(loc);
     // seat the ⓘ vertically centered between Sunrise and Sunset (survives re-renders)
     (els.summary.querySelector(".sr-ss") || els.summary).appendChild(els.aboutBtn);
-    swipeSlideIn(); // if this render came from a location swipe, slide the new card in
   }
 
   function waterFrac(amount, safe, full) {
@@ -2750,42 +2749,9 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
-  // Swipe the summary card left/right to move through saved locations. The card tracks
-  // the finger in real time; a horizontal intent captures the pointer, a vertical one is
-  // left to scroll the page. Release commits past a threshold or on a flick.
-  // sumPhase: idle | detect (direction not yet decided) | dragx (tracking) | scroll (gave up to page)
-  var sumSX = 0, sumSY = 0, sumT0 = 0, sumDX = 0, sumPhase = "idle", sumMoved = false;
-  els.summary.addEventListener("pointerdown", function (e) {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (swipePending !== null) return; // a commit is mid-flight; ignore new grabs
-    sumPhase = "detect"; sumMoved = false; sumDX = 0;
-    sumSX = e.clientX; sumSY = e.clientY; sumT0 = Date.now();
-  });
-  els.summary.addEventListener("pointermove", function (e) {
-    if (sumPhase === "idle" || sumPhase === "scroll") return;
-    var dx = e.clientX - sumSX, dy = e.clientY - sumSY;
-    if (sumPhase === "detect") {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // wait for a clear intent
-      if (Math.abs(dx) <= Math.abs(dy) || swipeLocsFor(lastLoc).length < 2) { sumPhase = "scroll"; return; }
-      sumPhase = "dragx"; sumMoved = true;
-      try { els.summary.setPointerCapture(e.pointerId); } catch (_) {}
-    }
-    sumDX = dx; sumSetX(dx); e.preventDefault(); // 1:1 with the finger
-  });
-  function sumPointerEnd() {
-    if (sumPhase !== "dragx") { sumPhase = "idle"; return; }
-    sumPhase = "idle";
-    var w = sumCardW(), dt = Math.max(Date.now() - sumT0, 1), vx = sumDX / dt; // px/ms
-    if (Math.abs(sumDX) > w * 0.22 || (Math.abs(vx) > 0.4 && Math.abs(sumDX) > 24)) sumCommit(sumDX < 0 ? 1 : -1);
-    else sumSpringBack();
-  }
-  els.summary.addEventListener("pointerup", sumPointerEnd);
-  els.summary.addEventListener("pointercancel", function () {
-    if (sumPhase === "dragx") sumSpringBack();
-    sumPhase = "idle";
-  });
   els.summary.addEventListener("click", function (e) {
-    if (sumMoved) return; // the gesture was a swipe, not a tap
+    var nav = e.target.closest(".sum-nav");
+    if (nav) { if (!nav.disabled) navLoc(+nav.dataset.dir); return; } // edge arrows: previous / next saved place
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
