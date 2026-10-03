@@ -2280,8 +2280,10 @@
     // chart (two years wide) slides under the fixed centre line. No lead-in is needed:
     // with the line limited to ±6 months, the window's edges meet the data's ends exactly.
     // PXD depends on the scroller's width, so the SVG is built by layout() once visible.
-    var H = 190, PT = 10, PB = 16, plotH = H - PT - PB, PXD = 1, W = days - 1;
-    function X(i) { return i * PXD; }
+    // PAD (half the scroller's width) of lead-in and run-out inside the SVG lets the very
+    // first and last days reach the centre line, so the line can travel the whole two years.
+    var H = 190, PT = 10, PB = 16, plotH = H - PT - PB, PXD = 1, PAD = 0, W = days - 1;
+    function X(i) { return PAD + i * PXD; }
     function Y(hr) { return PT + (Math.max(0, Math.min(24, hr)) / 24) * plotH; }
 
     function buildSvg() {
@@ -2298,7 +2300,7 @@
     var grid = "";
     for (i = 0; i < HOURS.length; i++) {
       var gy = Y(HOURS[i][0]).toFixed(1);
-      grid += '<line class="ax-line" x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '"/>';
+      grid += '<line class="ax-line" x1="' + X(0).toFixed(1) + '" y1="' + gy + '" x2="' + X(days - 1).toFixed(1) + '" y2="' + gy + '"/>';
     }
     // month gridlines + centred initials, walked across the (year-crossing) window
     var mlab = "JFMAMJJASOND", months = "";
@@ -2348,7 +2350,7 @@
     var fLong = dayMid(iMax).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     var fShort = dayMid(iMin).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     els.dayBody.innerHTML =
-      '<p class="day-note">A full year on screen — six months either side of the line, which starts on today. Slide the band to move the line up to six months into the past or future. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
+      '<p class="day-note">A full year on screen — six months either side of the line, which starts on today. Slide the band to move the line anywhere from a year ago to a year ahead. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
       '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + ').' +
       (dstList.length ? ' Dotted lines mark the clock changes (daylight saving).' : '') + '</p>' +
       '<div class="day-readout" id="dayReadout"></div>' +
@@ -2393,12 +2395,12 @@
     // The chart scrolls under the fixed centre line: the day under the line is whichever
     // X(i) sits at the viewport's centre, and once motion stops (no finger down) the chart
     // eases so that day is exactly centred.
-    function centreIdx() { return Math.max(0, Math.min(days - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2) / PXD))); }
+    function centreIdx() { return Math.max(0, Math.min(days - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2 - PAD) / PXD))); }
     // Size the band so WINDOW days span the scroller, draw it, and keep the current day
     // under the line. Runs once the panel is visible (width known) and again on resize.
     function layout() {
       var cw = sc.clientWidth || 328;
-      PXD = cw / WINDOW; W = (days - 1) * PXD;
+      PXD = cw / WINDOW; PAD = cw / 2; W = (days - 1) * PXD + 2 * PAD;
       sc.innerHTML = buildSvg();
       sc.scrollLeft = Math.round(X(curI) - cw / 2);
       setScrub(curI);
