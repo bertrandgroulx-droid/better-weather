@@ -584,8 +584,19 @@
   .results .rc-head:hover { background: none; }
   .results .rc-clear { color: var(--accent); text-transform: none; letter-spacing: 0;
     font-size: 0.7rem; cursor: pointer; padding: 2px 4px; }
-  .results li.rc-item { display: flex; align-items: center; }
+  .results li.rc-item { display: flex; align-items: center; position: relative; }
+  .results li.rc-item .rc-name { flex: 1; min-width: 0; }
   .results li.rc-item .sub { margin-left: 6px; }
+  /* drag handle: three short bars; the whole left edge is the grab area */
+  .results .rc-grip { flex: none; width: 28px; margin: -0.7rem 4px -0.7rem -0.6rem; align-self: stretch;
+    display: flex; flex-direction: column; justify-content: center; gap: 3px; align-items: center;
+    cursor: grab; touch-action: none; color: var(--muted); opacity: 0.6; border-radius: 10px 0 0 10px; }
+  .results .rc-grip i { display: block; width: 12px; height: 2px; border-radius: 1px; background: currentColor; }
+  .results .rc-grip:hover { opacity: 1; }
+  .results li.rc-item.dragging { background: var(--card-2); box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    z-index: 2; cursor: grabbing; }
+  .results li.rc-item.dragging .rc-grip { cursor: grabbing; opacity: 1; color: var(--accent); }
+  .results.reordering li.rc-item:not(.dragging) { transition: transform 0.16s ease; }
   .results .rc-del { margin-left: auto; flex: none; border: none; background: transparent;
     color: var(--muted); font-size: 0.95rem; line-height: 1; cursor: pointer;
     padding: 4px 8px; border-radius: 8px; }
@@ -764,7 +775,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across. A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them — or just tap the left or right half of the card.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them — or just tap the left or right half of the card. Drag the grip beside a saved place in the search panel to change the order.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
@@ -1028,10 +1039,16 @@
   function saveRecent(loc) {
     try {
       var key = function (x) { return (x.name + "|" + (x.sub || "")).toLowerCase(); };
-      var list = getRecents().filter(function (r) { return key(r) !== key(loc); });
+      var list = getRecents();
+      // The list can be hand-ordered (drag to reorder), so a place that's already saved
+      // keeps its spot; only a new place is added, at the top.
+      if (list.some(function (r) { return key(r) === key(loc); })) return;
       list.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "" });
       localStorage.setItem("bw-recents", JSON.stringify(list.slice(0, 6)));
     } catch (e) { /* storage may be unavailable */ }
+  }
+  function setRecents(list) {
+    try { localStorage.setItem("bw-recents", JSON.stringify(list)); } catch (e) { /* ignore */ }
   }
 
   // ---- step between saved locations on the summary card (edge arrows + dots) ----
@@ -2562,8 +2579,10 @@
   var GEO_LI = '<li class="geo" data-geo="1">📍 Use my current location</li>';
 
   function itemHtml(loc, i, removable) {
-    return '<li data-i="' + i + '"' + (removable ? ' class="rc-item"' : '') + '>' + esc(loc.name) +
-      (loc.sub ? ' <span class="sub">' + esc(loc.sub) + '</span>' : '') +
+    return '<li data-i="' + i + '"' + (removable ? ' class="rc-item"' : '') + '>' +
+      (removable ? '<span class="rc-grip" aria-label="Drag to reorder" title="Drag to reorder"><i></i><i></i><i></i></span>' : '') +
+      '<span class="rc-name">' + esc(loc.name) +
+      (loc.sub ? ' <span class="sub">' + esc(loc.sub) + '</span>' : '') + '</span>' +
       (removable ? '<button type="button" class="rc-del" data-del="' + i + '" aria-label="Remove from recent searches">✕</button>' : '') +
       '</li>';
   }
@@ -2621,7 +2640,68 @@
     } catch (e) { /* storage may be unavailable */ }
   }
 
+  // ---- drag to reorder the saved places ----
+  // Pointer-based (works with touch, where native HTML drag-and-drop doesn't). Grab the
+  // grip, the row lifts and follows the finger, and the other rows slide out of the way as
+  // the midpoint of each is crossed. On release the new order is saved and the summary
+  // card's arrows/dots pick it up. The list also scrolls in place if dragged to its edge.
+  var recDrag = null, recJustDragged = false;
+  function recDragStart(e) {
+    var grip = e.target.closest(".rc-grip");
+    if (!grip || (e.pointerType === "mouse" && e.button !== 0)) return;
+    var li = grip.closest("li.rc-item");
+    if (!li) return;
+    e.preventDefault();
+    var r = li.getBoundingClientRect();
+    recDrag = { li: li, id: e.pointerId, grabY: e.clientY - r.top, h: r.height };
+    li.classList.add("dragging");
+    els.results.classList.add("reordering");
+    try { els.results.setPointerCapture(e.pointerId); } catch (_) {}
+    recDragMove(e);
+  }
+  function recDragMove(e) {
+    if (!recDrag || e.pointerId !== recDrag.id) return;
+    var li = recDrag.li, y = e.clientY;
+    // auto-scroll the list when hovering near its top/bottom edge
+    var lr = els.results.getBoundingClientRect();
+    if (y < lr.top + 24) els.results.scrollTop -= 6; else if (y > lr.bottom - 24) els.results.scrollTop += 6;
+    // keep the lifted row within the span of the saved rows (not over the header / off the end)
+    var items = els.results.querySelectorAll("li.rc-item"), first = items[0], last = items[items.length - 1];
+    var top = first.getBoundingClientRect().top - (first === li ? recOffset(li) : 0);
+    var bottom = last.getBoundingClientRect().bottom - (last === li ? recOffset(li) : 0);
+    y = Math.max(top + recDrag.grabY, Math.min(bottom - (recDrag.h - recDrag.grabY), y));
+    // swap with the neighbour whose midpoint the pointer has crossed (one hop per move)
+    var prev = li.previousElementSibling, next = li.nextElementSibling;
+    if (prev && prev.classList.contains("rc-item") && y < prev.getBoundingClientRect().top + prev.offsetHeight / 2) recFlip(prev, function () { li.parentNode.insertBefore(li, prev); });
+    else if (next && next.classList.contains("rc-item") && y > next.getBoundingClientRect().bottom - next.offsetHeight / 2) recFlip(next, function () { li.parentNode.insertBefore(next, li); });
+    // the lifted row tracks the finger relative to wherever it now sits in the list
+    li.style.transform = "translateY(" + (y - recDrag.grabY - li.getBoundingClientRect().top + recOffset(li)) + "px)";
+  }
+  function recOffset(li) { // current translateY, so the rect→target math stays stable across moves
+    var m = /translateY\((-?[\d.]+)px\)/.exec(li.style.transform || ""); return m ? parseFloat(m[1]) : 0;
+  }
+  function recFlip(sib, move) { // slide the displaced neighbour from where it was to where it lands
+    var before = sib.getBoundingClientRect().top;
+    move();
+    var delta = before - sib.getBoundingClientRect().top;
+    sib.style.transition = "none"; sib.style.transform = "translateY(" + delta + "px)";
+    requestAnimationFrame(function () { sib.style.transition = ""; sib.style.transform = ""; });
+  }
+  function recDragEnd(e) {
+    if (!recDrag || e.pointerId !== recDrag.id) return;
+    var li = recDrag.li; recDrag = null;
+    li.classList.remove("dragging"); li.style.transform = "";
+    els.results.classList.remove("reordering");
+    // new order = DOM order of the rows, mapped back through their original indices
+    var old = els.results._list || getRecents(), order = [];
+    els.results.querySelectorAll("li.rc-item").forEach(function (row) { var it = old[+row.dataset.i]; if (it) order.push(it); });
+    var changed = order.some(function (it, i) { return it !== old[i]; });
+    if (changed) { setRecents(order); if (lastLoc && lastData) renderSummary(lastLoc, lastData, lastAir); }
+    renderRecents();
+    recJustDragged = true; setTimeout(function () { recJustDragged = false; }, 0); // swallow the trailing click
+  }
   function onResultsClick(e) {
+    if (recJustDragged || e.target.closest(".rc-grip")) return; // a reorder, not a pick
     if (e.target.dataset && e.target.dataset.del != null) { removeRecent(+e.target.dataset.del); renderRecents(); return; }
     if (e.target.dataset && e.target.dataset.clear) { clearRecents(); renderRecents(); return; }
     var li = e.target.closest("li");
@@ -2827,6 +2907,10 @@
     } else if (e.key === "Escape") { closeModal(); }
   });
   els.results.addEventListener("click", onResultsClick);
+  els.results.addEventListener("pointerdown", recDragStart);
+  els.results.addEventListener("pointermove", recDragMove);
+  els.results.addEventListener("pointerup", recDragEnd);
+  els.results.addEventListener("pointercancel", recDragEnd);
   els.unitC.addEventListener("click", function () { setUnits("metric"); });
   els.unitF.addEventListener("click", function () { setUnits("imperial"); });
   els.tabWeather.addEventListener("click", function () { selectTab("weather"); });
