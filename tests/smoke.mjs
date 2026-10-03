@@ -345,7 +345,10 @@ async function run() {
   }
 
   // 7) Remember last location: first run geolocates, but after choosing a specific
-  // place, reopening restores it without re-requesting geolocation.
+  // place, reopening restores it. With permission already granted and a remembered
+  // current location, reopening may quietly refresh that location for the summary
+  // card's step list — but it must never change the restored place, and with no
+  // remembered location it must not request geolocation at all (no surprise prompt).
   {
     const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
     const lpage = await lctx.newPage();
@@ -368,7 +371,17 @@ async function run() {
     await lpage.reload();
     await lpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
     assert((await lpage.$eval("#cityName", (e) => e.textContent)) === "Lisbon", "reopening restores the last place");
-    assert(revHits === revAfterFirst, "reopening does not re-request geolocation");
+    await lpage.waitForTimeout(600); // let any quiet current-location refresh land
+    assert((await lpage.$eval("#cityName", (e) => e.textContent)) === "Lisbon", "a quiet location refresh never changes the restored place");
+    assert(await lpage.$eval("#summary", (e) => !!e.querySelector(".sd-dot.geo")), "the remembered current location (Calgary, far from Lisbon) joins the step list with a ring dot");
+    // No remembered current location → reopening must not touch geolocation.
+    await lpage.evaluate(() => localStorage.removeItem("bw-geo"));
+    const revBeforeCold = revHits;
+    await lpage.reload();
+    await lpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    await lpage.waitForTimeout(600);
+    assert((await lpage.$eval("#cityName", (e) => e.textContent)) === "Lisbon", "reopening restores the last place (no remembered location)");
+    assert(revHits === revBeforeCold, "reopening with no remembered location does not request geolocation");
     await lctx.close();
   }
 

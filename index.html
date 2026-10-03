@@ -194,6 +194,9 @@
   .sum-dots { grid-column: 1 / -1; grid-row: 4; display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
   .sum-dots .sd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.4; }
   .sum-dots .sd-dot.on { background: var(--text); opacity: 0.9; }
+  /* the device's current location: an accent ring, filled when it's the place on screen */
+  .sum-dots .sd-dot.geo { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 0.75; }
+  .sum-dots .sd-dot.geo.on { background: var(--accent); opacity: 1; }
   .sum-left { grid-column: 1; grid-row: 3; align-self: start; display: flex; flex-direction: column; }
   .sum-hero .ico { font-size: 2.8rem; line-height: 1; }
   .sum-hero .temp { font-size: 2.9rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
@@ -778,7 +781,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across. A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them — or just tap the left or right half of the card. To change the order, press a saved place in the search panel and drag it up or down.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, the slim arrows on the edges of the summary card step between them — or just tap the left or right half of the card. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
@@ -1056,13 +1059,16 @@
 
   // ---- step between saved locations on the summary card (edge arrows + dots) ----
   function locKey(x) { return (((x && x.name) || "") + "|" + ((x && x.sub) || "")).toLowerCase(); }
-  // Ordered list to step through: the saved recents, plus the current place if it
-  // isn't among them (e.g. "My location").
+  // Ordered list to step through: the saved places, plus the place on screen if it isn't
+  // among them, plus — first — the device's current location when it's notably far from
+  // all of those (see GEO_MIN_KM).
   function swipeLocsFor(loc) {
     var rec = getRecents();
     if (loc && !rec.some(function (r) { return locKey(r) === locKey(loc); })) {
-      rec.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "" });
+      if (geoLoc && locKey(loc) === locKey(geoLoc)) rec.unshift(geoLoc); // on screen *is* the current location — keep its ring dot
+      else rec.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "" });
     }
+    if (geoIsDistinct(rec)) rec.unshift(geoLoc);
     return rec;
   }
   // Step through saved locations with the tall edge arrows on the summary card.
@@ -1096,7 +1102,7 @@
     if (list.length < 2) return "";
     var cur = list.findIndex(function (r) { return loc && locKey(r) === locKey(loc); });
     var dots = "";
-    for (var i = 0; i < list.length; i++) dots += '<span class="sd-dot' + (i === cur ? " on" : "") + '"></span>';
+    for (var i = 0; i < list.length; i++) dots += '<span class="sd-dot' + (i === cur ? " on" : "") + (list[i].geo ? " geo" : "") + '"></span>';
     return '<div class="sum-dots" aria-hidden="true">' + dots + '</div>';
   }
 
@@ -1116,6 +1122,54 @@
       if (s && s.lat != null && s.lon != null) return s;
     } catch (e) { /* ignore */ }
     return null;
+  }
+
+  // ---- current (device) location, for the summary card's step list ----
+  // Remembered from the last successful "Use my current location" and refreshed quietly
+  // on later opens. It joins the step list only when it's notably far from every saved
+  // place, so standing at home doesn't show "home" twice.
+  var GEO_MIN_KM = 25, geoLoc = null;
+  try {
+    var g = JSON.parse(localStorage.getItem("bw-geo") || "null");
+    if (g && g.lat != null && g.lon != null) geoLoc = g;
+  } catch (e) { /* ignore */ }
+  function setGeoLoc(loc) {
+    geoLoc = { name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "", geo: true };
+    try { localStorage.setItem("bw-geo", JSON.stringify(geoLoc)); } catch (e) { /* ignore */ }
+  }
+  function distKm(a, b) { // great-circle distance (haversine)
+    var R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLon = (b.lon - a.lon) * Math.PI / 180;
+    var s = Math.sin(dLat / 2), t = Math.sin(dLon / 2);
+    var h = s * s + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * t * t;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function geoIsDistinct(list) {
+    return !!geoLoc && list.every(function (r) { return locKey(r) !== locKey(geoLoc) && distKm(r, geoLoc) >= GEO_MIN_KM; });
+  }
+  // Geolocate + reverse-geocode for a friendly name; the result is remembered as geoLoc.
+  function locateMe(onLoc, onFail, opts) {
+    if (!navigator.geolocation) { onFail(); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      var loc = { lat: p.coords.latitude, lon: p.coords.longitude, name: "My location", sub: "" };
+      fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + loc.lat +
+        "&longitude=" + loc.lon + "&language=en&format=json")
+        .then(function (d) { if (d.results && d.results[0]) loc = omToLoc(d.results[0]); })
+        .catch(function () {})
+        .then(function () { setGeoLoc(loc); onLoc(geoLoc); });
+    }, onFail, opts || { timeout: 9000, maximumAge: 600000 });
+  }
+  // On open, quietly bring the remembered location up to date — but never at the cost of
+  // a permission prompt: only when location has been used before (a stored geoLoc) AND
+  // the browser confirms permission is already granted. Where that can't be confirmed
+  // (no Permissions API for geolocation, e.g. iOS Safari, where "Allow Once" would
+  // re-prompt), skip it; the remembered location still joins the list from its last use.
+  function refreshGeoQuietly() {
+    if (!geoLoc || !navigator.permissions || !navigator.permissions.query) return;
+    navigator.permissions.query({ name: "geolocation" }).then(function (st) {
+      if (st.state !== "granted") return;
+      locateMe(function () { if (lastLoc && lastData) renderSummary(lastLoc, lastData, lastAir); }, function () {},
+        { timeout: 8000, maximumAge: 300000 });
+    }).catch(function () {});
   }
 
   // ---- forecast (daily spans the past/forecast days; hourly is limited to the
@@ -2732,15 +2786,7 @@
   function useLocation() {
     if (!navigator.geolocation) { fallbackCity(); return; }
     setStatus("Finding your location…");
-    navigator.geolocation.getCurrentPosition(function (p) {
-      var loc = { lat: p.coords.latitude, lon: p.coords.longitude, name: "My location", sub: "" };
-      // Best-effort reverse geocode for a friendly name.
-      fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + loc.lat +
-        "&longitude=" + loc.lon + "&language=en&format=json")
-        .then(function (d) { if (d.results && d.results[0]) loc = omToLoc(d.results[0]); })
-        .catch(function () {})
-        .then(function () { show(loc); });
-    }, function () { fallbackCity(); }, { timeout: 9000, maximumAge: 600000 });
+    locateMe(function (loc) { show(loc); }, function () { fallbackCity(); });
   }
 
   function fallbackCity() {
@@ -2966,7 +3012,7 @@
   // Reopen the last place viewed (no prompt); only ask for location on a true first
   // run. "Use my location" in search always re-triggers geolocation on demand.
   var startLoc = loadLoc();
-  if (startLoc) show(startLoc);
+  if (startLoc) { show(startLoc); refreshGeoQuietly(); }
   else useLocation();
 })();
 </script>
