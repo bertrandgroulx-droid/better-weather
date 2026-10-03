@@ -168,6 +168,10 @@
   /* row 3: the two metric columns (row 2 is the full-width outlook). One shared
      font-size + line-height so the five rows line up across both columns. */
   .sum-body { font-size: 0.86rem; line-height: 1.5; }
+  /* swipe-through-locations dots (only shown when ≥2 saved places) */
+  .sum-dots { grid-column: 1 / -1; grid-row: 4; display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+  .sum-dots .sd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.4; }
+  .sum-dots .sd-dot.on { background: var(--text); opacity: 0.9; }
   .sum-left { grid-column: 1; grid-row: 3; align-self: start; display: flex; flex-direction: column; }
   .sum-hero .ico { font-size: 2.8rem; line-height: 1; }
   .sum-hero .temp { font-size: 2.9rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
@@ -1006,6 +1010,34 @@
       list.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "" });
       localStorage.setItem("bw-recents", JSON.stringify(list.slice(0, 6)));
     } catch (e) { /* storage may be unavailable */ }
+  }
+
+  // ---- swipe between saved locations on the summary card ----
+  function locKey(x) { return (((x && x.name) || "") + "|" + ((x && x.sub) || "")).toLowerCase(); }
+  // Ordered list to swipe through: the saved recents, plus the current place if it
+  // isn't among them (e.g. "My location").
+  function swipeLocsFor(loc) {
+    var rec = getRecents();
+    if (loc && !rec.some(function (r) { return locKey(r) === locKey(loc); })) {
+      rec.unshift({ name: loc.name, sub: loc.sub || "", lat: loc.lat, lon: loc.lon, cc: loc.cc || "" });
+    }
+    return rec;
+  }
+  function swipeLoc(dir) { // dir: +1 next, -1 previous (wraps)
+    var list = swipeLocsFor(lastLoc);
+    if (list.length < 2) return;
+    var i = list.findIndex(function (r) { return lastLoc && locKey(r) === locKey(lastLoc); });
+    if (i < 0) i = 0;
+    var ni = (i + dir + list.length) % list.length;
+    if (ni !== i) show(list[ni], true); // silent: keep the current card until the new one loads
+  }
+  function swipeDotsHtml(loc) {
+    var list = swipeLocsFor(loc);
+    if (list.length < 2) return "";
+    var cur = list.findIndex(function (r) { return loc && locKey(r) === locKey(loc); });
+    var dots = "";
+    for (var i = 0; i < list.length; i++) dots += '<span class="sd-dot' + (i === cur ? " on" : "") + '"></span>';
+    return '<div class="sum-dots" aria-hidden="true">' + dots + '</div>';
   }
 
   // ---- last viewed location (localStorage) ----
@@ -2179,7 +2211,8 @@
             dayHtml +
           '</div>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+      swipeDotsHtml(loc);
     // seat the ⓘ vertically centered between Sunrise and Sunset (survives re-renders)
     (els.summary.querySelector(".sr-ss") || els.summary).appendChild(els.aboutBtn);
   }
@@ -2678,7 +2711,23 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
+  // Swipe the summary card left/right to move through saved locations.
+  var sumSX = 0, sumSY = 0, sumMoved = false, sumT0 = 0, sumActive = false;
+  els.summary.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    sumActive = true; sumMoved = false; sumSX = e.clientX; sumSY = e.clientY; sumT0 = Date.now();
+  });
+  els.summary.addEventListener("pointermove", function (e) {
+    if (sumActive && (Math.abs(e.clientX - sumSX) > 10 || Math.abs(e.clientY - sumSY) > 10)) sumMoved = true;
+  });
+  els.summary.addEventListener("pointerup", function (e) {
+    if (!sumActive) return; sumActive = false;
+    var dx = e.clientX - sumSX, dy = e.clientY - sumSY;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - sumT0 < 800) swipeLoc(dx < 0 ? 1 : -1);
+  });
+  els.summary.addEventListener("pointercancel", function () { sumActive = false; });
   els.summary.addEventListener("click", function (e) {
+    if (sumMoved) return; // the gesture was a swipe, not a tap
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
