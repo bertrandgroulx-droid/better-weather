@@ -329,7 +329,14 @@
     font-size: 0.72rem; color: var(--muted); text-align: center; }
   /* ---------------- Moon panel ---------------- */
   .moon-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
-  .mo-hero { background: #040a16; border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px 14px; text-align: center; }
+  .mo-hero { position: relative; background: #040a16; border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px 14px; text-align: center; }
+  /* back-to-now: appears once you've scrubbed away from the present, on the side "now" lies */
+  .mo-now { position: absolute; bottom: 26px; left: 14px; width: 32px; height: 32px; border-radius: 50%; padding: 0;
+    border: 1.6px solid #5fb6ff; color: #5fb6ff; background: rgba(95,182,255,0.08); display: none; align-items: center; justify-content: center; cursor: pointer; }
+  .mo-now svg { width: 18px; height: 18px; }
+  .mo-now.show { display: flex; }
+  .mo-now.right { left: auto; right: 14px; }
+  .mo-now.right svg { transform: scaleX(-1); }
   .mo-hero .mo-moon { display: block; margin: 0 auto 12px; filter: drop-shadow(0 0 18px rgba(200,215,235,0.12)); }
   .mo-phase { font-size: 1.25rem; font-weight: 700; }
   .mo-when { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
@@ -1700,21 +1707,42 @@
     return t;
   }
   function dayKey(p) { return p.y + "-" + p.m + "-" + p.d; }
-  // A shaded Moon: dark disc, lit portion bounded by the terminator, faint maria/craters
-  // so it reads as a body rather than a symbol.
+  // A shaded Moon: dark disc, lit portion bounded by the terminator, and the real near-side
+  // features — the maria as soft dark patches and the bright ray craters — placed from
+  // their selenographic coordinates (orthographic: x = cos lat·sin lon, y = sin lat; north
+  // up, east to the right, as seen from the northern hemisphere). An illustration, but a
+  // geographically faithful one: Crisium sits at the upper right limb, Tycho lower left.
+  var MOON_MARIA = [ // [lat, lon(E+), radius km, (rx/ry stretch), tilt°]
+    [33, -16, 560], [28, 17.5, 340], [8.5, 31, 430], [17, 59, 280], [-8, 51, 420, 0.7, 20], [-15, 35, 170],
+    [-21, -17, 360], [-24, -39, 200], [12, -42, 680, 0.6, -15], [56, 8, 520, 1.9, 0], [13, 3.5, 120], [-5, -68, 110], [51, -9, 50],
+    [0, 1, 90] // Sinus Medii
+  ];
+  var MOON_BRIGHT = [[-43, -11, 1.3, 7], [10, -20, 1.2, 4.5], [8, -38, 0.9, 3], [24, -47, 0.9, 2.2]]; // Tycho, Copernicus, Kepler, Aristarchus: [lat, lon, r, ray halo r]
+  function moonXY(lat, lon) { var la = lat * RAD, lo = lon * RAD; return { x: 50 + 46 * Math.cos(la) * Math.sin(lo), y: 50 - 46 * Math.sin(la), fx: Math.cos(lo), fy: Math.cos(la) }; }
   function bigMoonSVG(illum, waxing, size) {
     var R = 46, c = 50, rx = (R * Math.abs(1 - 2 * illum)).toFixed(2);
     var limb = waxing ? 1 : 0, term = illum <= 0.5 ? (waxing ? 0 : 1) : (waxing ? 1 : 0);
     var lit = "M" + c + "," + (c - R) + " A" + R + "," + R + " 0 0 " + limb + " " + c + "," + (c + R) + " A" + rx + "," + R + " 0 0 " + term + " " + c + "," + (c - R) + " Z";
-    var craters = [[36,34,9],[63,42,6],[47,61,11],[68,70,5],[30,56,4],[58,24,4],[41,76,5],[71,55,3],[26,44,3],[52,45,3.5],[64,82,3]];
-    var cr = craters.map(function (k) { return '<circle cx="' + k[0] + '" cy="' + k[1] + '" r="' + k[2] + '"/>'; }).join("");
+    var K = 46 / 1737.4; // viewBox units per km
+    var maria = MOON_MARIA.map(function (m) {
+      var p = moonXY(m[0], m[1]), r = m[2] * K, st = m[3] || 1, tilt = m[4] || 0;
+      // foreshorten toward the limb; stretch factor shapes the elongated seas
+      var ex = (r * Math.max(0.25, Math.abs(p.fx)) * (st >= 1 ? st : 1)).toFixed(2), ey = (r * Math.max(0.35, p.fy) * (st < 1 ? 1 / st : 1) * (st > 1 ? 0.22 : 1)).toFixed(2); // wide seas (Frigoris) are thin bands
+      return '<ellipse cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" rx="' + ex + '" ry="' + ey + '"' + (tilt ? ' transform="rotate(' + tilt + ' ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + ')"' : '') + '/>';
+    }).join("");
+    var bright = MOON_BRIGHT.map(function (b) {
+      var p = moonXY(b[0], b[1]);
+      return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + b[3] + '" fill="rgba(255,255,255,0.10)" filter="url(#moBlur)"/>' +
+             '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + b[2] + '" fill="rgba(255,255,255,0.55)"/>';
+    }).join("");
     return '<svg class="mo-moon" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' +
-      '<defs><radialGradient id="moLit" cx="42%" cy="38%" r="70%"><stop offset="0" stop-color="#f2f4f7"/><stop offset="1" stop-color="#b9c1cc"/></radialGradient>' +
-      '<radialGradient id="moDark" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#262b34"/><stop offset="1" stop-color="#15181f"/></radialGradient>' +
-      '<clipPath id="moClip"><circle cx="50" cy="50" r="46"/></clipPath></defs>' +
+      '<defs><radialGradient id="moLit" cx="40%" cy="36%" r="72%"><stop offset="0" stop-color="#eef0f3"/><stop offset="1" stop-color="#aeb6c2"/></radialGradient>' +
+      '<radialGradient id="moDark" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#23272f"/><stop offset="1" stop-color="#13161c"/></radialGradient>' +
+      '<clipPath id="moClip"><circle cx="50" cy="50" r="46"/></clipPath>' +
+      '<filter id="moBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.1"/></filter></defs>' +
       '<circle cx="50" cy="50" r="46" fill="url(#moDark)"/>' +
       (illum > 0.002 ? '<path d="' + lit + '" fill="url(#moLit)"/>' : '') +
-      '<g clip-path="url(#moClip)" fill="rgba(0,0,0,0.085)" stroke="rgba(255,255,255,0.045)" stroke-width="0.7">' + cr + '</g>' +
+      '<g clip-path="url(#moClip)"><g fill="rgba(28,36,52,0.36)" filter="url(#moBlur)">' + maria + '</g>' + bright + '</g>' +
       '<circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>';
   }
   function fmtKm(km) { return units === "imperial" ? Math.round(km * 0.621371).toLocaleString() + " mi" : Math.round(km).toLocaleString() + " km"; }
@@ -1725,7 +1753,8 @@
     var p0 = tzParts(now, tz), todayMid = localMidnight(p0.y, p0.m, p0.d, tz);
     moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - 3 * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
     els.moonBody.innerHTML =
-      '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div></div>' +
+      '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div>' +
+        '<button type="button" class="mo-now" id="moNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
       '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
       '<div class="mo-stats" id="moStats"></div>' +
       '<h3 class="mo-h">Calendar</h3><div class="mo-cal" id="moCal"></div>' +
@@ -1743,6 +1772,13 @@
     sc.addEventListener("pointermove", function (e) { if (down) sc.scrollLeft = sl - (e.clientX - sx); });
     var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     $("moCal").addEventListener("click", onMoonCalClick);
+    $("moNow").addEventListener("click", moonGoNow);
+  }
+  function moonGoNow() {
+    var U = moonUI, now = Date.now(); if (!U) return;
+    if (now < U.t0 || now > U.t0 + MO_DAYS * 86400000) { var p = tzParts(new Date(now), U.tz); U.todayMid = localMidnight(p.y, p.m, p.d, U.tz); U.t0 = U.todayMid - 3 * 86400000; buildMoonTrack(); }
+    setMoonSel(now, false);
+    var sc = $("moScroll"); if (sc) sc.scrollTo({ left: moonScrollFor(U.sel), behavior: "smooth" });
   }
   // The hour ticks: a tall tick at each local midnight, day labels centred under each day.
   function buildMoonTrack() {
@@ -1794,6 +1830,9 @@
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
     rows.push(["Next full moon", dayWord(daysFull)], ["Next new moon", dayWord(daysNew)], ["Distance", fmtKm(mi.dist)]);
     $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
+    // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
+    var nowH = Math.round(Date.now() / 3600000) * 3600000, nb = $("moNow");
+    if (nb) { nb.classList.toggle("show", U.sel !== nowH); nb.classList.toggle("right", nowH > U.sel); }
     if (scroll) { var sc = $("moScroll"); if (sc) requestAnimationFrame(function () { sc.scrollLeft = moonScrollFor(U.sel); }); }
     // keep the calendar's selected-day ring in step
     var cal = $("moCal"); if (cal) { cal.querySelectorAll(".mc-d.sel").forEach(function (x) { x.classList.remove("sel"); }); var c = cal.querySelector('.mc-d[data-day="' + key + '"]'); if (c) c.classList.add("sel"); }
