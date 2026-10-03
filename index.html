@@ -424,6 +424,28 @@
   .day-chart .sol-lbl { fill: var(--text); font-size: 7.5px; }
   .day-chart .dst-line { stroke: rgba(255,255,255,0.30); stroke-width: 0.8; stroke-dasharray: 1.5 2; }
   .day-chart .dst-lbl { fill: var(--muted); font-size: 6.5px; }
+  /* Earth-tilt card: side view with the Sun to the right (see sunTiltSVG) + two readings */
+  .day-sun { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 10px 8px 6px;
+    background: #040a16; border: 1px solid var(--border); border-radius: 12px; }
+  .day-sun .st-svg { flex: none; width: 176px; height: 120px; }
+  .day-sun .st-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; font-size: 0.84rem; color: var(--text); }
+  .day-sun .st-row b { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .day-sun .st-row small { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 1px; line-height: 1.3; }
+  .day-sun .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+  .day-sun .st-dot-sun { background: var(--accent); }
+  .day-sun .st-dot-obs { background: #fff; }
+  .st-svg .st-sun { fill: var(--accent); filter: drop-shadow(0 0 6px rgba(255,214,102,0.55)); }
+  .st-svg .st-ray { stroke: var(--accent); stroke-width: 1.2; opacity: 0.9; }
+  .st-svg .st-ray-obs { stroke: #fff; stroke-width: 1; opacity: 0.75; stroke-dasharray: 3 2; }
+  .st-svg .st-axis { stroke: rgba(255,255,255,0.7); stroke-width: 1; }
+  .st-svg .st-n { fill: var(--text); font-size: 7px; font-weight: 700; font-family: inherit; }
+  .st-svg .st-equator { stroke: rgba(255,255,255,0.55); stroke-width: 1; }
+  .st-svg .st-tropic { stroke: rgba(255,214,102,0.55); stroke-width: 0.8; stroke-dasharray: 2 2; }
+  .st-svg .st-polar { stroke: rgba(255,255,255,0.22); stroke-width: 0.7; stroke-dasharray: 1.5 2; }
+  .st-svg .st-here { stroke: #fff; stroke-width: 0.9; opacity: 0.7; }
+  .st-svg .st-sub { fill: var(--accent); stroke: #0e2440; stroke-width: 1; }
+  .st-svg .st-obs { fill: #fff; stroke: #0e2440; stroke-width: 1; }
+  @media (max-width: 360px) { .day-sun .st-svg { width: 150px; height: 102px; } }
   /* hourly wind panel: bright sky-blue wind line, a quiet recessive gust line */
   .wind-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .cond-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill row so ✕ sits in the corner */
@@ -1665,6 +1687,50 @@
     var e = 0.016708634 - 0.000042037 * T, nu = M + C * RAD;
     return { lon: mnorm(L0 + C - 0.00569), dist: 149597870.7 * 1.000001018 * (1 - e * e) / (1 + e * Math.cos(nu)) };
   }
+  // The Sun's declination (deg) at an instant — the latitude where it is straight overhead.
+  function sunDeclDeg(date) {
+    var T = (jdOf(date) - 2451545) / 36525, s = sunPos(T), eps = (23.439291 - 0.0130042 * T) * RAD;
+    return Math.asin(Math.sin(eps) * Math.sin(s.lon * RAD)) / RAD;
+  }
+  // Earth's tilt made visible: a side view with the Sun off to the right and its rays
+  // coming in level. The axis leans by the day's declination (toward the Sun in June,
+  // away in December, upright at the equinoxes); the equator, tropics and polar circles
+  // are drawn on; the night half is shaded; a gold dot marks where the Sun is overhead
+  // and a white dot the observer's latitude at noon, each with its own ray — so the angle
+  // the white ray makes with the ground is the noon sun height here.
+  function sunTiltSVG(lat, decl) {
+    var W = 176, H = 120, cx = 60, cy = 60, R = 46, d = decl * RAD, f0 = lat * RAD;
+    var par = function (phi, cls) { // a parallel of latitude phi (deg) in the Earth's own frame
+      var p = phi * RAD, hw = R * Math.cos(p), y = -R * Math.sin(p);
+      return '<line class="' + cls + '" x1="' + (-hw).toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + hw.toFixed(1) + '" y2="' + y.toFixed(1) + '"/>';
+    };
+    var ox = cx + R * Math.cos(f0 - d), oy = cy - R * Math.sin(f0 - d); // observer at local noon, screen coords
+    var sunX = 158;
+    return '<svg class="st-svg" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+      '<defs><radialGradient id="stEarth" cx="40%" cy="38%" r="70%"><stop offset="0" stop-color="#4f8fd6"/><stop offset="1" stop-color="#1b3f73"/></radialGradient>' +
+      '<clipPath id="stClip"><circle cx="' + cx + '" cy="' + cy + '" r="' + R + '"/></clipPath>' +
+      '<linearGradient id="stNight" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#020812" stop-opacity="0.78"/><stop offset="0.86" stop-color="#020812" stop-opacity="0.78"/><stop offset="1" stop-color="#020812" stop-opacity="0"/></linearGradient></defs>' +
+      // sun and its rays (level): one to the overhead point, one to the observer
+      '<circle class="st-sun" cx="' + sunX + '" cy="' + cy + '" r="9"/>' +
+      '<line class="st-ray" x1="' + (sunX - 10) + '" y1="' + cy + '" x2="' + (cx + R) + '" y2="' + cy + '"/>' +
+      '<line class="st-ray st-ray-obs" x1="' + (sunX - 10) + '" y1="' + oy.toFixed(1) + '" x2="' + ox.toFixed(1) + '" y2="' + oy.toFixed(1) + '"/>' +
+      // Earth, in a group rotated by the declination so the north pole leans toward the Sun when δ > 0
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="url(#stEarth)"/>' +
+      '<g transform="translate(' + cx + ',' + cy + ') rotate(' + decl.toFixed(2) + ')">' +
+        par(66.56, "st-polar") + par(-66.56, "st-polar") + par(23.44, "st-tropic") + par(-23.44, "st-tropic") + par(0, "st-equator") +
+        par(lat, "st-here") +
+        '<line class="st-axis" x1="0" y1="' + (-R - 7) + '" x2="0" y2="' + (R + 7) + '"/>' +
+        '<text class="st-n" x="0" y="' + (-R - 9) + '" text-anchor="middle">N</text>' +
+      '</g>' +
+      // night side (screen-space: away from the Sun), clipped to the globe
+      '<rect x="' + (cx - R) + '" y="' + (cy - R) + '" width="' + (R * 1.08).toFixed(1) + '" height="' + (2 * R) + '" fill="url(#stNight)" clip-path="url(#stClip)"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" stroke="rgba(255,255,255,0.18)"/>' +
+      // overhead point and the observer at noon
+      '<circle class="st-sub" cx="' + (cx + R) + '" cy="' + cy + '" r="3.2"/>' +
+      '<circle class="st-obs" cx="' + ox.toFixed(1) + '" cy="' + oy.toFixed(1) + '" r="3"/>' +
+      '</svg>';
+  }
+  function fmtLat(x) { var a = Math.abs(x); return (a < 0.05 ? "0°" : a.toFixed(1) + "°" + (x > 0 ? "N" : "S")); }
   function phaseName(elong) {
     var W = 6.5; // ≈ half a day either side of the exact instant
     if (elong < W || elong > 360 - W) return "New Moon";
@@ -2235,15 +2301,26 @@
       (dstList.length ? ' Dotted lines mark the clock changes (daylight saving).' : '') + '</p>' +
       '<div class="day-readout" id="dayReadout"></div>' +
       '<div class="day-chart-wrap" id="dayWrap">' + svg + '</div>' +
+      '<div class="day-sun" id="daySun"></div>' +
       '<div class="air-foot">Sun times computed on-device (NOAA solar algorithm) for ' + (loc.name || "this location") + '.</div>';
 
-    var wrap = $("dayWrap"), cursor = $("dayCursor"), dotR = $("dayDotR"), dotS = $("dayDotS"), readout = $("dayReadout");
+    var wrap = $("dayWrap"), cursor = $("dayCursor"), dotR = $("dayDotR"), dotS = $("dayDotS"), readout = $("dayReadout"), sunCard = $("daySun");
+    // where the Sun is overhead each day (its declination) — the tilt of the Earth made visible
+    var decl = []; for (i = 0; i < days; i++) decl.push(sunDeclDeg(dayNoon(i)));
     function setScrub(i) {
       i = Math.max(0, Math.min(days - 1, i));
       var x = X(i);
       cursor.setAttribute("x1", x); cursor.setAttribute("x2", x);
       dotR.setAttribute("cx", x); dotR.setAttribute("cy", Y(srH[i]));
       dotS.setAttribute("cx", x); dotS.setAttribute("cy", Y(ssH[i]));
+      // Earth-tilt card: the Sun's overhead latitude and the noon sun height here
+      var dc = decl[i], noonAlt = 90 - Math.abs(loc.lat - dc), dir = i > 0 ? dc - decl[i - 1] : 0;
+      var moving = Math.abs(dir) < 0.02 ? "turning" : (dir > 0 ? "moving north" : "moving south");
+      sunCard.innerHTML = sunTiltSVG(loc.lat, dc) +
+        '<div class="st-txt">' +
+          '<div class="st-row"><span class="st-dot st-dot-sun"></span>Sun overhead at <b>' + fmtLat(dc) + '</b><small>' + moving + ' · between the tropics, 23.4°N–23.4°S</small></div>' +
+          '<div class="st-row"><span class="st-dot st-dot-obs"></span>Noon sun here <b>' + Math.max(0, noonAlt).toFixed(0) + '°</b> high<small>' + (noonAlt <= 0 ? 'the Sun doesn’t rise today' : noonAlt >= 89.5 ? 'straight overhead' : '90° would be straight overhead') + '</small></div>' +
+        '</div>';
       var dstr = dayMid(i).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
       var delta = i > 0 ? Math.round(len[i] - len[i - 1]) : 0;
       var trend = delta > 0 ? '<span class="rd-item rd-trend" style="color:#7fd4ff">▲ ' + delta + 'm longer than the day before</span>'
