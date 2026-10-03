@@ -197,8 +197,8 @@
   /* full-width precipitation outlook (row 2), spanning both grid columns so it
      never wraps or squeezes the two metric columns below it */
   .fcast { grid-column: 1 / -1; grid-row: 2; font-size: 0.82rem; font-weight: 600; line-height: 1.32; margin: 6px 0 10px; white-space: normal; text-align: center; }
-  .fcast.rain { color: #7fd4ff; }
-  .fcast.dry { color: var(--muted); }
+  .fcast.rain { color: #d4ecff; } /* bright, faint-blue tint keeps the rain cue */
+  .fcast.dry { color: #eaf1fb; }  /* bright near-white */
   /* rain within ~6h: flash the line twice to draw the eye */
   .fcast.soon { animation: fcast-flash 0.55s ease-in-out 2; }
   @keyframes fcast-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
