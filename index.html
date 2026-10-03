@@ -157,25 +157,26 @@
        between them flexes with the phone width (space-between). */
     display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
     justify-content: space-between; align-items: center; flex: none;
-    /* a horizontal flick steps between saved places; vertical gestures still scroll the page */
-    touch-action: pan-y; -webkit-user-select: none; user-select: none;
   }
   /* Tall, narrow edge arrows that step through saved places (only rendered when ≥2).
-     They sit inside the card's side padding so the two content columns keep their width.
-     A disabled arrow (nothing further in that direction) fades almost out — no wrap. */
+     The visible chevron is 10×36, but the tap target is a full-height slab that runs from
+     the screen edge (8px page gutter, body is overflow-x hidden so it's still hittable)
+     to where the content ink begins (≥13px inside the card at every phone width) — the
+     most forgiveness available without sitting under any content. A disabled arrow
+     (nothing further in that direction) fades almost out — no wrap. */
   .sum-nav {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    width: 22px; height: 72px; padding: 0; margin: 0;
+    position: absolute; top: 6px; bottom: 6px;
+    width: 22px; padding: 0; margin: 0;
     display: flex; align-items: center; justify-content: center;
     background: none; border: 0; border-radius: 8px; cursor: pointer;
     color: #7fa8d8; opacity: 0.55; -webkit-tap-highlight-color: transparent;
     transition: opacity 0.15s ease, color 0.15s ease;
   }
-  .sum-nav.prev { left: -4px; }
-  .sum-nav.next { right: -4px; }
+  .sum-nav.prev { left: -8px; }
+  .sum-nav.next { right: -8px; width: 20px; } /* right column's ink sits 1–2px further out than the left's */
   .sum-nav svg { width: 10px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .sum-nav:hover { opacity: 0.9; }
-  .sum-nav:active, .sum-nav.pressed { opacity: 1; color: #a9c8ee; } /* .pressed = fired by a swipe */
+  .sum-nav:active { opacity: 1; color: #a9c8ee; }
   .sum-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; opacity: 1; }
   .sum-nav[disabled] { opacity: 0.12; cursor: default; pointer-events: none; }
   .summary.nav-loading .sum-nav:not([disabled]) { opacity: 0.25; } /* the next place is loading */
@@ -2751,35 +2752,9 @@
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
-  // A short horizontal flick on the card acts like tapping the arrow you flicked towards
-  // (swipe right → the right/next arrow, left → previous). The card itself never moves,
-  // so this matches the arrows rather than a "drag the page" convention; the matching
-  // arrow flashes so it's clear what fired. Vertical gestures are left to scroll the page.
-  var sumSX = 0, sumSY = 0, sumT0 = 0, sumMoved = false, sumDown = false;
-  els.summary.addEventListener("pointerdown", function (e) {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    sumDown = true; sumMoved = false; sumSX = e.clientX; sumSY = e.clientY; sumT0 = Date.now();
-  });
-  els.summary.addEventListener("pointermove", function (e) {
-    if (sumDown && (Math.abs(e.clientX - sumSX) > 10 || Math.abs(e.clientY - sumSY) > 10)) sumMoved = true;
-  });
-  els.summary.addEventListener("pointerup", function (e) {
-    if (!sumDown) return; sumDown = false;
-    if (e.target.closest(".sum-nav")) return; // the arrow's own click handles it
-    var dx = e.clientX - sumSX, dy = e.clientY - sumSY;
-    if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - sumT0 > 700) return;
-    var dir = dx > 0 ? 1 : -1; // flick towards the right arrow → next, towards the left → previous
-    var arrow = els.summary.querySelector(".sum-nav" + (dir > 0 ? ".next" : ".prev"));
-    if (!arrow || arrow.disabled) return; // nothing further that way
-    arrow.classList.add("pressed");
-    setTimeout(function () { arrow.classList.remove("pressed"); }, 220);
-    navLoc(dir);
-  });
-  els.summary.addEventListener("pointercancel", function () { sumDown = false; });
   els.summary.addEventListener("click", function (e) {
     var nav = e.target.closest(".sum-nav");
     if (nav) { if (!nav.disabled) navLoc(+nav.dataset.dir); return; } // edge arrows: previous / next saved place
-    if (sumMoved) return; // the gesture was a swipe, not a tap on a detail line
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
