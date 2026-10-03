@@ -359,6 +359,16 @@
   .mo-row span { flex: 1; font-weight: 600; }
   .mo-row b { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
   .mo-row .mo-dt { font-size: 0.78em; opacity: 0.65; font-weight: 400; margin-right: 2px; }
+  /* distance scale: perigee at the left end, apogee at the right, today's value marked */
+  .mo-dist { padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); }
+  .mo-dist .md-head { font-weight: 600; font-size: 0.95rem; }
+  .mo-dist .md-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); margin: 30px 7px 8px; }
+  .mo-dist .md-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, rgba(255,214,102,0.35), var(--accent)); }
+  .mo-dist .md-mark { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0e2440; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(255,214,102,0.35); }
+  .mo-dist .md-val { position: absolute; top: -24px; transform: translateX(-50%); font-size: 0.86rem; font-weight: 700; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mo-dist .md-ends { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mo-dist .md-ends span:last-child { text-align: right; }
+  .mo-dist .md-ends small { display: block; font-size: 0.66rem; opacity: 0.75; letter-spacing: 0.02em; }
   .mo-row .moon { flex: none; }
   .mo-h { font-size: 1.05rem; margin: 16px 2px 8px; }
   /* calendar */
@@ -1833,8 +1843,14 @@
     var rows = [["Illumination", Math.round(mi.illum * 100) + "%"]];
     ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz)]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
-    rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)], ["Distance", fmtKm(mi.dist)]);
-    $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
+    rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)]);
+    // Distance as a scale from perigee to apogee with a marker (and the figure) at today's value
+    var PERI = 356500, APO = 406700, f = Math.max(0, Math.min(1, (mi.dist - PERI) / (APO - PERI))), pct = (f * 100).toFixed(1);
+    var lblPct = (Math.max(0.13, Math.min(0.87, f)) * 100).toFixed(1); // keep the floating figure inside the bar
+    var distHtml = '<div class="mo-dist"><div class="md-head">Distance</div>' +
+      '<div class="md-bar"><i class="md-fill" style="width:' + pct + '%"></i><i class="md-mark" style="left:' + pct + '%"></i><span class="md-val" style="left:' + lblPct + '%">' + fmtKm(mi.dist) + '</span></div>' +
+      '<div class="md-ends"><span>' + fmtKm(PERI) + '<small>closest · perigee</small></span><span>' + fmtKm(APO) + '<small>farthest · apogee</small></span></div></div>';
+    $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("") + distHtml;
     // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
     var nowH = Math.round(Date.now() / 3600000) * 3600000, nb = $("moNow");
     if (nb) { nb.classList.toggle("show", U.sel !== nowH); nb.classList.toggle("right", nowH > U.sel); }

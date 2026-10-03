@@ -175,7 +175,8 @@ async function run() {
   assert(stats.some((t) => /^Illumination\d+%$/.test(t)), "illumination row");
   assert(stats.some((t) => /^(Moonrise|Moonset)\d/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
   assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");
-  assert(stats.some((t) => /^Distance[\d,]+ (km|mi)$/.test(t)), "distance row");
+  assert(/^[\d,]+ (km|mi)$/.test(await page.$eval("#moStats .mo-dist .md-val", (e) => e.textContent)), "distance figure on the perigee–apogee scale");
+  assert(await page.$("#moStats .mo-dist .md-mark"), "distance marker on the scale");
   assert((await page.$$eval("#moTrack .mt-day", (e) => e.length)) >= 7, "scrubber marks each midnight");
   const calDays = await page.$$eval("#moCal .mc-d[data-ms]", (e) => e.length);
   assert(calDays >= 28 && calDays <= 31, `calendar has a cell per day, got ${calDays}`);
