@@ -358,6 +358,7 @@
   .mo-row:first-child { border-top: none; }
   .mo-row span { flex: 1; font-weight: 600; }
   .mo-row b { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mo-row .mo-dt { font-size: 0.78em; opacity: 0.65; font-weight: 400; margin-right: 2px; }
   .mo-row .moon { flex: none; }
   .mo-h { font-size: 1.05rem; margin: 16px 2px 8px; }
   /* calendar */
@@ -1824,11 +1825,15 @@
     ev.sort(function (a, b) { return a.t - b.t; }); // in the order they happen that day (like a clock)
     var fullD = nextFullMoon(d), pf = tzParts(fullD, U.tz), daysFull = Math.round((localMidnight(pf.y, pf.m, pf.d, U.tz) - dayStart) / 86400000);
     var newD = moonState(d).nextNew, pn = tzParts(newD, U.tz), daysNew = Math.round((localMidnight(pn.y, pn.m, pn.d, U.tz) - dayStart) / 86400000);
-    var dayWord = function (n) { return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n + " days"; };
+    // "(Sun, Oct 25) 22 days" — the date subdued ahead of the count
+    var dayWord = function (n, when) {
+      var ds = when.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: tz });
+      return '<small class="mo-dt">(' + ds + ')</small> ' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n + " days");
+    };
     var rows = [["Illumination", Math.round(mi.illum * 100) + "%"]];
     ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz)]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
-    rows.push(["Next full moon", dayWord(daysFull)], ["Next new moon", dayWord(daysNew)], ["Distance", fmtKm(mi.dist)]);
+    rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)], ["Distance", fmtKm(mi.dist)]);
     $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
     // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
     var nowH = Math.round(Date.now() / 3600000) * 3600000, nb = $("moNow");

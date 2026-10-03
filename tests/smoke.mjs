@@ -174,7 +174,7 @@ async function run() {
   const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
   assert(stats.some((t) => /^Illumination\d+%$/.test(t)), "illumination row");
   assert(stats.some((t) => /^(Moonrise|Moonset)\d/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
-  assert(stats.some((t) => /^Next full moon(Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row");
+  assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");
   assert(stats.some((t) => /^Distance[\d,]+ (km|mi)$/.test(t)), "distance row");
   assert((await page.$$eval("#moTrack .mt-day", (e) => e.length)) >= 7, "scrubber marks each midnight");
   const calDays = await page.$$eval("#moCal .mc-d[data-ms]", (e) => e.length);
