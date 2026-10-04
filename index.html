@@ -251,8 +251,12 @@
     .sum-body { font-size: 0.8rem; }
   }
   @media (max-width: 340px) {
+    .summary { padding: 14px 12px; } /* 8px back for the columns */
     .sum-hero .ico { font-size: 2.05rem; }
     .sum-hero .temp { font-size: 2.1rem; }
+    /* the header row overran a 320px card by ~5px: the condition text is the widest line */
+    .sum-head .cond { font-size: 1.02rem; }
+    .sum-head .feels { font-size: 0.78rem; }
     .sum-body { font-size: 0.73rem; }
     .sum-metrics { padding-left: 12px; }
   }
