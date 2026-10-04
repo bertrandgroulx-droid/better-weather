@@ -438,6 +438,7 @@
   .day-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
   .day-chart .cursor-dot { fill: #fff; stroke: #ffb733; stroke-width: 1.4; }
   .day-chart .sol-dot { fill: var(--accent); }
+  .day-chart .eq-dot { fill: var(--bg-2); stroke: var(--accent); stroke-width: 1.4; } /* equinox: a ring */
   .day-chart .sol-lbl { fill: var(--text); font-size: 7.5px; }
   .day-chart .dst-line { stroke: rgba(255,255,255,0.30); stroke-width: 0.8; stroke-dasharray: 1.5 2; }
   .day-chart .dst-lbl { fill: var(--muted); font-size: 6.5px; }
@@ -2265,10 +2266,11 @@
     var startUTC = todayUTC - HALF * 86400000;
     function dayNoon(i) { return new Date(startUTC + i * 86400000 + 43200000); }
     function dayMid(i) { return new Date(startUTC + i * 86400000); }
-    var srH = [], ssH = [], len = [], sunrise = [], sunset = [], off = [];
+    var srH = [], ssH = [], len = [], sunrise = [], sunset = [], off = [], decl = [];
     var iMax = 0, iMin = 0;
     for (var i = 0; i < days; i++) {
       var ev = solarEvents(loc.lat, loc.lon, dayNoon(i));
+      decl.push(sunDeclDeg(dayNoon(i))); // where the Sun is overhead — the Earth's tilt made visible
       // Plot the band symmetric about local solar noon (avoids midnight wrap);
       // read exact rise/set times from the instants.
       var noonH = localHours(ev.noon, tz, loc.lon), half = ev.lenMin / 120;
@@ -2284,6 +2286,21 @@
     for (i = 1; i < days; i++) {
       if (off[i] != null && off[i - 1] != null && off[i] !== off[i - 1])
         dstList.push({ i: i, delta: off[i] - off[i - 1] });
+    }
+    // Season markers. Solstices: each local longest / shortest day. Equinoxes: the day the
+    // Sun crosses the equator (its declination changes sign), i.e. the first day of spring
+    // or autumn — named for this hemisphere.
+    var season = {}; // day index → label
+    var north = loc.lat >= 0;
+    for (i = 1; i < days - 1; i++) {
+      if (len[i] > len[i - 1] && len[i] >= len[i + 1]) season[i] = "summer solstice";
+      else if (len[i] < len[i - 1] && len[i] <= len[i + 1]) season[i] = "winter solstice";
+    }
+    for (i = 1; i < days; i++) {
+      if ((decl[i - 1] < 0) !== (decl[i] < 0)) {
+        var j = Math.abs(decl[i]) < Math.abs(decl[i - 1]) ? i : i - 1; // the day nearest the crossing
+        season[j] = ((decl[i] > 0) === north ? "spring" : "autumn") + " equinox";
+      }
     }
 
     // The band is drawn at 1:1 pixels, PXD px per day, where PXD is chosen so that exactly
@@ -2325,11 +2342,12 @@
       if (hi - lo >= 12) // only label a month with enough room to read
         months += '<text x="' + X((lo + hi) / 2).toFixed(1) + '" y="' + (H - PB + 11) + '" text-anchor="middle">' + mlab[(sm + k) % 12] + '</text>';
     }
-    // a dot on every solstice in the two years (each local longest / shortest day)
+    // season markers on the sunrise edge: a filled dot at each solstice, a ring at each equinox
     var solDots = "";
-    for (i = 1; i < days - 1; i++) {
-      var peak = len[i] > len[i - 1] && len[i] >= len[i + 1], trough = len[i] < len[i - 1] && len[i] <= len[i + 1];
-      if (peak || trough) solDots += '<circle class="sol-dot" cx="' + X(i).toFixed(1) + '" cy="' + Y(srH[i]).toFixed(1) + '" r="2"/>';
+    for (var si in season) {
+      i = +si;
+      var eq = season[si].indexOf("equinox") >= 0;
+      solDots += '<circle class="' + (eq ? "eq-dot" : "sol-dot") + '" cx="' + X(i).toFixed(1) + '" cy="' + Y(srH[i]).toFixed(1) + '" r="' + (eq ? 2.4 : 2) + '"/>';
     }
     // clock-change markers: a dotted line at each shift, with the ±hours label
     var dstHtml = "";
@@ -2362,7 +2380,7 @@
     var fShort = dayMid(iMin).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     els.dayBody.innerHTML =
       '<p class="day-note">A full year on screen — six months either side of the line, which starts on today. Slide the band to move the line anywhere from a year ago to a year ahead. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
-      '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + ').' +
+      '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + '). Dots mark the solstices, rings the equinoxes (first day of spring and autumn).' +
       (dstList.length ? ' Dotted lines mark the clock changes (daylight saving).' : '') + '</p>' +
       '<div class="day-readout" id="dayReadout"></div>' +
       '<div class="day-chart-wrap" id="dayWrap">' +
@@ -2374,8 +2392,6 @@
       '<div class="air-foot">Sun times computed on-device (NOAA solar algorithm) for ' + (loc.name || "this location") + '.</div>';
 
     var sc = $("dayScroll"), dotR = $("dayDotR"), dotS = $("dayDotS"), readout = $("dayReadout"), sunCard = $("daySun");
-    // where the Sun is overhead each day (its declination) — the tilt of the Earth made visible
-    var decl = []; for (i = 0; i < days; i++) decl.push(sunDeclDeg(dayNoon(i)));
     var curI = todayIdx;
     function setScrub(i) {
       i = Math.max(0, Math.min(days - 1, i)); curI = i;
@@ -2395,7 +2411,7 @@
         : delta < 0 ? '<span class="rd-item rd-trend" style="color:var(--muted)">▼ ' + (-delta) + 'm shorter than the day before</span>'
         : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length steady</span>';
       readout.innerHTML =
-        '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + '</span>' +
+        '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + (season[i] ? ' · ' + season[i] : '') + '</span>' +
         '<div class="rd-grid">' +
           '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
           '<span class="rd-item"><span class="k">Sunset</span> <b>' + clockInTz(sunset[i], tz) + '</b></span>' +
