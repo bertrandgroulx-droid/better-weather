@@ -665,7 +665,12 @@
     background: #0e2440; border: 1px solid var(--border);
     border-radius: 16px; padding: 0 14px 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.5);
     max-height: calc(100svh - env(safe-area-inset-top) - 60px); overflow-y: auto; /* scroll long content */
+    overscroll-behavior: contain; /* reaching the end of a panel must not scroll the page behind it */
   }
+  /* While a panel is open the page behind it is frozen in place (position: fixed, with its
+     scroll offset carried in an inline top), so a swipe on the dimmed backdrop, or past the end
+     of the panel, can't scroll the page instead. iOS ignores overflow: hidden on body alone. */
+  body.modal-open { position: fixed; left: 0; right: 0; overflow: hidden; }
   /* keep the header (and its ✕) pinned while the modal scrolls */
   .modal-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
     position: sticky; top: 0; z-index: 1; background: #0e2440; padding-top: 14px; }
@@ -3727,6 +3732,32 @@
   els.windBackdrop.addEventListener("click", function (e) { if (e.target === els.windBackdrop) closeWind(); });
   els.condClose.addEventListener("click", closeCond);
   els.condBackdrop.addEventListener("click", function (e) { if (e.target === els.condBackdrop) closeCond(); });
+
+  // Freeze the page while any panel (search, about, air, moon, daylight, wind,
+  // conditions) is open, so scrolling always stays on the panel. One observer on the
+  // panels' hidden class covers every open/close path; the page's scroll offset is
+  // carried in body's top while frozen and put back when the last panel closes.
+  var pageLockY = 0;
+  function syncPageLock() {
+    var open = false, bds = document.querySelectorAll(".backdrop");
+    for (var i = 0; i < bds.length; i++) if (!bds[i].classList.contains("hidden")) open = true;
+    var locked = document.body.classList.contains("modal-open");
+    if (open && !locked) {
+      pageLockY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.top = -pageLockY + "px";
+      document.body.classList.add("modal-open");
+    } else if (!open && locked) {
+      document.body.classList.remove("modal-open");
+      document.body.style.top = "";
+      window.scrollTo(0, pageLockY);
+    }
+  }
+  if (window.MutationObserver) {
+    var lockObs = new MutationObserver(syncPageLock);
+    Array.prototype.forEach.call(document.querySelectorAll(".backdrop"), function (b) {
+      lockObs.observe(b, { attributes: true, attributeFilter: ["class"] });
+    });
+  }
   // Tap an hour or a day cell → open the conditions chart. Ignore drag-scrolls
   // (desktop) by tracking pointer movement; touch scrolls natively so taps are clean.
   function bindCellTap(scroller, attr) {
