@@ -513,6 +513,11 @@ async function run() {
     // season markers: two years of data hold two of each solstice (dots) and equinox (rings)
     const solN = await ypage.$$eval("#dayBody .sol-dot", (e) => e.length), eqN = await ypage.$$eval("#dayBody .eq-dot", (e) => e.length);
     assert(solN === 4 && eqN === 4, `four solstice dots and four equinox rings over two years, got ${solN}/${eqN}`);
+    // vitamin D band (Sun above 45°): at Calgary's latitude it exists each summer and vanishes each winter,
+    // so two years of data give two lenses; the readout carries a Vitamin D line
+    const vdN = await ypage.$$eval("#dayBody .vd-band", (e) => e.length);
+    assert(vdN === 2, `two vitamin D lenses over two years at 51°N, got ${vdN}`);
+    assert(/Vitamin D\s+(none today|\d{1,2}:\d\d[ap]–\d{1,2}:\d\d[ap] · \d+h)/.test(await ypage.$eval("#dayReadout", (e) => e.textContent)), "readout has a Vitamin D line");
     const today = await ypage.$eval("#dayReadout", (e) => e.textContent);
     assert(/today/.test(today), `readout starts on today, got "${today.replace(/\s+/g, " ").trim()}"`);
     // the chart scrolls under a fixed centre line and opens with today's marker under it

@@ -433,6 +433,8 @@
   .day-chart text { fill: var(--muted); font-size: 8px; font-family: inherit; }
   .day-chart .ax-line { stroke: rgba(255,255,255,0.09); stroke-width: 1; }
   .day-chart .band { fill: url(#dayGrad); }
+  .day-chart .vd-band { fill: #ffeaa6; fill-opacity: 0.85; } /* Sun above 45°: vitamin D hours */
+  .day-readout .rd-vd b { color: #ffeaa6; }
   .day-chart .edge { fill: none; stroke: #ffb733; stroke-width: 1.4; }
   .day-chart .today-line { stroke: rgba(255,255,255,0.5); stroke-width: 1; stroke-dasharray: 2 2; }
   .day-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
@@ -2241,6 +2243,10 @@
     try { return instant.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: tz || undefined }); }
     catch (e) { return instant.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
   }
+  // "10:57a" / "4:06p" — the compact form used on the chart axes, for a time range that must fit a narrow column
+  function clockTight(instant, tz) {
+    return clockInTz(instant, tz).replace(/\s*([AaPp])\.?[Mm]\.?/, function (_, ap) { return ap.toLowerCase(); });
+  }
   // UTC offset (minutes) of time zone `tz` at a given instant; null if unknown.
   // A day-to-day change in this value is a clock change (daylight-saving shift).
   function tzOffsetMin(instant, tz) {
@@ -2266,7 +2272,7 @@
     var startUTC = todayUTC - HALF * 86400000;
     function dayNoon(i) { return new Date(startUTC + i * 86400000 + 43200000); }
     function dayMid(i) { return new Date(startUTC + i * 86400000); }
-    var srH = [], ssH = [], len = [], sunrise = [], sunset = [], off = [], decl = [];
+    var srH = [], ssH = [], len = [], sunrise = [], sunset = [], off = [], decl = [], vdA = [], vdB = [], vdMin = [];
     var iMax = 0, iMin = 0;
     for (var i = 0; i < days; i++) {
       var ev = solarEvents(loc.lat, loc.lon, dayNoon(i));
@@ -2275,6 +2281,13 @@
       // read exact rise/set times from the instants.
       var noonH = localHours(ev.noon, tz, loc.lon), half = ev.lenMin / 120;
       srH.push(noonH - half); ssH.push(noonH + half); len.push(ev.lenMin);
+      // Vitamin D hours: the Sun above 45° (your shadow shorter than you), when enough UVB
+      // reaches the ground for skin to make vitamin D. Solve the altitude formula for the
+      // hour angle at 45°; the window is symmetric about solar noon, or absent.
+      var dR = decl[i] * Math.PI / 180, lR = loc.lat * Math.PI / 180;
+      var cH = (Math.sin(45 * Math.PI / 180) - Math.sin(lR) * Math.sin(dR)) / (Math.cos(lR) * Math.cos(dR));
+      var vHalf = cH >= 1 ? 0 : (cH <= -1 ? 12 : Math.acos(cH) * 180 / Math.PI / 15); // hours either side of noon
+      vdA.push(vHalf ? noonH - vHalf : null); vdB.push(vHalf ? noonH + vHalf : null); vdMin.push(vHalf * 120);
       sunrise.push(ev.sunrise); sunset.push(ev.sunset);
       off.push(tzOffsetMin(dayNoon(i), tz)); // clean whole-minute instant (no sub-minute jitter)
       if (ev.lenMin > len[iMax]) iMax = i;
@@ -2324,6 +2337,20 @@
       edgeR += (i ? " " : "") + x + "," + Y(srH[i]).toFixed(1);
       edgeS += (i ? " " : "") + x + "," + Y(ssH[i]).toFixed(1);
     }
+    // vitamin D band: a brighter lens inside the daylight band, one polygon per run of
+    // days with a window (it may vanish for the winter and come back in spring)
+    var vd = "", vTop = "", vBot = "";
+    function vdFlush() {
+      if (!vTop) return;
+      vd += '<polygon class="vd-band" points="' + vTop + vBot + '"/>'; vTop = ""; vBot = "";
+    }
+    for (i = 0; i < days; i++) {
+      if (vdA[i] == null) { vdFlush(); continue; }
+      var vx = X(i).toFixed(1);
+      vTop += (vTop ? " " : "") + vx + "," + Y(vdA[i]).toFixed(1);
+      vBot = " " + vx + "," + Y(vdB[i]).toFixed(1) + vBot;
+    }
+    vdFlush();
     // hour gridlines (the labels live in a frozen axis beside the scroller)
     var grid = "";
     for (i = 0; i < HOURS.length; i++) {
@@ -2365,6 +2392,7 @@
       '<stop offset="1" stop-color="#ff9e3d" stop-opacity="0.65"/></linearGradient></defs>' +
       months + grid +
       '<polygon class="band" points="' + top + bot + '"/>' +
+      vd +
       '<polyline class="edge" points="' + edgeR + '"/>' +
       '<polyline class="edge" points="' + edgeS + '"/>' +
       solDots +
@@ -2380,7 +2408,7 @@
     var fShort = dayMid(iMin).toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
     els.dayBody.innerHTML =
       '<p class="day-note">A full year on screen — six months either side of the line, which starts on today. Slide the band to move the line anywhere from a year ago to a year ahead. Longest ' + fLong + ' (' + fmtDur(len[iMax]) +
-      '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + '). Dots mark the solstices, rings the equinoxes (first day of spring and autumn).' +
+      '), shortest ' + fShort + ' (' + fmtDur(len[iMin]) + '). Dots mark the solstices, rings the equinoxes (first day of spring and autumn). The brighter band inside is when the Sun is above 45° — your shadow shorter than you — high enough for skin to make vitamin D.' +
       (dstList.length ? ' Dotted lines mark the clock changes (daylight saving).' : '') + '</p>' +
       '<div class="day-readout" id="dayReadout"></div>' +
       '<div class="day-chart-wrap" id="dayWrap">' +
@@ -2416,6 +2444,8 @@
           '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
           '<span class="rd-item"><span class="k">Sunset</span> <b>' + clockInTz(sunset[i], tz) + '</b></span>' +
           '<span class="rd-item rd-len"><span class="k">Daylight</span> <b>' + fmtDur(len[i]) + '</b></span>' +
+          '<span class="rd-item rd-vd"><span class="k">Vitamin D</span> <b>' + (vdA[i] == null ? 'none today'
+            : clockTight(new Date(sunrise[i].getTime() + (vdA[i] - srH[i]) * 3600000), tz) + '–' + clockTight(new Date(sunset[i].getTime() - (ssH[i] - vdB[i]) * 3600000), tz) + ' · ' + fmtDur(vdMin[i])) + '</b></span>' +
         '</div>' +
         trend;
     }
