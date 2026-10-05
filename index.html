@@ -346,6 +346,9 @@
   .mo-hero .mo-moon { display: block; margin: 0 auto 12px; filter: drop-shadow(0 0 18px rgba(200,215,235,0.12)); }
   .mo-phase { font-size: 1.25rem; font-weight: 700; }
   .mo-when { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  /* third line of the hero: where the Moon is in the sky at that hour, or not visible */
+  .mo-sky { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .mo-sky b { color: var(--text); font-weight: 600; }
   /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
   .mo-scrub { position: relative; margin: 10px 0 12px; }
   .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
@@ -2034,7 +2037,7 @@
     var p0 = tzParts(now, tz), todayMid = localMidnight(p0.y, p0.m, p0.d, tz);
     moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - 3 * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
     els.moonBody.innerHTML =
-      '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div>' +
+      '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div><div class="mo-sky" id="moSky"></div>' +
         '<button type="button" class="mo-now" id="moNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
       '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
       '<div class="mo-stats" id="moStats"></div>' +
@@ -2102,6 +2105,11 @@
     renderMoonDisc(d, mi.illum, mi.waxing, 150);
     $("moPhase").textContent = mi.name;
     $("moWhen").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz }) + " at " + d.toLocaleTimeString([], { hour: "numeric", timeZone: tz });
+    // third line: where the Moon is in the sky at that hour — bearing and height — or not visible
+    var sky = moonSky(U.sel, U.loc.lat, U.loc.lon);
+    $("moSky").innerHTML = sky.rel >= 0
+      ? "Look <b>" + compassName(sky.az) + "</b> " + Math.round(mnorm(sky.az)) + "°, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon"
+      : "Not visible — below the horizon";
     // rise/set for the selected local day (cached per day)
     var p = tzParts(d, U.tz), key = dayKey(p), dayStart = localMidnight(p.y, p.m, p.d, U.tz);
     if (!U.rs[key]) U.rs[key] = moonRiseSet(dayStart, U.loc.lat, U.loc.lon);
@@ -2120,11 +2128,6 @@
     // "NE 55° 1:18 AM" — the bearing subdued ahead of the time, like the dates below
     ev.forEach(function (e) { rows.push([e.k, bearingHtml(moonAzimuth(e.t, U.loc.lat, U.loc.lon), "mo-dt mo-az").trim() + " " + clockInTz(new Date(e.t), U.tz)]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
-    // where the Moon is at the scrubbed hour: bearing and height above the horizon, or not up
-    var sky = moonSky(U.sel, U.loc.lat, U.loc.lon);
-    rows.push(["Where to look", sky.rel >= 0
-      ? bearingHtml(sky.az, "mo-dt mo-az").trim() + " " + Math.max(0, Math.round(sky.alt)) + "° up"
-      : "not visible"]);
     rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)]);
     // Distance as a scale from perigee to apogee with a marker (and the figure) at today's
     // value. Centre to centre by default; "Surface" subtracts both radii (Earth 6371 km +
