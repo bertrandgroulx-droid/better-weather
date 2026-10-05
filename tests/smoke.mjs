@@ -519,7 +519,7 @@ async function run() {
     // so two years of data give two lenses; the readout carries a Vitamin D line
     const vdN = await ypage.$$eval("#dayBody .vd-band", (e) => e.length);
     assert(vdN === 2, `two vitamin D lenses over two years at 51°N, got ${vdN}`);
-    assert(/Vitamin D\s+(none today|\d{1,2}:\d\d[ap]–\d{1,2}:\d\d[ap] · \d+h)/.test(await ypage.$eval("#dayReadout", (e) => e.textContent)), "readout has a Vitamin D line");
+    assert(/Vitamin D\s+(none today|\d{1,2}:\d\d–\d{1,2}:\d\d · \d+h)/.test(await ypage.$eval("#dayReadout", (e) => e.textContent)), "readout has a Vitamin D line");
     // sunrise and sunset carry a compass bearing ("7:41 AM E 96°")
     const azOK = /Sunrise\s+\d{1,2}:\d\d [AP]M\s*[NESW]{1,3} \d{1,3}°/.test(await ypage.$eval("#dayReadout", (e) => e.textContent));
     assert(azOK, "sunrise shows its compass bearing");
@@ -535,6 +535,13 @@ async function run() {
     const right = await scrollTo(1);
     assert(!/today/.test(left) && !/today/.test(right), `edges are not today, got "${left}" / "${right}"`);
     assert(left !== right, `the two edges are different days, got "${left}" / "${right}"`);
+    // back-to-today arrow: hidden on today, shown once scrubbed away, and a tap glides back to today
+    const arrowShown = await ypage.$eval("#dayNow", (b) => getComputedStyle(b).display !== "none");
+    assert(arrowShown, "back-to-today arrow appears when scrubbed off today");
+    await ypage.click("#dayNow"); await ypage.waitForTimeout(1200);
+    const backHome = await ypage.$eval("#dayReadout .rd-date", (e) => e.textContent);
+    assert(/today/.test(backHome) && await ypage.$eval("#dayNow", (b) => getComputedStyle(b).display === "none"), `arrow returns to today and hides, got "${backHome.trim()}"`);
+    await scrollTo(1);
     // the readout still carries a full sunrise/sunset/length line off-centre
     const lenOK = /Daylight\s+\d+h\s+\d+m/.test(await ypage.$eval("#dayReadout", (e) => e.textContent));
     assert(lenOK, "a scrubbed day still shows sunrise/sunset/daylight length");

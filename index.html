@@ -410,6 +410,11 @@
     background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; }
   .day-readout .rd-date { font-weight: 700; font-size: 1.2rem; margin-bottom: 4px; }
+  /* back-to-today: the Moon panel's arrow, here in the readout's top corner on the side today lies */
+  .day-readout { position: relative; }
+  .day-readout .mo-now { top: 7px; bottom: auto; left: 10px; width: 28px; height: 28px; }
+  .day-readout .mo-now svg { width: 16px; height: 16px; }
+  .day-readout .mo-now.right { left: auto; right: 10px; }
   /* the three label | value pairs share one small two-column grid, centred as a block with
      a fixed gap: labels end on one line, values start on another, and as the screen widens
      the card's margins take up the slack, not the gap. It's its own box so the longer date
@@ -421,6 +426,12 @@
   .day-readout .rd-len b { color: var(--accent); }
   .day-readout .rd-az { font-weight: 500; color: var(--muted); font-size: 0.78em; margin-left: 3px; } /* compass bearing beside a time */
   .day-readout .rd-trend { font-size: 0.78rem; margin-top: 2px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 320px phones: the widest row ("Vitamin D  10:10a–3:50p · 5h 40m") overran the card by a few px */
+  @media (max-width: 340px) {
+    .day-readout { padding: 9px 8px; }
+    .day-readout .rd-grid { column-gap: 12px; }
+    .day-readout .rd-item .k, .day-readout .rd-item b { font-size: 0.8rem; }
+  }
   /* the chart scrolls under a fixed centre line; hour labels sit in a frozen axis on the left */
   .day-chart-wrap { position: relative; -webkit-user-select: none; user-select: none; }
   .day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; }
@@ -2466,13 +2477,17 @@
         : delta < 0 ? '<span class="rd-item rd-trend" style="color:var(--muted)">▼ ' + (-delta) + 'm shorter than the day before</span>'
         : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length steady</span>';
       readout.innerHTML =
+        // back-to-today arrow: shown once scrubbed off today, on the side today lies
+        '<button type="button" class="mo-now' + (i !== todayIdx ? ' show' : '') + (todayIdx > i ? ' right' : '') + '" id="dayNow" aria-label="Back to today">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
         '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + (season[i] ? ' · ' + season[i] : '') + '</span>' +
         '<div class="rd-grid">' +
           '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + bearingHtml(azR[i], "rd-az") + '</b></span>' +
           '<span class="rd-item"><span class="k">Sunset</span> <b>' + clockInTz(sunset[i], tz) + bearingHtml(azS[i], "rd-az") + '</b></span>' +
           '<span class="rd-item rd-len"><span class="k">Daylight</span> <b>' + fmtDur(len[i]) + '</b></span>' +
           '<span class="rd-item rd-vd"><span class="k">Vitamin D</span> <b>' + (vdA[i] == null ? 'none today'
-            : clockTight(new Date(sunrise[i].getTime() + (vdA[i] - srH[i]) * 3600000), tz) + '–' + clockTight(new Date(sunset[i].getTime() - (ssH[i] - vdB[i]) * 3600000), tz) + ' · ' + fmtDur(vdMin[i])) + '</b></span>' +
+            // "10:57–4:06 · 5h 9m": no am/pm — the window is always daytime, and the row has to fit a 320px card
+            : clockTight(new Date(sunrise[i].getTime() + (vdA[i] - srH[i]) * 3600000), tz).replace(/[ap]$/, "") + '–' + clockTight(new Date(sunset[i].getTime() - (ssH[i] - vdB[i]) * 3600000), tz).replace(/[ap]$/, "") + ' · ' + fmtDur(vdMin[i])) + '</b></span>' +
         '</div>' +
         trend;
     }
@@ -2496,6 +2511,12 @@
       if (Math.abs(target - sc.scrollLeft) >= 1) sc.scrollTo({ left: target, behavior: "smooth" });
     }
     function scheduleSettle() { clearTimeout(settle); settle = setTimeout(doSettle, 150); }
+    // back-to-today: glide the chart until today is under the line again
+    function goToday() {
+      curI = todayIdx;
+      sc.scrollTo({ left: Math.max(0, X(todayIdx) - sc.clientWidth / 2), behavior: "smooth" });
+    }
+    readout.addEventListener("click", function (e) { if (e.target.closest("#dayNow")) goToday(); });
     sc.addEventListener("scroll", function () {
       if (!raf) raf = requestAnimationFrame(function () { raf = 0; setScrub(centreIdx()); });
       scheduleSettle();
