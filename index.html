@@ -369,6 +369,11 @@
     background: radial-gradient(circle at 38% 36%, #fff 0, #e8ecf2 45%, #aab4c3 100%); box-shadow: 0 0 18px rgba(230,236,245,0.45);
     transition: transform .12s linear, opacity .3s; }
   .find-view .fv-moon.edge { opacity: 0.55; width: 18px; height: 18px; margin: -9px 0 0 -9px; }
+  .find-view .fv-moon.below { opacity: 0.35; box-shadow: none; filter: saturate(0.5); }
+  /* the horizon, drawn where the phone's tilt puts it: the ground below is shaded */
+  .find-view .fv-ground { position: absolute; left: 0; right: 0; top: 50%; height: 400px; pointer-events: none;
+    background: rgba(90,70,40,0.28); border-top: 1.5px solid rgba(255,209,102,0.55); transition: transform .12s linear; }
+  .find-view .fv-ground span { position: absolute; right: 10px; top: 2px; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,209,102,0.7); }
   .find-view .fv-arrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
   .find-view .fv-arrow i { position: absolute; left: -9px; top: -124px; width: 18px; height: 18px; display: block; color: #5fb6ff; transform-origin: 9px 124px; }
   .find-view .fv-arrow i svg { width: 18px; height: 18px; display: block; }
@@ -3833,6 +3838,7 @@
       '<div class="find-target" id="findTarget"></div>' +
       '<div class="find-view" id="findView">' +
         '<svg class="fv-ring" viewBox="0 0 260 260" aria-hidden="true"><line x1="130" y1="0" x2="130" y2="260"/><line x1="0" y1="130" x2="260" y2="130"/><circle cx="130" cy="130" r="40"/><circle cx="130" cy="130" r="90"/></svg>' +
+        '<div class="fv-ground" id="fvGround"><span>horizon</span></div>' +
         '<div class="fv-arrow hide" id="fvArrow"><i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l7 9h-4.5v9h-5v-9H5z"/></svg></i></div>' +
         '<div class="fv-moon" id="fvMoon"></div>' +
       '</div>' +
@@ -3869,8 +3875,14 @@
     var t = $("findTarget");
     if (U.up) t.innerHTML = mi.name + " · now <b>" + compassName(sky.az) + " " + Math.round(sky.az) + "°</b>, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon";
     else {
-      var p = tzParts(new Date(now), lastTz), rs = moonRiseSet(localMidnight(p.y, p.m, p.d, lastTz), U.loc.lat, U.loc.lon), rise = rs.rise != null && rs.rise > now ? rs.rise : null;
-      t.innerHTML = "The Moon is <b>below the horizon</b> right now" + (rise ? " — it rises at <b>" + clockInTz(new Date(rise), lastTz) + "</b> in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) : "") + ". You can still point to where it is.";
+      // say when it set (today) and when it next rises (today or tomorrow), plus how far down it is
+      var p = tzParts(new Date(now), lastTz), mid = localMidnight(p.y, p.m, p.d, lastTz);
+      var rs = moonRiseSet(mid, U.loc.lat, U.loc.lon), rs2 = moonRiseSet(mid + 86400000, U.loc.lat, U.loc.lon);
+      var set = rs.set != null && rs.set <= now ? rs.set : null;
+      var rise = rs.rise != null && rs.rise > now ? rs.rise : (rs2.rise != null ? rs2.rise : null);
+      t.innerHTML = (set ? "The Moon <b>set at " + clockInTz(new Date(set), lastTz) + "</b> and is now " : "The Moon is <b>below the horizon</b>, ") +
+        "<b>" + Math.max(1, Math.round(-sky.alt)) + "° below the horizon</b> in the " + compassName(sky.az) + " (" + Math.round(sky.az) + "°)" +
+        (rise ? ". It rises at <b>" + clockInTz(new Date(rise), lastTz) + "</b>" + (rise > mid + 86400000 ? " tomorrow" : "") + " in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) : "") + ".";
     }
   }
   function findFrame() {
@@ -3891,6 +3903,9 @@
     var moon = $("fvMoon"), arrow = $("fvArrow"), view = $("findView");
     moon.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
     moon.classList.toggle("edge", edge);
+    moon.classList.toggle("below", !U.up);
+    // the horizon sits at altitude 0, i.e. lastAlt degrees below the crosshair (clamped to the view)
+    $("fvGround").style.transform = "translateY(" + Math.max(-140, Math.min(140, U.lastAlt * K)).toFixed(1) + "px)";
     arrow.classList.toggle("hide", !edge);
     if (edge) arrow.firstChild.style.transform = "rotate(" + (Math.atan2(x, -y) / RAD).toFixed(1) + "deg)";
     var okAz = Math.abs(dAz) <= 5, okAlt = Math.abs(dAlt) <= 5, on = okAz && okAlt;
