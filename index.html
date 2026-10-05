@@ -373,7 +373,8 @@
   /* the horizon, drawn where the phone's tilt puts it: the ground below is shaded */
   .find-view .fv-ground { position: absolute; left: 0; right: 0; top: 50%; height: 400px; pointer-events: none;
     background: rgba(90,70,40,0.28); border-top: 1.5px solid rgba(255,209,102,0.55); transition: transform .12s linear; }
-  .find-view .fv-ground span { position: absolute; right: 10px; top: 2px; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,209,102,0.7); }
+  .find-view .fv-ground span { position: absolute; left: 50%; transform: translateX(-50%); top: 2px; padding: 0 4px; background: rgba(4,10,22,0.6); border-radius: 4px;
+    font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,209,102,0.7); }
   .find-view .fv-arrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
   .find-view .fv-arrow i { position: absolute; left: -9px; top: -124px; width: 18px; height: 18px; display: block; color: #5fb6ff; transform-origin: 9px 124px; }
   .find-view .fv-arrow i svg { width: 18px; height: 18px; display: block; }
