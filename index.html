@@ -350,6 +350,37 @@
   .mo-sky { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
   .mo-sky b { color: var(--text); font-weight: 600; }
   .mo-sky .mo-eye { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: 6px; opacity: 0.8; }
+  /* "Find the Moon" — only offered where the phone can report compass + tilt */
+  .mo-find { display: none; margin: 12px auto 0; padding: 8px 16px; border-radius: 999px; font: inherit; font-size: 0.88rem; font-weight: 600;
+    border: 1.6px solid #5fb6ff; color: #5fb6ff; background: rgba(95,182,255,0.08); cursor: pointer; align-items: center; gap: 7px; }
+  .mo-find.show { display: inline-flex; }
+  .mo-find svg { width: 16px; height: 16px; }
+
+  /* ---------------- Find the Moon ---------------- */
+  .find-target { text-align: center; font-size: 0.9rem; color: var(--muted); margin: 2px 0 10px; }
+  .find-target b { color: var(--text); }
+  .find-view { position: relative; width: 260px; height: 260px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, #0a1a30 0, #040a16 70%);
+    border: 1.6px solid rgba(255,255,255,0.14); overflow: hidden; transition: box-shadow .3s, border-color .3s; }
+  .find-view.on { border-color: #ffd166; box-shadow: 0 0 0 4px rgba(255,209,102,0.18), 0 0 40px rgba(255,209,102,0.25); }
+  .find-view .fv-ring { position: absolute; inset: 0; pointer-events: none; }
+  .find-view .fv-ring line { stroke: rgba(255,255,255,0.14); stroke-width: 1; }
+  .find-view .fv-ring circle { fill: none; stroke: rgba(255,255,255,0.10); stroke-width: 1; stroke-dasharray: 3 5; }
+  .find-view .fv-moon { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 36%, #fff 0, #e8ecf2 45%, #aab4c3 100%); box-shadow: 0 0 18px rgba(230,236,245,0.45);
+    transition: transform .12s linear, opacity .3s; }
+  .find-view .fv-moon.edge { opacity: 0.55; width: 18px; height: 18px; margin: -9px 0 0 -9px; }
+  .find-view .fv-arrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+  .find-view .fv-arrow i { position: absolute; left: -9px; top: -124px; width: 18px; height: 18px; display: block; color: #5fb6ff; transform-origin: 9px 124px; }
+  .find-view .fv-arrow i svg { width: 18px; height: 18px; display: block; }
+  .find-view .fv-arrow.hide { display: none; }
+  .find-guide { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 6px; }
+  .find-guide .fg { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; text-align: center; }
+  .find-guide .fg small { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 2px; }
+  .find-guide .fg b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .find-guide .fg.ok b { color: #ffd166; }
+  .find-live { text-align: center; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .find-msg { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; font-size: 0.9rem; line-height: 1.5; margin: 6px 0 10px; }
+  .find-msg.warn { border-color: rgba(255,209,102,0.45); }
   /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
   .mo-scrub { position: relative; margin: 10px 0 12px; }
   .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
@@ -955,6 +986,17 @@
     </div>
   </div>
 
+  <!-- find the Moon: point the phone, follow the arrows (compass + tilt sensors) -->
+  <div class="backdrop hidden" id="findBackdrop">
+    <div class="modal moon-modal find-modal" role="dialog" aria-modal="true" aria-label="Find the Moon">
+      <div class="modal-head">
+        <h2>Find the Moon</h2>
+        <button class="close" id="findClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="findBody"></div>
+    </div>
+  </div>
+
   <!-- daylight-over-the-year panel -->
   <div class="backdrop hidden" id="dayBackdrop">
     <div class="modal day-modal" role="dialog" aria-modal="true" aria-label="Daylight over the year">
@@ -1005,6 +1047,7 @@
     aboutBtn: $("aboutBtn"), aboutBackdrop: $("aboutBackdrop"), aboutClose: $("aboutClose"),
     airBackdrop: $("airBackdrop"), airClose: $("airClose"), airBody: $("airBody"),
     moonBackdrop: $("moonBackdrop"), moonClose: $("moonClose"), moonBody: $("moonBody"),
+    findBackdrop: $("findBackdrop"), findClose: $("findClose"),
     dayBackdrop: $("dayBackdrop"), dayClose: $("dayClose"), dayBody: $("dayBody"),
     windBackdrop: $("windBackdrop"), windClose: $("windClose"), windBody: $("windBody"),
     condBackdrop: $("condBackdrop"), condClose: $("condClose"), condBody: $("condBody"), condTitle: $("condTitle"),
@@ -2039,6 +2082,7 @@
     moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - 3 * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
     els.moonBody.innerHTML =
       '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div><div class="mo-sky" id="moSky"></div>' +
+        '<button type="button" class="mo-find' + (canFindMoon() ? ' show' : '') + '" id="moFind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>Find the Moon</button>' +
         '<button type="button" class="mo-now" id="moNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
       '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
       '<div class="mo-stats" id="moStats"></div>' +
@@ -2058,6 +2102,7 @@
     var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     $("moCal").addEventListener("click", onMoonCalClick);
     $("moNow").addEventListener("click", moonGoNow);
+    $("moFind").addEventListener("click", openFind);
     $("moStats").addEventListener("click", function (e) {
       var b = e.target.closest("[data-dm]"); if (!b || b.dataset.dm === moonDistMode) return;
       moonDistMode = b.dataset.dm;
@@ -3754,6 +3799,119 @@
   function closeAir() { els.airBackdrop.classList.add("hidden"); }
   function openMoon() { fillMoonModal(); els.moonBackdrop.classList.remove("hidden"); }
   function closeMoon() { els.moonBackdrop.classList.add("hidden"); }
+
+  // ---------------- Find the Moon ----------------
+  // Point the phone at the sky like taking a photo; the compass and tilt sensors say which
+  // way the back of the phone faces, and the view shows how far to turn and tilt to land on
+  // the Moon. Offered only on touch devices whose browser exposes device orientation.
+  function canFindMoon() {
+    return !!window.DeviceOrientationEvent && (("ontouchstart" in window) || (navigator.maxTouchPoints > 0));
+  }
+  var findUI = null;
+  // The direction the back camera points, from a deviceorientation event.
+  //   iOS: webkitCompassHeading is the tilt-compensated heading (true north where location
+  //        services allow); the tilt comes from beta/gamma.
+  //   Android: alpha from the *absolute* event is north-referenced; rotate the device's −Z
+  //        axis into the earth frame (W3C Z-X'-Y'' order) and read off its bearing and tilt.
+  function pointingFrom(e) {
+    if (e.alpha == null && e.webkitCompassHeading == null) return null;
+    var a = (e.alpha || 0) * RAD, b = (e.beta || 0) * RAD, g = (e.gamma || 0) * RAD;
+    // device +Z axis in the earth frame (x east, y north, z up)
+    var zx0 = Math.sin(g), zy0 = -Math.sin(b) * Math.cos(g), zz = Math.cos(b) * Math.cos(g);
+    var zx = zx0 * Math.cos(a) - zy0 * Math.sin(a), zy = zx0 * Math.sin(a) + zy0 * Math.cos(a);
+    var alt = Math.asin(Math.max(-1, Math.min(1, -zz))) / RAD;         // the back (−Z) points up when +Z points down
+    var az;
+    if (e.webkitCompassHeading != null && !isNaN(e.webkitCompassHeading)) az = e.webkitCompassHeading; // iOS
+    else if (e.absolute || e.type === "deviceorientationabsolute") az = mnorm(Math.atan2(-zx, -zy) / RAD);
+    else return null; // relative alpha: no north reference, useless for finding anything
+    return { az: az, alt: alt };
+  }
+  function openFind() {
+    var loc = lastLoc || { lat: 51.05, lon: -114.07 };
+    var body = $("findBody");
+    body.innerHTML =
+      '<div class="find-target" id="findTarget"></div>' +
+      '<div class="find-view" id="findView">' +
+        '<svg class="fv-ring" viewBox="0 0 260 260" aria-hidden="true"><line x1="130" y1="0" x2="130" y2="260"/><line x1="0" y1="130" x2="260" y2="130"/><circle cx="130" cy="130" r="40"/><circle cx="130" cy="130" r="90"/></svg>' +
+        '<div class="fv-arrow hide" id="fvArrow"><i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l7 9h-4.5v9h-5v-9H5z"/></svg></i></div>' +
+        '<div class="fv-moon" id="fvMoon"></div>' +
+      '</div>' +
+      '<div class="find-guide"><div class="fg" id="fgTurn"><small>Turn</small><b>—</b></div><div class="fg" id="fgTilt"><small>Tilt</small><b>—</b></div></div>' +
+      '<div class="find-live" id="findLive">Waiting for the compass…</div>' +
+      '<div class="find-msg" id="findMsg">Hold the phone upright with its back toward the sky, like taking a photo, and follow the two arrows. The ring lights up when you’re on it. A few degrees of compass error is normal; if it drifts, wave the phone in a figure eight.</div>';
+    findUI = { loc: loc, got: false, onTarget: false, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0 };
+    findRefreshTarget();
+    els.findBackdrop.classList.remove("hidden");
+    // iOS 13+: sensors need a permission granted from a user gesture (this tap)
+    var start = function () {
+      var evName = ("ondeviceorientationabsolute" in window) ? "deviceorientationabsolute" : "deviceorientation";
+      findUI.evName = evName;
+      findUI.handler = function (e) { findUI.pend = e; if (!findUI.raf) findUI.raf = requestAnimationFrame(findFrame); };
+      window.addEventListener(evName, findUI.handler);
+      findUI.timer = setTimeout(function () {
+        if (findUI && !findUI.got) findMessage("No compass data is coming through. On iPhone, allow Motion & Orientation for Safari (Settings → Safari → Motion & Orientation Access) and try again; some browsers don’t share orientation with web pages.", true);
+      }, 2500);
+    };
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission().then(function (state) {
+        if (state === "granted") start();
+        else findMessage("Motion access was declined, so the phone can’t say where it’s pointing. Close this and tap Find the Moon again to be asked once more.", true);
+      }).catch(function () { findMessage("Motion access couldn’t be requested here. Open the app in Safari and try again.", true); });
+    } else start();
+    findUI.tick = setInterval(findRefreshTarget, 10000); // the Moon moves ~¼° a minute
+  }
+  function findMessage(text, warn) { var m = $("findMsg"); if (m) { m.textContent = text; m.classList.toggle("warn", !!warn); } }
+  // Where the Moon is right now (not the scrubbed hour — you're pointing a phone in real time)
+  function findRefreshTarget() {
+    var U = findUI; if (!U) return;
+    var now = Date.now(), sky = moonSky(now, U.loc.lat, U.loc.lon), mi = moonInfo(new Date(now));
+    U.az = sky.az; U.alt = sky.alt; U.up = sky.rel >= 0;
+    var t = $("findTarget");
+    if (U.up) t.innerHTML = mi.name + " · now <b>" + compassName(sky.az) + " " + Math.round(sky.az) + "°</b>, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon";
+    else {
+      var p = tzParts(new Date(now), lastTz), rs = moonRiseSet(localMidnight(p.y, p.m, p.d, lastTz), U.loc.lat, U.loc.lon), rise = rs.rise != null && rs.rise > now ? rs.rise : null;
+      t.innerHTML = "The Moon is <b>below the horizon</b> right now" + (rise ? " — it rises at <b>" + clockInTz(new Date(rise), lastTz) + "</b> in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) : "") + ". You can still point to where it is.";
+    }
+  }
+  function findFrame() {
+    var U = findUI; if (!U) return; U.raf = 0;
+    var p = pointingFrom(U.pend); U.pend = null;
+    if (!p) return;
+    if (!U.got) { U.got = true; clearTimeout(U.timer); }
+    // smooth a little (circular for the heading) so the Moon marker doesn't jitter
+    if (U.lastAz == null) { U.lastAz = p.az; U.lastAlt = p.alt; }
+    else {
+      var d = ((p.az - U.lastAz + 540) % 360) - 180; U.lastAz = mnorm(U.lastAz + d * 0.35);
+      U.lastAlt += (p.alt - U.lastAlt) * 0.35;
+    }
+    var dAz = ((U.az - U.lastAz + 540) % 360) - 180, dAlt = U.alt - U.lastAlt;  // + = target is to the right / above
+    var K = 2.4, R = 104;                                                        // px per degree; radius the marker is clamped to (the arrow sits outside it)
+    var x = dAz * K, y = -dAlt * K, r = Math.sqrt(x * x + y * y), edge = r > R;
+    if (edge) { x *= R / r; y *= R / r; }
+    var moon = $("fvMoon"), arrow = $("fvArrow"), view = $("findView");
+    moon.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
+    moon.classList.toggle("edge", edge);
+    arrow.classList.toggle("hide", !edge);
+    if (edge) arrow.firstChild.style.transform = "rotate(" + (Math.atan2(x, -y) / RAD).toFixed(1) + "deg)";
+    var okAz = Math.abs(dAz) <= 5, okAlt = Math.abs(dAlt) <= 5, on = okAz && okAlt;
+    var turn = $("fgTurn"), tilt = $("fgTilt");
+    turn.className = "fg" + (okAz ? " ok" : ""); tilt.className = "fg" + (okAlt ? " ok" : "");
+    turn.lastChild.textContent = okAz ? "✓ on it" : (dAz > 0 ? "→ right " : "← left ") + Math.round(Math.abs(dAz)) + "°";
+    tilt.lastChild.textContent = okAlt ? "✓ on it" : (dAlt > 0 ? "↑ up " : "↓ down ") + Math.round(Math.abs(dAlt)) + "°";
+    view.classList.toggle("on", on);
+    if (on && !U.onTarget && navigator.vibrate) { try { navigator.vibrate(60); } catch (_) {} }
+    U.onTarget = on;
+    var ta = Math.round(U.lastAlt);
+    $("findLive").textContent = "Phone facing " + compassName(U.lastAz) + " " + Math.round(U.lastAz) + "° · tilted " + Math.abs(ta) + "°" + (ta >= 0 ? " up" : " down");
+  }
+  function closeFind() {
+    var U = findUI; findUI = null;
+    if (U) {
+      if (U.handler) window.removeEventListener(U.evName, U.handler);
+      clearTimeout(U.timer); clearInterval(U.tick); if (U.raf) cancelAnimationFrame(U.raf);
+    }
+    els.findBackdrop.classList.add("hidden");
+  }
   function openDay() { if (buildDaylightChart(lastLoc, lastTz)) els.dayBackdrop.classList.remove("hidden"); }
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
   function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
@@ -3782,6 +3940,8 @@
   els.airClose.addEventListener("click", closeAir);
   els.airBackdrop.addEventListener("click", function (e) { if (e.target === els.airBackdrop) closeAir(); });
   els.moonClose.addEventListener("click", closeMoon);
+  els.findClose.addEventListener("click", closeFind);
+  els.findBackdrop.addEventListener("click", function (e) { if (e.target === els.findBackdrop) closeFind(); });
   els.moonBackdrop.addEventListener("click", function (e) { if (e.target === els.moonBackdrop) closeMoon(); });
   els.dayClose.addEventListener("click", closeDay);
   els.dayBackdrop.addEventListener("click", function (e) { if (e.target === els.dayBackdrop) closeDay(); });
