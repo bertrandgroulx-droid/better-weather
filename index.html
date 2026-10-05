@@ -369,7 +369,6 @@
     background: radial-gradient(circle at 38% 36%, #fff 0, #e8ecf2 45%, #aab4c3 100%); box-shadow: 0 0 18px rgba(230,236,245,0.45);
     transition: transform .12s linear, opacity .3s; }
   .find-view .fv-moon.edge { opacity: 0.55; width: 18px; height: 18px; margin: -9px 0 0 -9px; }
-  .find-view .fv-moon.below { opacity: 0.35; box-shadow: none; filter: saturate(0.5); }
   /* the horizon, drawn where the phone's tilt puts it: the ground below is shaded */
   .find-view .fv-ground { position: absolute; left: 0; right: 0; top: 50%; height: 400px; pointer-events: none;
     background: rgba(90,70,40,0.28); border-top: 1.5px solid rgba(255,209,102,0.55); transition: transform .12s linear; }
@@ -2160,9 +2159,8 @@
     // third line: where the Moon is in the sky at that hour — bearing and height — or not visible
     var sky = moonSky(U.sel, U.loc.lat, U.loc.lon);
     var eye = '<svg class="mo-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Where to look"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-    $("moSky").innerHTML = sky.rel >= 0
-      ? eye + "<b>" + compassName(sky.az) + "</b> " + Math.round(mnorm(sky.az)) + "°, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon"
-      : "Not visible — below the horizon";
+    // same form above or below: "ENE 65°, 12° below the horizon" (the finder can point at it either way)
+    $("moSky").innerHTML = eye + "<b>" + compassName(sky.az) + "</b> " + Math.round(mnorm(sky.az)) + "°, <b>" + Math.abs(Math.round(sky.alt)) + "°</b> " + (sky.rel >= 0 ? "above" : "below") + " the horizon";
     // rise/set for the selected local day (cached per day)
     var p = tzParts(d, U.tz), key = dayKey(p), dayStart = localMidnight(p.y, p.m, p.d, U.tz);
     if (!U.rs[key]) U.rs[key] = moonRiseSet(dayStart, U.loc.lat, U.loc.lon);
@@ -3874,17 +3872,15 @@
     var now = Date.now(), sky = moonSky(now, U.loc.lat, U.loc.lon), mi = moonInfo(new Date(now));
     U.az = sky.az; U.alt = sky.alt; U.up = sky.rel >= 0;
     var t = $("findTarget");
-    if (U.up) t.innerHTML = mi.name + " · now <b>" + compassName(sky.az) + " " + Math.round(sky.az) + "°</b>, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon";
-    else {
-      // say when it set (today) and when it next rises (today or tomorrow), plus how far down it is
+    // same line above or below the horizon — pointing works the same either way; below, add when it rises
+    var line = mi.name + " · now <b>" + compassName(sky.az) + " " + Math.round(sky.az) + "°</b>, <b>" + Math.abs(Math.round(sky.alt)) + "°</b> " + (U.up ? "above" : "below") + " the horizon";
+    if (!U.up) {
       var p = tzParts(new Date(now), lastTz), mid = localMidnight(p.y, p.m, p.d, lastTz);
       var rs = moonRiseSet(mid, U.loc.lat, U.loc.lon), rs2 = moonRiseSet(mid + 86400000, U.loc.lat, U.loc.lon);
-      var set = rs.set != null && rs.set <= now ? rs.set : null;
       var rise = rs.rise != null && rs.rise > now ? rs.rise : (rs2.rise != null ? rs2.rise : null);
-      t.innerHTML = (set ? "The Moon <b>set at " + clockInTz(new Date(set), lastTz) + "</b> and is now " : "The Moon is <b>below the horizon</b>, ") +
-        "<b>" + Math.max(1, Math.round(-sky.alt)) + "° below the horizon</b> in the " + compassName(sky.az) + " (" + Math.round(sky.az) + "°)" +
-        (rise ? ". It rises at <b>" + clockInTz(new Date(rise), lastTz) + "</b>" + (rise > mid + 86400000 ? " tomorrow" : "") + " in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) : "") + ".";
+      if (rise) line += "<br><small>rises " + clockInTz(new Date(rise), lastTz) + (rise > mid + 86400000 ? " tomorrow" : "") + " in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) + "</small>";
     }
+    t.innerHTML = line;
   }
   function findFrame() {
     var U = findUI; if (!U) return; U.raf = 0;
@@ -3904,7 +3900,6 @@
     var moon = $("fvMoon"), arrow = $("fvArrow"), view = $("findView");
     moon.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
     moon.classList.toggle("edge", edge);
-    moon.classList.toggle("below", !U.up);
     // the horizon sits at altitude 0, i.e. lastAlt degrees below the crosshair (clamped to the view)
     $("fvGround").style.transform = "translateY(" + Math.max(-140, Math.min(140, U.lastAlt * K)).toFixed(1) + "px)";
     arrow.classList.toggle("hide", !edge);

@@ -179,20 +179,20 @@ async function run() {
   assert(await page.$eval("#moFind", (b) => getComputedStyle(b).display !== "none"), "Find the Moon button offered on a touch device");
   await page.click("#moFind");
   await page.waitForSelector("#findBackdrop:not(.hidden)", { timeout: 3000 });
-  const tgt = await page.$eval("#findTarget", (e) => { const m = e.textContent.match(/(\d+)°,\s*(\d+)°/); return m ? { az: +m[1], alt: +m[2] } : null; });
+  const tgt = await page.$eval("#findTarget", (e) => { const m = e.textContent.match(/(\d+)°,\s*(\d+)° (above|below)/); return m ? { az: +m[1], alt: (m[3] === "below" ? -1 : 1) * +m[2] } : null; });
   const aim = async (heading, tiltUp) => { for (let i = 0; i < 14; i++) { await page.evaluate(([h, t]) => { const ev = new Event(("ondeviceorientationabsolute" in window) ? "deviceorientationabsolute" : "deviceorientation"); Object.defineProperty(ev, "webkitCompassHeading", { value: h }); Object.defineProperty(ev, "alpha", { value: null }); Object.defineProperty(ev, "beta", { value: 90 + t }); Object.defineProperty(ev, "gamma", { value: 0 }); window.dispatchEvent(ev); }, [heading, tiltUp]); await page.waitForTimeout(25); } };
-  if (tgt) { // Moon above the horizon right now: aim off, then on
-    await aim((tgt.az + 40) % 360, tgt.alt - 20);
-    const off = await page.$eval("#findBody", (e) => e.textContent.replace(/\s+/g, " "));
-    assert(/left 40°/.test(off) && /up 20°/.test(off), `find guidance says turn left 40° / tilt up 20°, got "${off.slice(0, 200)}"`);
-    await aim(tgt.az, tgt.alt);
-    assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the phone points at the Moon");
-  } else assert(/below the horizon/.test(await page.$eval("#findTarget", (e) => e.textContent)), "find panel explains the Moon is below the horizon");
+  assert(tgt, `find header gives the Moon's bearing and height, got "${await page.$eval("#findTarget", (e) => e.textContent)}"`);
+  // aim off (above or below the horizon alike), then on
+  await aim((tgt.az + 40) % 360, tgt.alt - 20);
+  const off = await page.$eval("#findBody", (e) => e.textContent.replace(/\s+/g, " "));
+  assert(/left 40°/.test(off) && /up 20°/.test(off), `find guidance says turn left 40° / tilt up 20°, got "${off.slice(0, 200)}"`);
+  await aim(tgt.az, tgt.alt);
+  assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the phone points at the Moon");
   await page.click("#findClose");
   assert(await page.$eval("#findBackdrop", (e) => e.classList.contains("hidden")) && !(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "closing Find returns to the Moon panel");
   // hero's third line: the Moon's place in the sky at the scrubbed hour, or not visible
   const sky = await page.$eval("#moSky", (e) => e.textContent.replace(/\s+/g, " ").trim());
-  assert(/^([NESW]{1,3} \d{1,3}°, \d{1,2}° above the horizon|Not visible — below the horizon)$/.test(sky), `hero sky line, got "${sky}"`);
+  assert(/^[NESW]{1,3} \d{1,3}°, \d{1,2}° (above|below) the horizon$/.test(sky), `hero sky line, got "${sky}"`);
   // each rise/set carries its compass bearing ahead of the time, e.g. "NE 55° 1:18 AM"
   assert(stats.filter((t) => /^(Moonrise|Moonset)/.test(t)).every((t) => /^Moon(rise|set)[NESW]{1,3} \d{1,3}° \d{1,2}:\d\d [AP]M$/.test(t)), `moonrise/moonset bearings, got ${JSON.stringify(stats)}`);
   assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");
