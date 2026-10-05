@@ -419,6 +419,7 @@
   .day-readout .rd-item .k { text-align: right; font-size: 0.85rem; color: var(--muted); line-height: 1.35; }
   .day-readout .rd-item b { text-align: left; font-size: 0.85rem; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.35; }
   .day-readout .rd-len b { color: var(--accent); }
+  .day-readout .rd-az { font-weight: 500; color: var(--muted); font-size: 0.78em; margin-left: 3px; } /* compass bearing beside a time */
   .day-readout .rd-trend { font-size: 0.78rem; margin-top: 2px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* the chart scrolls under a fixed centre line; hour labels sit in a frozen axis on the left */
   .day-chart-wrap { position: relative; -webkit-user-select: none; user-select: none; }
@@ -1816,6 +1817,22 @@
     var par = Math.asin(6378.14 / m.dist) / RAD;
     return alt - (0.7275 * par - 0.5667);
   }
+  // Compass bearing (deg clockwise from north) of a body with hour angle H and declination
+  // dec (both deg) seen from latitude lat — Meeus 13.5, turned from south-based to north-based.
+  function azimuthOf(H, dec, lat) {
+    var h = H * RAD, la = lat * RAD, de = dec * RAD;
+    return mnorm(Math.atan2(Math.sin(h), Math.cos(h) * Math.sin(la) - Math.tan(de) * Math.cos(la)) / RAD + 180);
+  }
+  // Where the Moon stands on the horizon at an instant: bearing + 16-point compass name.
+  function moonAzimuth(ms, lat, lon) {
+    var jd = ms / 86400000 + 2440587.5, T = (jd - 2451545) / 36525, m = moonPos(T);
+    var gmst = mnorm(280.46061837 + 360.98564736629 * (jd - 2451545) + 0.000387933 * T * T);
+    return azimuthOf(gmst + lon - m.ra, m.dec, lat);
+  }
+  var COMPASS16 = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  function compassName(az) { return COMPASS16[Math.round(mnorm(az) / 22.5) % 16]; }
+  // "ENE 68°" — the subdued bearing shown beside a rise or set time
+  function bearingHtml(az, cls) { return az == null ? "" : ' <small class="' + cls + '">' + compassName(az) + " " + Math.round(mnorm(az)) + "°</small>"; }
   // Moonrise / moonset (ms) within [dayStart, dayStart+24h): scan in 10-minute steps,
   // then bisect each crossing. Either can be null (the Moon skips a rise or set on some days).
   function moonRiseSet(dayStart, lat, lon) {
@@ -2085,7 +2102,7 @@
       return '<small class="mo-dt">(' + ds + ')</small> ' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n + " days");
     };
     var rows = [["Illumination", Math.round(mi.illum * 100) + "%"]];
-    ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz)]); });
+    ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz) + bearingHtml(moonAzimuth(e.t, U.loc.lat, U.loc.lon), "mo-dt mo-az")]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
     rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)]);
     // Distance as a scale from perigee to apogee with a marker (and the figure) at today's
@@ -2224,7 +2241,10 @@
       sunset: new Date(dayMs + (noonMin + 4 * ha) * 60000),
       noon: new Date(dayMs + noonMin * 60000),
       lenMin: 8 * ha,
-      polar: polar
+      polar: polar,
+      // where on the horizon the Sun rises and sets (compass bearing), when it does
+      riseAz: polar ? null : azimuthOf(-ha, decl / rad, lat),
+      setAz: polar ? null : azimuthOf(ha, decl / rad, lat)
     };
   }
   // Local wall-clock hour (0–24, fractional) of an instant in time zone `tz`.
@@ -2277,7 +2297,7 @@
     var startUTC = todayUTC - HALF * 86400000;
     function dayNoon(i) { return new Date(startUTC + i * 86400000 + 43200000); }
     function dayMid(i) { return new Date(startUTC + i * 86400000); }
-    var srH = [], ssH = [], len = [], sunrise = [], sunset = [], off = [], decl = [], vdA = [], vdB = [], vdMin = [];
+    var srH = [], ssH = [], len = [], sunrise = [], sunset = [], off = [], decl = [], vdA = [], vdB = [], vdMin = [], azR = [], azS = [];
     var iMax = 0, iMin = 0;
     for (var i = 0; i < days; i++) {
       var ev = solarEvents(loc.lat, loc.lon, dayNoon(i));
@@ -2286,6 +2306,7 @@
       // read exact rise/set times from the instants.
       var noonH = localHours(ev.noon, tz, loc.lon), half = ev.lenMin / 120;
       srH.push(noonH - half); ssH.push(noonH + half); len.push(ev.lenMin);
+      azR.push(ev.riseAz); azS.push(ev.setAz);
       // Vitamin D hours: the Sun above 45° (your shadow shorter than you), when enough UVB
       // reaches the ground for skin to make vitamin D. Solve the altitude formula for the
       // hour angle at 45°; the window is symmetric about solar noon, or absent.
@@ -2446,8 +2467,8 @@
       readout.innerHTML =
         '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + (season[i] ? ' · ' + season[i] : '') + '</span>' +
         '<div class="rd-grid">' +
-          '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + '</b></span>' +
-          '<span class="rd-item"><span class="k">Sunset</span> <b>' + clockInTz(sunset[i], tz) + '</b></span>' +
+          '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + bearingHtml(azR[i], "rd-az") + '</b></span>' +
+          '<span class="rd-item"><span class="k">Sunset</span> <b>' + clockInTz(sunset[i], tz) + bearingHtml(azS[i], "rd-az") + '</b></span>' +
           '<span class="rd-item rd-len"><span class="k">Daylight</span> <b>' + fmtDur(len[i]) + '</b></span>' +
           '<span class="rd-item rd-vd"><span class="k">Vitamin D</span> <b>' + (vdA[i] == null ? 'none today'
             : clockTight(new Date(sunrise[i].getTime() + (vdA[i] - srH[i]) * 3600000), tz) + '–' + clockTight(new Date(sunset[i].getTime() - (ssH[i] - vdB[i]) * 3600000), tz) + ' · ' + fmtDur(vdMin[i])) + '</b></span>' +

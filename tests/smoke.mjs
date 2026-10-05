@@ -174,6 +174,8 @@ async function run() {
   const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
   assert(stats.some((t) => /^Illumination\d+%$/.test(t)), "illumination row");
   assert(stats.some((t) => /^(Moonrise|Moonset)\d/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
+  // each rise/set time carries its compass bearing, e.g. "1:18 AM NE 55°"
+  assert(stats.filter((t) => /^(Moonrise|Moonset)/.test(t)).every((t) => /[AP]M\s*[NESW]{1,3} \d{1,3}°$/.test(t)), `moonrise/moonset bearings, got ${JSON.stringify(stats)}`);
   assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");
   assert(/^[\d,]+ (km|mi)$/.test(await page.$eval("#moStats .mo-dist .md-val", (e) => e.textContent)), "distance figure on the perigee–apogee scale");
   assert(await page.$("#moStats .mo-dist .md-mark"), "distance marker on the scale");
@@ -518,6 +520,9 @@ async function run() {
     const vdN = await ypage.$$eval("#dayBody .vd-band", (e) => e.length);
     assert(vdN === 2, `two vitamin D lenses over two years at 51°N, got ${vdN}`);
     assert(/Vitamin D\s+(none today|\d{1,2}:\d\d[ap]–\d{1,2}:\d\d[ap] · \d+h)/.test(await ypage.$eval("#dayReadout", (e) => e.textContent)), "readout has a Vitamin D line");
+    // sunrise and sunset carry a compass bearing ("7:41 AM E 96°")
+    const azOK = /Sunrise\s+\d{1,2}:\d\d [AP]M\s*[NESW]{1,3} \d{1,3}°/.test(await ypage.$eval("#dayReadout", (e) => e.textContent));
+    assert(azOK, "sunrise shows its compass bearing");
     const today = await ypage.$eval("#dayReadout", (e) => e.textContent);
     assert(/today/.test(today), `readout starts on today, got "${today.replace(/\s+/g, " ").trim()}"`);
     // the chart scrolls under a fixed centre line and opens with today's marker under it
