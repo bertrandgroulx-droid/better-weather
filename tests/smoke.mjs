@@ -176,7 +176,7 @@ async function run() {
   assert(stats.some((t) => /^(Moonrise|Moonset)/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
   // hero's third line: the Moon's place in the sky at the scrubbed hour, or not visible
   const sky = await page.$eval("#moSky", (e) => e.textContent.replace(/\s+/g, " ").trim());
-  assert(/^(Look [NESW]{1,3} \d{1,3}°, \d{1,2}° above the horizon|Not visible — below the horizon)$/.test(sky), `hero sky line, got "${sky}"`);
+  assert(/^([NESW]{1,3} \d{1,3}°, \d{1,2}° above the horizon|Not visible — below the horizon)$/.test(sky), `hero sky line, got "${sky}"`);
   // each rise/set carries its compass bearing ahead of the time, e.g. "NE 55° 1:18 AM"
   assert(stats.filter((t) => /^(Moonrise|Moonset)/.test(t)).every((t) => /^Moon(rise|set)[NESW]{1,3} \d{1,3}° \d{1,2}:\d\d [AP]M$/.test(t)), `moonrise/moonset bearings, got ${JSON.stringify(stats)}`);
   assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");

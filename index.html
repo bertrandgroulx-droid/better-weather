@@ -349,6 +349,7 @@
   /* third line of the hero: where the Moon is in the sky at that hour, or not visible */
   .mo-sky { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
   .mo-sky b { color: var(--text); font-weight: 600; }
+  .mo-sky .mo-eye { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: 6px; opacity: 0.8; }
   /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
   .mo-scrub { position: relative; margin: 10px 0 12px; }
   .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
@@ -2107,8 +2108,9 @@
     $("moWhen").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz }) + " at " + d.toLocaleTimeString([], { hour: "numeric", timeZone: tz });
     // third line: where the Moon is in the sky at that hour — bearing and height — or not visible
     var sky = moonSky(U.sel, U.loc.lat, U.loc.lon);
+    var eye = '<svg class="mo-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Where to look"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
     $("moSky").innerHTML = sky.rel >= 0
-      ? "Look <b>" + compassName(sky.az) + "</b> " + Math.round(mnorm(sky.az)) + "°, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon"
+      ? eye + "<b>" + compassName(sky.az) + "</b> " + Math.round(mnorm(sky.az)) + "°, <b>" + Math.max(0, Math.round(sky.alt)) + "°</b> above the horizon"
       : "Not visible — below the horizon";
     // rise/set for the selected local day (cached per day)
     var p = tzParts(d, U.tz), key = dayKey(p), dayStart = localMidnight(p.y, p.m, p.d, U.tz);
