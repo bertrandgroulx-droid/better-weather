@@ -2102,7 +2102,8 @@
       return '<small class="mo-dt">(' + ds + ')</small> ' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n + " days");
     };
     var rows = [["Illumination", Math.round(mi.illum * 100) + "%"]];
-    ev.forEach(function (e) { rows.push([e.k, clockInTz(new Date(e.t), U.tz) + bearingHtml(moonAzimuth(e.t, U.loc.lat, U.loc.lon), "mo-dt mo-az")]); });
+    // "NE 55° 1:18 AM" — the bearing subdued ahead of the time, like the dates below
+    ev.forEach(function (e) { rows.push([e.k, bearingHtml(moonAzimuth(e.t, U.loc.lat, U.loc.lon), "mo-dt mo-az").trim() + " " + clockInTz(new Date(e.t), U.tz)]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
     rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)]);
     // Distance as a scale from perigee to apogee with a marker (and the figure) at today's

@@ -173,9 +173,9 @@ async function run() {
   assert(/^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent)$/.test(phase), `phase name, got "${phase}"`);
   const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
   assert(stats.some((t) => /^Illumination\d+%$/.test(t)), "illumination row");
-  assert(stats.some((t) => /^(Moonrise|Moonset)\d/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
-  // each rise/set time carries its compass bearing, e.g. "1:18 AM NE 55°"
-  assert(stats.filter((t) => /^(Moonrise|Moonset)/.test(t)).every((t) => /[AP]M\s*[NESW]{1,3} \d{1,3}°$/.test(t)), `moonrise/moonset bearings, got ${JSON.stringify(stats)}`);
+  assert(stats.some((t) => /^(Moonrise|Moonset)/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
+  // each rise/set carries its compass bearing ahead of the time, e.g. "NE 55° 1:18 AM"
+  assert(stats.filter((t) => /^(Moonrise|Moonset)/.test(t)).every((t) => /^Moon(rise|set)[NESW]{1,3} \d{1,3}° \d{1,2}:\d\d [AP]M$/.test(t)), `moonrise/moonset bearings, got ${JSON.stringify(stats)}`);
   assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");
   assert(/^[\d,]+ (km|mi)$/.test(await page.$eval("#moStats .mo-dist .md-val", (e) => e.textContent)), "distance figure on the perigee–apogee scale");
   assert(await page.$("#moStats .mo-dist .md-mark"), "distance marker on the scale");
