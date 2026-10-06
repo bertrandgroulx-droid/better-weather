@@ -2136,12 +2136,28 @@
     var tr = $("moTrack"); tr.style.width = (n * MO_PX) + "px"; tr.innerHTML = html;
   }
   function moonScrollFor(ms) { return Math.round((ms - moonUI.t0) / 3600000) * MO_PX; }
+  // Put the scrubber on an instant and hold it there for a moment. iOS Safari can drop or
+  // reset a scrollLeft written while a momentum scroller is being laid out (the panel has
+  // just been shown), which left the Moon panel opening on the wrong hour. So: write it
+  // now, and re-assert it over the next half second; stray scroll events in that window
+  // that don't match the pin are ignored rather than allowed to move the selection.
+  function moonPinScroll(ms) {
+    var U = moonUI; if (!U) return;
+    U.pinMs = ms; U.pinUntil = Date.now() + 600;
+    var target = moonScrollFor(ms);
+    var apply = function () {
+      var sc = $("moScroll"); if (!sc || !moonUI || moonUI.pinMs !== ms) return;
+      if (Math.abs(sc.scrollLeft - target) > 1) sc.scrollLeft = target;
+    };
+    apply(); requestAnimationFrame(apply); setTimeout(apply, 80); setTimeout(apply, 250); setTimeout(apply, 500);
+  }
   var moScrollRaf = 0, moSettle = null;
   function onMoonScroll() {
     if (moScrollRaf) return;
     moScrollRaf = requestAnimationFrame(function () {
       moScrollRaf = 0;
       var sc = $("moScroll"); if (!sc || !moonUI) return;
+      if (moonUI.pinUntil && Date.now() < moonUI.pinUntil && Math.abs(sc.scrollLeft - moonScrollFor(moonUI.pinMs)) > 1) return; // pinned: ignore
       var h = Math.round(sc.scrollLeft / MO_PX);
       setMoonSel(moonUI.t0 + Math.max(0, Math.min(MO_DAYS * 24, h)) * 3600000, false);
       clearTimeout(moSettle);
@@ -2195,7 +2211,7 @@
     // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
     var nowH = Math.round(Date.now() / 3600000) * 3600000, nb = $("moNow");
     if (nb) { nb.classList.toggle("show", U.sel !== nowH); nb.classList.toggle("right", nowH > U.sel); }
-    if (scroll) { var sc = $("moScroll"); if (sc) requestAnimationFrame(function () { sc.scrollLeft = moonScrollFor(U.sel); }); }
+    if (scroll) moonPinScroll(U.sel);
     // keep the calendar's selected-day ring in step
     var cal = $("moCal"); if (cal) { cal.querySelectorAll(".mc-d.sel").forEach(function (x) { x.classList.remove("sel"); }); var c = cal.querySelector('.mc-d[data-day="' + key + '"]'); if (c) c.classList.add("sel"); }
   }
@@ -3801,7 +3817,9 @@
   // Air quality panel (opens from the summary "Air" line)
   function openAir() { fillAirModal(lastLoc, lastAir, lastTz); els.airBackdrop.classList.remove("hidden"); }
   function closeAir() { els.airBackdrop.classList.add("hidden"); }
-  function openMoon() { fillMoonModal(); els.moonBackdrop.classList.remove("hidden"); }
+  // shown first, then filled: the scrubber's 50% side padding needs a laid-out width before
+  // its opening scroll position (the current hour) can be written
+  function openMoon() { els.moonBackdrop.classList.remove("hidden"); fillMoonModal(); }
   function closeMoon() { els.moonBackdrop.classList.add("hidden"); }
 
   // ---------------- Find the Moon ----------------
