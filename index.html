@@ -3805,28 +3805,28 @@
   function closeMoon() { els.moonBackdrop.classList.add("hidden"); }
 
   // ---------------- Find the Moon ----------------
-  // Point the phone at the sky like taking a photo; the compass and tilt sensors say which
-  // way the back of the phone faces, and the view shows how far to turn and tilt to land on
-  // the Moon. Offered only on touch devices whose browser exposes device orientation.
+  // Aim the phone's top edge like a pointer; the compass and tilt sensors say which way it
+  // points, and the view shows how far to turn and tilt to land on the Moon. Offered only
+  // on touch devices whose browser exposes device orientation.
   function canFindMoon() {
     return !!window.DeviceOrientationEvent && (("ontouchstart" in window) || (navigator.maxTouchPoints > 0));
   }
   var findUI = null;
-  // The direction the back camera points, from a deviceorientation event.
-  //   iOS: webkitCompassHeading is the tilt-compensated heading (true north where location
-  //        services allow); the tilt comes from beta/gamma.
-  //   Android: alpha from the *absolute* event is north-referenced; rotate the device's −Z
+  // The direction the TOP EDGE of the phone points — you aim it like a pointer, screen up:
+  // flat on your palm it points at the horizon, stood on end it points straight up.
+  //   iOS: webkitCompassHeading is the tilt-compensated heading of the device's top (true
+  //        north where location services allow); the tilt is beta (front-back).
+  //   Android: alpha from the *absolute* event is north-referenced; rotate the device's +Y
   //        axis into the earth frame (W3C Z-X'-Y'' order) and read off its bearing and tilt.
   function pointingFrom(e) {
     if (e.alpha == null && e.webkitCompassHeading == null) return null;
-    var a = (e.alpha || 0) * RAD, b = (e.beta || 0) * RAD, g = (e.gamma || 0) * RAD;
-    // device +Z axis in the earth frame (x east, y north, z up)
-    var zx0 = Math.sin(g), zy0 = -Math.sin(b) * Math.cos(g), zz = Math.cos(b) * Math.cos(g);
-    var zx = zx0 * Math.cos(a) - zy0 * Math.sin(a), zy = zx0 * Math.sin(a) + zy0 * Math.cos(a);
-    var alt = Math.asin(Math.max(-1, Math.min(1, -zz))) / RAD;         // the back (−Z) points up when +Z points down
+    var a = (e.alpha || 0) * RAD, b = (e.beta || 0) * RAD;
+    // device +Y axis in the earth frame (x east, y north, z up): Ry(γ) leaves it alone
+    var yx = -Math.cos(b) * Math.sin(a), yy = Math.cos(b) * Math.cos(a), yz = Math.sin(b);
+    var alt = Math.asin(Math.max(-1, Math.min(1, yz))) / RAD;
     var az;
     if (e.webkitCompassHeading != null && !isNaN(e.webkitCompassHeading)) az = e.webkitCompassHeading; // iOS
-    else if (e.absolute || e.type === "deviceorientationabsolute") az = mnorm(Math.atan2(-zx, -zy) / RAD);
+    else if (e.absolute || e.type === "deviceorientationabsolute") az = mnorm(Math.atan2(yx, yy) / RAD);
     else return null; // relative alpha: no north reference, useless for finding anything
     return { az: az, alt: alt };
   }
@@ -3843,7 +3843,7 @@
       '</div>' +
       '<div class="find-guide"><div class="fg" id="fgTurn"><small>Turn</small><b>—</b></div><div class="fg" id="fgTilt"><small>Tilt</small><b>—</b></div></div>' +
       '<div class="find-live" id="findLive">Waiting for the compass…</div>' +
-      '<div class="find-msg" id="findMsg">Hold the phone upright with its back toward the sky, like taking a photo, and follow the two arrows. The ring lights up when you’re on it. A few degrees of compass error is normal; if it drifts, wave the phone in a figure eight.</div>';
+      '<div class="find-msg" id="findMsg">Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it. A few degrees of compass error is normal — if it drifts, wave the phone in a figure eight.</div>';
     findUI = { loc: loc, got: false, onTarget: false, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0 };
     findRefreshTarget();
     els.findBackdrop.classList.remove("hidden");
