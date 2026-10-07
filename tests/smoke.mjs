@@ -199,6 +199,12 @@ async function run() {
     assert(await page.evaluate(() => Math.round(JSON.parse(localStorage.getItem("bw-compass")).off) === 20), "compass correction stored");
     await aim((calRef.az - 20 + 360) % 360, calRef.alt);
     assert(/facing [NESW]{1,3} /.test(await page.$eval("#findLive", (e) => e.textContent)) && Math.abs(((await page.$eval("#findLive", (e) => +e.textContent.match(/(\d+)°/)[1])) - calRef.az + 540) % 360 - 180) <= 1, "corrected heading now reads the reference bearing");
+    // the correction survives closing and reopening the finder (it is read back for this place)
+    await page.click("#findClose");
+    await page.click("#moFind");
+    await page.waitForSelector("#findBackdrop:not(.hidden)", { timeout: 3000 });
+    const kept = await page.$eval("#findCal", (e) => e.textContent);
+    assert(/corrected by \+20°/.test(kept), `stored compass correction is applied on reopening, got "${kept.replace(/\s+/g, " ").trim()}"`);
     await page.click('#findCal [data-act="reset"]');
     assert(await page.evaluate(() => localStorage.getItem("bw-compass") === null), "Reset clears the stored correction");
   }

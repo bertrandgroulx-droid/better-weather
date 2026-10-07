@@ -3888,6 +3888,7 @@
       else if (b.dataset.act === "cal") findCalibrate();
     });
     findRefreshTarget();
+    findRenderCal(); // show a stored correction straight away, before the first sensor reading
     els.findBackdrop.classList.remove("hidden");
     // iOS 13+: sensors need a permission granted from a user gesture (this tap)
     var start = function () {
@@ -3915,7 +3916,7 @@
   function compassOffsetFor(loc) {
     try {
       var c = JSON.parse(localStorage.getItem("bw-compass") || "null");
-      if (c && typeof c.off === "number" && distKm(c.lat, c.lon, loc.lat, loc.lon) < 300) return c.off;
+      if (c && typeof c.off === "number" && distKm({ lat: c.lat, lon: c.lon }, loc) < 300) return c.off;
     } catch (_) {}
     return 0;
   }
