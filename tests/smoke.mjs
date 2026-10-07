@@ -182,32 +182,22 @@ async function run() {
   const tgt = await page.$eval("#findTarget", (e) => { const m = e.textContent.match(/(\d+)°,\s*(\d+)° (above|below)/); return m ? { az: +m[1], alt: (m[3] === "below" ? -1 : 1) * +m[2] } : null; });
   const aim = async (heading, tiltUp) => { for (let i = 0; i < 14; i++) { await page.evaluate(([h, t]) => { const ev = new Event(("ondeviceorientationabsolute" in window) ? "deviceorientationabsolute" : "deviceorientation"); Object.defineProperty(ev, "webkitCompassHeading", { value: h }); Object.defineProperty(ev, "alpha", { value: null }); Object.defineProperty(ev, "beta", { value: t }); /* pointer model: tilt = beta */ Object.defineProperty(ev, "gamma", { value: 0 }); window.dispatchEvent(ev); }, [heading, tiltUp]); await page.waitForTimeout(25); } };
   assert(tgt, `find header gives the Moon's bearing and height, got "${await page.$eval("#findTarget", (e) => e.textContent)}"`);
+  // magnetic declination is applied automatically (World Magnetic Model): Calgary is ~13° east in
+  // 2026, so the phone's raw (magnetic) heading has to be 13° short of the Moon's true bearing
+  const declTxt = await page.$eval("#findDecl", (e) => e.textContent);
+  const declM = declTxt.match(/magnetic north ([+−])(\d+)°/);
+  assert(declM, `finder states the declination correction, got "${declTxt.trim()}"`);
+  const decl = (declM[1] === "−" ? -1 : 1) * +declM[2];
+  assert(decl >= 12 && decl <= 15, `Calgary declination ~13° E from the WMM, got ${decl}`);
+  const mag = (trueAz) => (trueAz - decl + 720) % 360; // what the phone's compass would read
   // aim off (above or below the horizon alike), then on
-  await aim((tgt.az + 40) % 360, tgt.alt - 20);
+  await aim(mag(tgt.az + 40), tgt.alt - 20);
   const off = await page.$eval("#findBody", (e) => e.textContent.replace(/\s+/g, " "));
   assert(/left 40°/.test(off) && /up 20°/.test(off), `find guidance says turn left 40° / tilt up 20°, got "${off.slice(0, 200)}"`);
-  await aim(tgt.az, tgt.alt);
-  assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the phone points at the Moon");
-  // compass calibration: aim 20° left of the reference body (Sun or Moon, whichever is up), tap,
-  // and the heading is corrected by +20° and remembered; Reset clears it
-  const calRef = await page.$eval("#findCal", (e) => { const m = e.textContent.match(/(Sun|Moon) now: [NESW]{1,3} (\d+)°, (-?\d+)° up/); return m ? { name: m[1], az: +m[2], alt: +m[3] } : null; }).catch(() => null);
-  if (calRef) {
-    await aim((calRef.az - 20 + 360) % 360, calRef.alt);
-    await page.click('#findCal [data-act="cal"]');
-    const calTxt = await page.$eval("#findCal", (e) => e.textContent);
-    assert(/corrected by \+20°/.test(calTxt), `compass corrected by +20°, got "${calTxt.replace(/\s+/g, " ").trim()}"`);
-    assert(await page.evaluate(() => Math.round(JSON.parse(localStorage.getItem("bw-compass")).off) === 20), "compass correction stored");
-    await aim((calRef.az - 20 + 360) % 360, calRef.alt);
-    assert(/facing [NESW]{1,3} /.test(await page.$eval("#findLive", (e) => e.textContent)) && Math.abs(((await page.$eval("#findLive", (e) => +e.textContent.match(/(\d+)°/)[1])) - calRef.az + 540) % 360 - 180) <= 1, "corrected heading now reads the reference bearing");
-    // the correction survives closing and reopening the finder (it is read back for this place)
-    await page.click("#findClose");
-    await page.click("#moFind");
-    await page.waitForSelector("#findBackdrop:not(.hidden)", { timeout: 3000 });
-    const kept = await page.$eval("#findCal", (e) => e.textContent);
-    assert(/corrected by \+20°/.test(kept), `stored compass correction is applied on reopening, got "${kept.replace(/\s+/g, " ").trim()}"`);
-    await page.click('#findCal [data-act="reset"]');
-    assert(await page.evaluate(() => localStorage.getItem("bw-compass") === null), "Reset clears the stored correction");
-  }
+  await aim(tgt.az, tgt.alt); // the true bearing fed as a magnetic one: 13° off → ring dark
+  assert(!(await page.$eval("#findView", (v) => v.classList.contains("on"))), "ring is dark when the raw heading equals the true bearing (declination applied)");
+  await aim(mag(tgt.az), tgt.alt);
+  assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the raw heading is the magnetic bearing of the Moon");
   await page.click("#findClose");
   assert(await page.$eval("#findBackdrop", (e) => e.classList.contains("hidden")) && !(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "closing Find returns to the Moon panel");
   // hero's third line: the Moon's place in the sky at the scrubbed hour, or not visible

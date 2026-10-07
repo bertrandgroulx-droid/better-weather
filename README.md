@@ -102,3 +102,8 @@ NASA's Scientific Visualization Studio
 [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) (Lunar Reconnaissance
 Orbiter data; NASA/GSFC, public domain). Phases, libration, rise and set
 times are computed on-device from Meeus, *Astronomical Algorithms*.
+
+"Find the Moon" corrects the phone's compass from magnetic to true north
+with the [World Magnetic Model 2025](https://www.ncei.noaa.gov/products/world-magnetic-model)
+(NOAA/NCEI and the British Geological Survey; the coefficients are public
+domain), evaluated on-device.

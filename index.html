@@ -386,12 +386,7 @@
   .find-live { text-align: center; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .find-msg { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; font-size: 0.9rem; line-height: 1.5; margin: 6px 0 10px; }
   .find-msg.warn { border-color: rgba(255,209,102,0.45); }
-  .find-cal { margin: 8px 0 10px; display: grid; gap: 6px; }
-  .find-cal .fc-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; font-size: 0.85rem; color: var(--muted); text-align: center; }
-  .find-cal .fc-row b { color: var(--text); }
-  .find-cal .fc-row small { flex-basis: 100%; font-size: 0.75rem; }
-  .find-cal button { font: inherit; font-size: 0.82rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1.4px solid #5fb6ff; color: #5fb6ff; background: rgba(95,182,255,0.08); cursor: pointer; }
-  .find-cal button[data-act="reset"] { padding: 3px 9px; font-size: 0.75rem; opacity: 0.85; }
+  .find-decl { text-align: center; font-size: 0.72rem; color: var(--muted); opacity: 0.8; margin: 2px 0 10px; }
   /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
   .mo-scrub { position: relative; margin: 10px 0 12px; }
   .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
@@ -954,7 +949,7 @@
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can scrub hour by hour through the week, with a blue arrow to jump back to now. Under the date, an eye line says where to look — compass bearing and height above (or below) the horizon. Then illumination, moonrise and moonset with the compass point they happen at, days to the next full and new moon, a perigee-to-apogee distance scale (centre-to-centre or surface-to-surface), and a month calendar of phases. All computed on-device for this place.</span></span></li>
-        <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon”: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon.</span></span></li>
+        <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon”: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. The compass is corrected from magnetic to true north for your location automatically.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for the daylight band widening toward summer and pinching toward winter — a full year on screen, slidable a year back or ahead, with an arrow back to today. Dots mark the solstices, rings the equinoxes, dotted lines the clock changes, and a brighter band inside shows the vitamin D hours (Sun above 45°). The readout gives sunrise and sunset with their compass bearings, day length, the vitamin D window, and the change from the day before; a card beneath shows where the Sun is overhead and how high it climbs at noon here. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
@@ -967,7 +962,7 @@
         <div class="about-src"><b>Data sources</b><br>
           Weather &amp; air quality from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>, with ECMWF ERA5 reanalysis for older history.<br>
           Radar imagery from <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> · Map &amp; address search from <a href="https://www.mapbox.com" target="_blank" rel="noopener">Mapbox</a>.<br>
-          Moon surface from NASA’s <a href="https://svs.gsfc.nasa.gov/4720" target="_blank" rel="noopener">CGI Moon Kit</a> (LRO data, public domain) · Sun and Moon positions from Meeus, <i>Astronomical Algorithms</i>, computed on-device.
+          Moon surface from NASA’s <a href="https://svs.gsfc.nasa.gov/4720" target="_blank" rel="noopener">CGI Moon Kit</a> (LRO data, public domain) · Sun and Moon positions from Meeus, <i>Astronomical Algorithms</i> · Compass correction from NOAA’s <a href="https://www.ncei.noaa.gov/products/world-magnetic-model" target="_blank" rel="noopener">World Magnetic Model</a> — all computed on-device.
         </div>
         <div>Better Weather</div>
         <!-- which build this is: the page's Last-Modified (GitHub Pages sets it to the publish
@@ -1881,6 +1876,40 @@
   // Geocentric altitude (deg) of the Moon from lat/lon at an instant, minus the rise/set
   // threshold h0 = 0.7275·parallax − 34′ (Meeus ch. 15) — zero at moonrise/moonset.
   function moonAltRel(ms, lat, lon) { return moonSky(ms, lat, lon).rel; }
+  // World Magnetic Model 2025 (NOAA/NCEI & BGS, public domain): Gauss coefficients g, h (nT) at
+  // epoch 2025.0 and their yearly change, degree/order ≤ 12, flat index n(n+1)/2 + m. Valid to 2030.
+  var WMM = { epoch: 2025, n: 12,
+    g: [0,-29351.8,-1410.8,-2556.6,2951.1,1649.3,1361,-2404.1,1243.8,453.6,895,799.5,55.7,-281.1,12.1,-233.2,368.9,187.2,-138.7,-142,20.9,64.4,63.8,76.9,-115.7,-40.9,14.9,-60.7,79.5,-77,-8.8,59.3,15.8,2.5,-11.1,14.2,23.2,10.8,-17.5,2,-21.7,16.9,15,-16.8,0.9,4.6,7.8,3,-0.2,-2.5,-13.1,2.4,8.6,-8.7,-12.9,-1.3,-6.4,0.2,2,-1,-0.6,-0.9,1.5,0.9,-2.7,-3.9,2.9,-1.5,-2.5,2.4,-0.6,-0.1,-0.6,-0.1,1.1,-1,-0.2,2.6,-2,-0.2,0.3,1.2,-1.3,0.6,0.6,0.5,-0.1,-0.4,-0.2,-1.3,-0.7],
+    h: [0,0,4545.4,0,-3133.6,-815.1,0,-56.6,237.5,-549.5,0,278.6,-133.9,212,-375.6,0,45.4,220.2,-122.9,43,106.1,0,-18.4,16.8,48.8,-59.8,10.9,72.7,0,-48.9,-14.4,-1,23.4,-7.4,-25.1,-2.3,0,7.1,-12.6,11.4,-9.7,12.7,0.7,-5.2,3.9,0,-24.8,12.2,8.3,-3.3,-5.2,7.2,-0.6,0.8,10,0,3.3,0,2.4,5.3,-9.1,0.4,-4.2,-3.8,0.9,-9.1,0,0,2.9,-0.6,0.2,0.5,-0.3,-1.2,-1.7,-2.9,-1.8,-2.3,0,-1.3,0.7,1,-1.4,0,0.6,-0.1,0.8,0.1,-1,0.1,0.2],
+    gd: [0,12,9.7,-11.6,-5.2,-8,-1.3,-4.2,0.4,-15.6,-1.6,-2.4,-6,5.6,-7,0.6,1.4,0,0.6,2.2,0.9,-0.2,-0.4,0.9,1.2,-0.9,0.3,0.9,0,-0.1,-0.1,0.5,-0.1,-0.8,-0.8,0.8,-0.1,0.2,0,0.5,-0.1,0.3,0.2,0,0.2,0,-0.1,0.1,0.3,-0.3,0,0.3,-0.1,0.1,-0.1,0.1,0,0.1,0.1,0,-0.3,0,-0.1,-0.1,0,0,0,0,0,0,0,-0.1,0,0,-0.1,-0.1,-0.1,-0.1,0,0,0,0,0,0,0.1,0,0,0,-0.1,0,-0.1],
+    hd: [0,0,-21.5,0,-27.7,-12.1,0,4,-0.3,-4.1,0,-1.1,4.1,1.6,-4.4,0,-0.5,2.2,0.4,1.7,1.9,0,0.3,-1.6,-0.4,0.9,0.7,0.9,0,0.6,0.5,-0.8,0,-1,0.6,-0.2,0,-0.2,0.5,-0.4,0.4,-0.5,-0.6,0.3,0.2,0,-0.3,0.3,-0.3,0.3,0.2,-0.1,-0.2,0.4,0.1,0,0,0,-0.2,0.1,-0.1,0.1,0,-0.1,0.2,0,0,0,0.1,0,0.1,0,0,0.1,0,0,0,0,0,0,0,-0.1,0.1,0,0,0,0,0,0,0,-0.1] };
+  // Magnetic declination (deg, east positive) at a place and date from the WMM: the angle a
+  // compass needle points east of true north. Phones report magnetic headings; the sky is in
+  // true north, so true = magnetic + declination. Checked against NOAA's published test values.
+  function magDecl(lat, lon, date) {
+    var a = 6378.137, f = 1 / 298.257223563, e2 = f * (2 - f), A = 6371.2, N = WMM.n;
+    var yr = date.getUTCFullYear(), y0 = Date.UTC(yr, 0, 1), dt = yr + (date - y0) / (Date.UTC(yr + 1, 0, 1) - y0) - WMM.epoch;
+    var phi = lat * RAD, lam = lon * RAD, sp = Math.sin(phi), cp = Math.cos(phi), Rc = a / Math.sqrt(1 - e2 * sp * sp);
+    var pq = Rc * cp, z = Rc * (1 - e2) * sp, r = Math.sqrt(pq * pq + z * z), phic = Math.asin(z / r); // geocentric
+    var ct = Math.sin(phic), st = Math.max(1e-9, Math.cos(phic)), n, m, P = [], dP = [];
+    for (n = 0; n <= N; n++) { P.push([]); dP.push([]); for (m = 0; m <= n; m++) { P[n].push(0); dP[n].push(0); } }
+    P[0][0] = 1; if (N >= 1) P[1][1] = st; // Schmidt semi-normalised associated Legendre functions
+    for (m = 2; m <= N; m++) P[m][m] = Math.sqrt((2 * m - 1) / (2 * m)) * st * P[m - 1][m - 1];
+    for (m = 0; m <= N; m++) for (n = m + 1; n <= N; n++)
+      P[n][m] = ((2 * n - 1) * ct * P[n - 1][m] - (n - 2 >= m ? Math.sqrt((n - 1) * (n - 1) - m * m) * P[n - 2][m] : 0)) / Math.sqrt(n * n - m * m);
+    for (n = 1; n <= N; n++) for (m = 0; m <= n; m++) dP[n][m] = (n * ct * P[n][m] - Math.sqrt(n * n - m * m) * (n - 1 >= m ? P[n - 1][m] : 0)) / st; // dP/dθ
+    var X = 0, Y = 0, Z = 0, ar = A / r, arn = ar * ar, cl = [], sl = [];
+    for (m = 0; m <= N; m++) { cl.push(Math.cos(m * lam)); sl.push(Math.sin(m * lam)); }
+    for (n = 1; n <= N; n++) {
+      arn *= ar;
+      for (m = 0; m <= n; m++) {
+        var i = n * (n + 1) / 2 + m, g = WMM.g[i] + dt * WMM.gd[i], h = WMM.h[i] + dt * WMM.hd[i], gc = g * cl[m] + h * sl[m];
+        X += arn * gc * dP[n][m]; Y += arn * m * (g * sl[m] - h * cl[m]) * P[n][m] / st; Z -= arn * (n + 1) * gc * P[n][m];
+      }
+    }
+    var d = phic - phi, Xg = X * Math.cos(d) - Z * Math.sin(d); // geocentric → geodetic north component
+    return Math.atan2(Y, Xg) / RAD;
+  }
   // The Sun in the local sky at an instant: compass bearing and altitude (deg).
   function sunSky(ms, lat, lon) {
     var jd = ms / 86400000 + 2440587.5, T = (jd - 2451545) / 36525, s = sunPos(T);
@@ -3879,16 +3908,14 @@
       '</div>' +
       '<div class="find-guide"><div class="fg" id="fgTurn"><small>Turn</small><b>—</b></div><div class="fg" id="fgTilt"><small>Tilt</small><b>—</b></div></div>' +
       '<div class="find-live" id="findLive">Waiting for the compass…</div>' +
-      '<div class="find-cal" id="findCal"></div>' +
-      '<div class="find-msg" id="findMsg">Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it. Phones usually give <i>magnetic</i> north, which here is some degrees off true north — calibrating on the Sun or Moon (below) removes that. If the reading drifts, wave the phone in a figure eight.</div>';
-    findUI = { loc: loc, got: false, onTarget: false, rawAz: null, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0, off: compassOffsetFor(loc) };
-    $("findCal").addEventListener("click", function (e) {
-      var b = e.target.closest("button"); if (!b || !findUI) return;
-      if (b.dataset.act === "reset") { compassOffsetSave(null); findUI.off = 0; findRenderCal(); }
-      else if (b.dataset.act === "cal") findCalibrate();
-    });
+      '<div class="find-decl" id="findDecl"></div>' +
+      '<div class="find-msg" id="findMsg">Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it. A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight.</div>';
+    // phones report magnetic headings; correct to true north with the World Magnetic Model
+    var decl = magDecl(loc.lat, loc.lon, new Date());
+    findUI = { loc: loc, got: false, onTarget: false, rawAz: null, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0, off: decl };
+    $("findDecl").textContent = "Compass corrected for magnetic north " + (decl >= 0 ? "+" : "−") + Math.abs(Math.round(decl)) + "° here";
+    try { localStorage.removeItem("bw-compass"); } catch (_) {} // the earlier manual calibration, superseded
     findRefreshTarget();
-    findRenderCal(); // show a stored correction straight away, before the first sensor reading
     els.findBackdrop.classList.remove("hidden");
     // iOS 13+: sensors need a permission granted from a user gesture (this tap)
     var start = function () {
@@ -3906,43 +3933,9 @@
         else findMessage("Motion access was declined, so the phone can’t say where it’s pointing. Close this and tap Find the Moon again to be asked once more.", true);
       }).catch(function () { findMessage("Motion access couldn’t be requested here. Open the app in Safari and try again.", true); });
     } else start();
-    findUI.tick = setInterval(function () { findRefreshTarget(); findRenderCal(); }, 10000); // the Moon moves ~¼° a minute
+    findUI.tick = setInterval(findRefreshTarget, 10000); // the Moon moves ~¼° a minute
   }
   function findMessage(text, warn) { var m = $("findMsg"); if (m) { m.textContent = text; m.classList.toggle("warn", !!warn); } }
-  // ---- compass calibration ----
-  // Phones report magnetic north (and have their own bias); the sky is in true north. Aiming
-  // at the Sun or Moon — whose true bearing we know — and tapping stores the difference,
-  // reused for later sessions within ~300 km (declination changes slowly with place).
-  function compassOffsetFor(loc) {
-    try {
-      var c = JSON.parse(localStorage.getItem("bw-compass") || "null");
-      if (c && typeof c.off === "number" && distKm({ lat: c.lat, lon: c.lon }, loc) < 300) return c.off;
-    } catch (_) {}
-    return 0;
-  }
-  function compassOffsetSave(c) { try { if (c) localStorage.setItem("bw-compass", JSON.stringify(c)); else localStorage.removeItem("bw-compass"); } catch (_) {} }
-  // Which bright body can serve as the reference right now: the Sun when it is up, else the Moon.
-  function findCalTarget() {
-    var U = findUI, now = Date.now(), s = sunSky(now, U.loc.lat, U.loc.lon);
-    if (s.alt > 1) return { name: "Sun", az: s.az, alt: s.alt };
-    if (U.up) return { name: "Moon", az: U.az, alt: U.alt };
-    return null;
-  }
-  function findRenderCal() {
-    var U = findUI, el = $("findCal"); if (!U || !el) return;
-    var t = findCalTarget(), html = "";
-    if (U.off) html += '<div class="fc-row">Compass corrected by <b>' + (U.off > 0 ? "+" : "−") + Math.abs(Math.round(U.off)) + '°</b> <button type="button" data-act="reset">Reset</button></div>';
-    if (t) html += '<div class="fc-row"><button type="button" data-act="cal" class="fc-btn">Aim at the ' + t.name + ', then tap</button><small>' + t.name + ' now: ' + compassName(t.az) + ' ' + Math.round(t.az) + '°, ' + Math.round(t.alt) + '° up' + (t.name === "Sun" ? ' · glance, don’t stare' : '') + '</small></div>';
-    else html += '<div class="fc-row"><small>To calibrate the compass, come back when the Sun or Moon is up and aim at it.</small></div>';
-    el.innerHTML = html;
-  }
-  function findCalibrate() {
-    var U = findUI, t = findCalTarget(); if (!U || !t || U.rawAz == null) return;
-    var off = ((t.az - U.rawAz + 540) % 360) - 180;
-    U.off = off; compassOffsetSave({ off: off, lat: U.loc.lat, lon: U.loc.lon, t: Date.now(), on: t.name });
-    findRenderCal();
-    findMessage("Compass corrected by " + (off > 0 ? "+" : "−") + Math.abs(Math.round(off)) + "° using the " + t.name + ". That correction is kept for this area; Reset clears it.", false);
-  }
   // Where the Moon is right now (not the scrubbed hour — you're pointing a phone in real time)
   function findRefreshTarget() {
     var U = findUI; if (!U) return;
@@ -3965,7 +3958,7 @@
     if (!p) return;
     if (!U.got) { U.got = true; clearTimeout(U.timer); }
     // smooth a little (circular for the heading) so the Moon marker doesn't jitter
-    if (U.rawAz == null) { U.rawAz = p.az; U.lastAlt = p.alt; findRenderCal(); }
+    if (U.rawAz == null) { U.rawAz = p.az; U.lastAlt = p.alt; }
     else {
       var d = ((p.az - U.rawAz + 540) % 360) - 180; U.rawAz = mnorm(U.rawAz + d * 0.35);
       U.lastAlt += (p.alt - U.lastAlt) * 0.35;
