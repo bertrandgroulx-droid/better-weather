@@ -386,6 +386,12 @@
   .find-live { text-align: center; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .find-msg { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; font-size: 0.9rem; line-height: 1.5; margin: 6px 0 10px; }
   .find-msg.warn { border-color: rgba(255,209,102,0.45); }
+  .find-cal { margin: 8px 0 10px; display: grid; gap: 6px; }
+  .find-cal .fc-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; font-size: 0.85rem; color: var(--muted); text-align: center; }
+  .find-cal .fc-row b { color: var(--text); }
+  .find-cal .fc-row small { flex-basis: 100%; font-size: 0.75rem; }
+  .find-cal button { font: inherit; font-size: 0.82rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1.4px solid #5fb6ff; color: #5fb6ff; background: rgba(95,182,255,0.08); cursor: pointer; }
+  .find-cal button[data-act="reset"] { padding: 3px 9px; font-size: 0.75rem; opacity: 0.85; }
   /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
   .mo-scrub { position: relative; margin: 10px 0 12px; }
   .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
@@ -1875,6 +1881,16 @@
   // Geocentric altitude (deg) of the Moon from lat/lon at an instant, minus the rise/set
   // threshold h0 = 0.7275·parallax − 34′ (Meeus ch. 15) — zero at moonrise/moonset.
   function moonAltRel(ms, lat, lon) { return moonSky(ms, lat, lon).rel; }
+  // The Sun in the local sky at an instant: compass bearing and altitude (deg).
+  function sunSky(ms, lat, lon) {
+    var jd = ms / 86400000 + 2440587.5, T = (jd - 2451545) / 36525, s = sunPos(T);
+    var eps = (23.439291 - 0.0130042 * T) * RAD, lo = s.lon * RAD;
+    var ra = Math.atan2(Math.sin(lo) * Math.cos(eps), Math.cos(lo)) / RAD, dec = Math.asin(Math.sin(eps) * Math.sin(lo)) / RAD;
+    var gmst = mnorm(280.46061837 + 360.98564736629 * (jd - 2451545) + 0.000387933 * T * T);
+    var Hd = gmst + lon - ra, la = lat * RAD, de = dec * RAD;
+    var alt = Math.asin(Math.sin(la) * Math.sin(de) + Math.cos(la) * Math.cos(de) * Math.cos(Hd * RAD)) / RAD;
+    return { az: azimuthOf(Hd, dec, lat), alt: alt };
+  }
   // The Moon in the local sky at an instant: compass bearing, altitude as seen from the
   // ground (geocentric altitude less parallax), and `rel`, the geocentric altitude minus
   // the rise/set threshold — so rel ≥ 0 means "up", in step with the rise and set times.
@@ -3863,8 +3879,14 @@
       '</div>' +
       '<div class="find-guide"><div class="fg" id="fgTurn"><small>Turn</small><b>—</b></div><div class="fg" id="fgTilt"><small>Tilt</small><b>—</b></div></div>' +
       '<div class="find-live" id="findLive">Waiting for the compass…</div>' +
-      '<div class="find-msg" id="findMsg">Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it. A few degrees of compass error is normal — if it drifts, wave the phone in a figure eight.</div>';
-    findUI = { loc: loc, got: false, onTarget: false, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0 };
+      '<div class="find-cal" id="findCal"></div>' +
+      '<div class="find-msg" id="findMsg">Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it. Phones usually give <i>magnetic</i> north, which here is some degrees off true north — calibrating on the Sun or Moon (below) removes that. If the reading drifts, wave the phone in a figure eight.</div>';
+    findUI = { loc: loc, got: false, onTarget: false, rawAz: null, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0, off: compassOffsetFor(loc) };
+    $("findCal").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b || !findUI) return;
+      if (b.dataset.act === "reset") { compassOffsetSave(null); findUI.off = 0; findRenderCal(); }
+      else if (b.dataset.act === "cal") findCalibrate();
+    });
     findRefreshTarget();
     els.findBackdrop.classList.remove("hidden");
     // iOS 13+: sensors need a permission granted from a user gesture (this tap)
@@ -3883,9 +3905,43 @@
         else findMessage("Motion access was declined, so the phone can’t say where it’s pointing. Close this and tap Find the Moon again to be asked once more.", true);
       }).catch(function () { findMessage("Motion access couldn’t be requested here. Open the app in Safari and try again.", true); });
     } else start();
-    findUI.tick = setInterval(findRefreshTarget, 10000); // the Moon moves ~¼° a minute
+    findUI.tick = setInterval(function () { findRefreshTarget(); findRenderCal(); }, 10000); // the Moon moves ~¼° a minute
   }
   function findMessage(text, warn) { var m = $("findMsg"); if (m) { m.textContent = text; m.classList.toggle("warn", !!warn); } }
+  // ---- compass calibration ----
+  // Phones report magnetic north (and have their own bias); the sky is in true north. Aiming
+  // at the Sun or Moon — whose true bearing we know — and tapping stores the difference,
+  // reused for later sessions within ~300 km (declination changes slowly with place).
+  function compassOffsetFor(loc) {
+    try {
+      var c = JSON.parse(localStorage.getItem("bw-compass") || "null");
+      if (c && typeof c.off === "number" && distKm(c.lat, c.lon, loc.lat, loc.lon) < 300) return c.off;
+    } catch (_) {}
+    return 0;
+  }
+  function compassOffsetSave(c) { try { if (c) localStorage.setItem("bw-compass", JSON.stringify(c)); else localStorage.removeItem("bw-compass"); } catch (_) {} }
+  // Which bright body can serve as the reference right now: the Sun when it is up, else the Moon.
+  function findCalTarget() {
+    var U = findUI, now = Date.now(), s = sunSky(now, U.loc.lat, U.loc.lon);
+    if (s.alt > 1) return { name: "Sun", az: s.az, alt: s.alt };
+    if (U.up) return { name: "Moon", az: U.az, alt: U.alt };
+    return null;
+  }
+  function findRenderCal() {
+    var U = findUI, el = $("findCal"); if (!U || !el) return;
+    var t = findCalTarget(), html = "";
+    if (U.off) html += '<div class="fc-row">Compass corrected by <b>' + (U.off > 0 ? "+" : "−") + Math.abs(Math.round(U.off)) + '°</b> <button type="button" data-act="reset">Reset</button></div>';
+    if (t) html += '<div class="fc-row"><button type="button" data-act="cal" class="fc-btn">Aim at the ' + t.name + ', then tap</button><small>' + t.name + ' now: ' + compassName(t.az) + ' ' + Math.round(t.az) + '°, ' + Math.round(t.alt) + '° up' + (t.name === "Sun" ? ' · glance, don’t stare' : '') + '</small></div>';
+    else html += '<div class="fc-row"><small>To calibrate the compass, come back when the Sun or Moon is up and aim at it.</small></div>';
+    el.innerHTML = html;
+  }
+  function findCalibrate() {
+    var U = findUI, t = findCalTarget(); if (!U || !t || U.rawAz == null) return;
+    var off = ((t.az - U.rawAz + 540) % 360) - 180;
+    U.off = off; compassOffsetSave({ off: off, lat: U.loc.lat, lon: U.loc.lon, t: Date.now(), on: t.name });
+    findRenderCal();
+    findMessage("Compass corrected by " + (off > 0 ? "+" : "−") + Math.abs(Math.round(off)) + "° using the " + t.name + ". That correction is kept for this area; Reset clears it.", false);
+  }
   // Where the Moon is right now (not the scrubbed hour — you're pointing a phone in real time)
   function findRefreshTarget() {
     var U = findUI; if (!U) return;
@@ -3908,11 +3964,12 @@
     if (!p) return;
     if (!U.got) { U.got = true; clearTimeout(U.timer); }
     // smooth a little (circular for the heading) so the Moon marker doesn't jitter
-    if (U.lastAz == null) { U.lastAz = p.az; U.lastAlt = p.alt; }
+    if (U.rawAz == null) { U.rawAz = p.az; U.lastAlt = p.alt; findRenderCal(); }
     else {
-      var d = ((p.az - U.lastAz + 540) % 360) - 180; U.lastAz = mnorm(U.lastAz + d * 0.35);
+      var d = ((p.az - U.rawAz + 540) % 360) - 180; U.rawAz = mnorm(U.rawAz + d * 0.35);
       U.lastAlt += (p.alt - U.lastAlt) * 0.35;
     }
+    U.lastAz = mnorm(U.rawAz + (U.off || 0)); // the phone's heading, corrected to true north
     var dAz = ((U.az - U.lastAz + 540) % 360) - 180, dAlt = U.alt - U.lastAlt;  // + = target is to the right / above
     var K = 2.4, R = 104;                                                        // px per degree; radius the marker is clamped to (the arrow sits outside it)
     var x = dAz * K, y = -dAlt * K, r = Math.sqrt(x * x + y * y), edge = r > R;

@@ -188,6 +188,20 @@ async function run() {
   assert(/left 40°/.test(off) && /up 20°/.test(off), `find guidance says turn left 40° / tilt up 20°, got "${off.slice(0, 200)}"`);
   await aim(tgt.az, tgt.alt);
   assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the phone points at the Moon");
+  // compass calibration: aim 20° left of the reference body (Sun or Moon, whichever is up), tap,
+  // and the heading is corrected by +20° and remembered; Reset clears it
+  const calRef = await page.$eval("#findCal", (e) => { const m = e.textContent.match(/(Sun|Moon) now: [NESW]{1,3} (\d+)°, (-?\d+)° up/); return m ? { name: m[1], az: +m[2], alt: +m[3] } : null; }).catch(() => null);
+  if (calRef) {
+    await aim((calRef.az - 20 + 360) % 360, calRef.alt);
+    await page.click('#findCal [data-act="cal"]');
+    const calTxt = await page.$eval("#findCal", (e) => e.textContent);
+    assert(/corrected by \+20°/.test(calTxt), `compass corrected by +20°, got "${calTxt.replace(/\s+/g, " ").trim()}"`);
+    assert(await page.evaluate(() => Math.round(JSON.parse(localStorage.getItem("bw-compass")).off) === 20), "compass correction stored");
+    await aim((calRef.az - 20 + 360) % 360, calRef.alt);
+    assert(/facing [NESW]{1,3} /.test(await page.$eval("#findLive", (e) => e.textContent)) && Math.abs(((await page.$eval("#findLive", (e) => +e.textContent.match(/(\d+)°/)[1])) - calRef.az + 540) % 360 - 180) <= 1, "corrected heading now reads the reference bearing");
+    await page.click('#findCal [data-act="reset"]');
+    assert(await page.evaluate(() => localStorage.getItem("bw-compass") === null), "Reset clears the stored correction");
+  }
   await page.click("#findClose");
   assert(await page.$eval("#findBackdrop", (e) => e.classList.contains("hidden")) && !(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "closing Find returns to the Moon panel");
   // hero's third line: the Moon's place in the sky at the scrubbed hour, or not visible
