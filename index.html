@@ -2673,8 +2673,7 @@
     if (!h || !h.time || !h.wind_speed_10m) return false;
     var t = h.time, ws = h.wind_speed_10m, wg = h.wind_gusts_10m || [], wd = h.wind_direction_10m || [];
     var nowIso = d.current.time;
-    var i0 = t.indexOf(nowIso);
-    if (i0 < 0) i0 = t.findIndex(function (x) { return x >= nowIso; });
+    var i0 = hourIdx(t, nowIso);
     if (i0 < 0) i0 = 0;
     var span = 25, A = Math.max(0, i0 - 3), B = Math.min(t.length, A + span);
     A = Math.max(0, B - span); // keep full width near the end of the data
@@ -2791,8 +2790,7 @@
     var N = t.length;
 
     var nowIso = d.current.time;
-    var nowIdx = t.indexOf(nowIso);
-    if (nowIdx < 0) nowIdx = t.findIndex(function (x) { return x >= nowIso; });
+    var nowIdx = hourIdx(t, nowIso);
 
     // geometry (pixel space; the track scrolls under a fixed centre cursor, so
     // PADX also reserves lead/trail room to bring the first/last hour to centre)
@@ -3033,8 +3031,7 @@
     var h = d.hourly;
     if (!h || !h.time || !h.time.length) return null;
     var now = d.current.time;
-    var i0 = h.time.indexOf(now);
-    if (i0 < 0) i0 = h.time.findIndex(function (x) { return x >= now; });
+    var i0 = hourIdx(h.time, now);
     if (i0 < 0) return null;
     var wetAmt = units === "imperial" ? 0.004 : 0.1; // ignore a bare trace
     function wet(i) {
@@ -3309,11 +3306,18 @@
       '<path d="M0,5 Q25,0 50,4 T100,3 V8 H0 Z" fill="' + col + '"/></svg></div>';
   }
 
+  // Index of the hourly slot that contains the instant `iso`: "…T09:38" → the 09:00 slot.
+  // Open-Meteo's current time is to the quarter hour, so an exact match fails three times out
+  // of four; the old fallback took the first slot *after* now, so "Now" showed the next hour.
+  function hourIdx(times, iso) {
+    var i = times.indexOf(iso.slice(0, 13) + ":00");
+    if (i < 0) { var j = times.findIndex(function (x) { return x > iso; }); i = j < 0 ? times.length - 1 : j - 1; }
+    return i;
+  }
   function renderHourly(d) {
     var h = d.hourly, now = d.current.time;
     // Window: up to 48h of history and 72h into the future.
-    var nowIdx = h.time.indexOf(now);
-    if (nowIdx < 0) nowIdx = h.time.findIndex(function (x) { return x >= now; });
+    var nowIdx = hourIdx(h.time, now);
     if (nowIdx < 0) nowIdx = 0;
     var start = Math.max(0, nowIdx - CONFIG.hourlyPast);
     var end = Math.min(h.time.length, nowIdx + CONFIG.hourlyFuture + 1);

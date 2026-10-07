@@ -56,7 +56,8 @@ function buildForecast(tz) {
   }
   return {
     latitude: 51.05, longitude: -114.07, timezone: tz || "America/Edmonton",
-    current: { time: fmt(now), temperature_2m: 13, apparent_temperature: 11, relative_humidity_2m: 60, weather_code: 2, wind_speed_10m: 18, wind_gusts_10m: 31, wind_direction_10m: 315, precipitation: 0, is_day: 1 },
+    // Open-Meteo gives the current time to the quarter hour — never assume it lands on the hour
+    current: { time: fmt(new Date(now.getTime() + 30 * 60000)), temperature_2m: 13, apparent_temperature: 11, relative_humidity_2m: 60, weather_code: 2, wind_speed_10m: 18, wind_gusts_10m: 31, wind_direction_10m: 315, precipitation: 0, is_day: 1 },
     hourly: H, daily: D
   };
 }
@@ -109,6 +110,16 @@ async function run() {
   assert(daily === 23, `daily cells 23, got ${daily}`);
   assert(forecastHits >= 2, `transient 503 should be retried, forecast requests = ${forecastHits}`);
   assert((await page.$eval("#hourly .cell.now .lbl", (e) => e.textContent)) === "Now", "now marker");
+  // "Now" is the hour that contains the current time (xx:30 → the xx:00 slot), so the next cell
+  // is one hour on — not two, as happened when the lookup fell through to the first slot after now
+  {
+    const h0 = new Date(); h0.setMinutes(0, 0, 0); const hN = h0.getUTCHours(); // the fixture's times are UTC strings
+    if (hN !== 23) { // at 23:xx the next cell starts a new day and carries a day label instead
+      const want = ((hN + 1) % 12 || 12) + ((hN + 1) % 24 < 12 ? "am" : "pm");
+      const next = await page.$eval("#hourly .cell.now + .cell .lbl", (e) => e.textContent.trim());
+      assert(next === want, `cell after Now is the next hour (${want}), got "${next}"`);
+    }
+  }
   // Cells must be positioned relative to their strip (strip is position:relative), so
   // offsetLeft is strip-relative — the scroll-to-Now and track marker math depend on it.
   // (When the app is centred on desktop, a page-relative offsetLeft threw both far off.)
