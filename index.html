@@ -2147,11 +2147,16 @@
     setMoonSel(now.getTime(), true);
     var sc = $("moScroll");
     sc.addEventListener("scroll", onMoonScroll);
+    // A finger on the scrubber cancels the opening pin and holds off the settle until it lifts.
+    moTouching = false;
+    var hold = function () { moTouching = true; moonUI.pinUntil = 0; clearTimeout(moSettle); moSettle = null; };
+    var release = function () { moTouching = false; moonScheduleSettle(); };
+    sc.addEventListener("touchstart", hold, { passive: true }); sc.addEventListener("touchend", release); sc.addEventListener("touchcancel", release);
     // Desktop: click-drag to pan (touch pans natively via touch-action: pan-x).
     var down = false, sx = 0, sl = 0;
-    sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
+    sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; hold(); down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
     sc.addEventListener("pointermove", function (e) { if (down) sc.scrollLeft = sl - (e.clientX - sx); });
-    var up = function () { down = false; }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
+    var up = function (e) { if (e.pointerType === "touch") return; down = false; release(); }; sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
     $("moCal").addEventListener("click", onMoonCalClick);
     $("moNow").addEventListener("click", moonGoNow);
     $("moFind").addEventListener("click", openFind);
@@ -2198,7 +2203,18 @@
     };
     apply(); requestAnimationFrame(apply); setTimeout(apply, 80); setTimeout(apply, 250); setTimeout(apply, 500);
   }
-  var moScrollRaf = 0, moSettle = null;
+  var moScrollRaf = 0, moSettle = null, moTouching = false;
+  // Once the scrubber comes to rest, ease it onto the nearest whole hour — but only if it is
+  // actually off one, and never while a finger is on it. (An unconditional smooth scrollTo on
+  // every rest, as before, kept iOS Safari generating scroll events, so the scrubber crept
+  // along on its own.)
+  function moonSettle() {
+    moSettle = null;
+    var sc = $("moScroll"); if (!sc || !moonUI || moTouching) return;
+    var target = moonScrollFor(moonUI.sel);
+    if (Math.abs(target - sc.scrollLeft) >= 1) sc.scrollTo({ left: target, behavior: "smooth" });
+  }
+  function moonScheduleSettle() { clearTimeout(moSettle); moSettle = setTimeout(moonSettle, 140); }
   function onMoonScroll() {
     if (moScrollRaf) return;
     moScrollRaf = requestAnimationFrame(function () {
@@ -2207,8 +2223,7 @@
       if (moonUI.pinUntil && Date.now() < moonUI.pinUntil && Math.abs(sc.scrollLeft - moonScrollFor(moonUI.pinMs)) > 1) return; // pinned: ignore
       var h = Math.round(sc.scrollLeft / MO_PX);
       setMoonSel(moonUI.t0 + Math.max(0, Math.min(MO_DAYS * 24, h)) * 3600000, false);
-      clearTimeout(moSettle);
-      moSettle = setTimeout(function () { var sc2 = $("moScroll"); if (sc2) sc2.scrollTo({ left: moonScrollFor(moonUI.sel), behavior: "smooth" }); }, 140);
+      moonScheduleSettle();
     });
   }
   // Select an instant (whole hours): update the disc, headline, stats; optionally scroll to it.
