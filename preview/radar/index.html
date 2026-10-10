@@ -105,7 +105,7 @@
     if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
     h = (h * 60 + 360) % 360;
     if (h >= 25 && h < 70 && d / mx < 0.5) return 0.04;        // tan: drizzle
-    if (h >= 150 && h < 260) return 0.1 + 0.35 * Math.max(0, Math.min(1, (0.8 - L) / 0.5)); // blues, darker = heavier
+    if (h >= 150 && h < 260) return 0.08 + 0.25 * Math.max(0, Math.min(1, (0.8 - L) / 0.5)); // blues, darker = heavier; they stay in the greens, so yellow means what it does in RainViewer's own colours
     if (h >= 40 && h < 150) return 0.5 + (70 - Math.min(70, h)) / 30 * 0.1;  // yellow
     if (h < 40) return 0.6 + (40 - h) / 40 * 0.22;             // orange → red
     return 0.85 + (360 - h) / 100 * 0.15;                      // red → pink → purple
