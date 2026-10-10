@@ -17,9 +17,10 @@ through — including recent history. Powered by the free
   falling back to Open-Meteo's city geocoder when no token is set), or "Use my
   current location". Recent searches are remembered and shown when you reopen it.
 - 🔁 **°C / °F toggle** — switch units in the top bar; your choice is remembered.
-- 🧾 **Daily summary** — big current temperature and condition, "feels like",
-  today's high/low **with the time they occur**, POP, precipitation total, wind
-  high/low, and sunrise/sunset.
+- 🧾 **Daily summary** — the place name on top, big current temperature and
+  condition, "feels like", a plain-language outlook, then one column: daylight
+  with today's sunrise–sunset window, current wind and gust, air quality, and the
+  next new and full moons. Each of those lines opens a detail panel.
 - ⏱️ **Hourly strip** — swipe left/right through **48 hours of history** and
   **72 hours ahead** of "Now". A weekday label and divider mark each new day.
   Each hour shows the icon, temperature, feels-like, precipitation chance, and a

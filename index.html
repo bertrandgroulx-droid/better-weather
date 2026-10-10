@@ -65,6 +65,10 @@
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* No bold anywhere (design review): large type reads better light, so the whole app
+     uses the regular weight. Elements that are bold by default are reset here; hierarchy
+     comes from size and colour instead. */
+  b, strong, h1, h2, h3, h4, th { font-weight: 400; }
   html, body { margin: 0; }
 
   body {
@@ -110,7 +114,7 @@
     align-items: center;
     column-gap: 6px;
     line-height: 1.15;
-    font-weight: 700; white-space: nowrap;
+    font-weight: 400; white-space: nowrap;
   }
   .brand .logo { grid-row: 1 / 3; font-size: 1.35rem; }
   .brand .name { grid-column: 2; grid-row: 1; font-size: 0.78rem; }
@@ -140,7 +144,7 @@
   }
   .units button {
     border: none; background: transparent; color: var(--muted);
-    font-family: inherit; font-size: 0.9rem; font-weight: 700;
+    font-family: inherit; font-size: 0.9rem; font-weight: 400;
     padding: 0.45rem 0.7rem; cursor: pointer;
   }
   .units button.active { background: var(--accent); color: #0b1f3a; }
@@ -150,11 +154,9 @@
     position: relative;
     background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 14px 16px;
-    /* One 2-column grid shared by the header row and the body, so the right-hand
-       header text (condition + feels) lines up on the same left edge as the
-       right metric column (Sunrise/H/L). The outlook spans both columns.
-       Both columns are content-sized and pushed to the outer edges, so the gap
-       between them flexes with the phone width (space-between). */
+    /* One 2-column grid: the hero (icon + temp) and the condition sit in the two
+       content-sized columns, pushed to the outer edges (space-between); everything
+       else spans both columns. */
     display: grid; grid-template-columns: max-content max-content; column-gap: 14px;
     justify-content: space-between; align-items: center; flex: none;
     /* a horizontal swipe here pages between places; vertical still scrolls the page */
@@ -164,11 +166,11 @@
   /* paging: the real view and its fixed ghost clone move together under the finger */
   .result.paging { will-change: transform; }
   .result.page-ghost { pointer-events: none; z-index: 5; margin: 0; will-change: transform; }
-  /* Card rows: 1 page dots (top) · 2 hero + condition · 3 outlook · 4 metric columns ·
-     5 the place's name, centred at the bottom so the card always says where it is. */
-  /* a quiet footer: context only — the weather above is what matters */
-  .sum-loc { grid-column: 1 / -1; grid-row: 5; margin-top: 12px; text-align: center;
-    font-size: 0.7rem; font-weight: 500; color: var(--muted); opacity: 0.85; letter-spacing: 0.01em;
+  /* Card rows: 1 the place's name · 2 page dots · 3 hero + condition · 4 outlook ·
+     5 the metrics column (Daylight, Wind, Air Quality, Moon). */
+  /* the place: a quiet header line, context only — the weather below is what matters */
+  .sum-loc { grid-column: 1 / -1; grid-row: 1; margin: -6px 0 6px; text-align: center;
+    font-size: 0.7rem; font-weight: 400; color: var(--muted); opacity: 0.85; letter-spacing: 0.01em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     /* width:0 + min-width:100% keeps this long nowrap line out of the max-content column
        sizing (otherwise a street address would widen the whole card); it then fills the
@@ -176,39 +178,45 @@
     width: 0; min-width: 100%; }
   .sum-loc .sl-sub { opacity: 0.8; font-weight: 400; }
   .sum-head, .sum-body { display: contents; } /* children sit directly on the card grid */
-  /* row 1: current icon + temp (left) | condition + feels-like (right) */
-  .sum-hero { grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; }
-  .sum-head-r { grid-column: 2; grid-row: 2; }
-  .sum-head .cond { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
+  /* row 3: current icon + temp (left) | condition + feels-like (right) */
+  .sum-hero { grid-column: 1; grid-row: 3; display: flex; align-items: center; gap: 6px; }
+  .sum-head-r { grid-column: 2; grid-row: 3; }
+  .sum-head .cond { font-size: 1.15rem; font-weight: 400; white-space: nowrap; }
   .sum-head .feels { font-size: 0.86rem; white-space: nowrap; margin-top: 2px; color: var(--text); }
   .sum-head .feels .k { color: var(--muted); }
-  /* row 3: the two metric columns (row 2 is the full-width outlook). One shared
-     font-size + line-height so the five rows line up across both columns. */
+  /* row 5: the single metrics column */
   .sum-body { font-size: 0.86rem; line-height: 1.5; }
   /* swipe-through-locations dots (only shown when ≥2 saved places) */
-  .sum-dots { grid-column: 1 / -1; grid-row: 1; display: flex; gap: 6px; justify-content: center; margin: -4px 0 6px; }
+  .sum-dots { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 6px; justify-content: center; margin: 0 0 8px; }
   .sum-dots .sd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.4; }
   .sum-dots .sd-dot.on { background: var(--text); opacity: 0.9; }
   /* the device's current location: an accent ring, filled when it's the place on screen */
   .sum-dots .sd-dot.geo { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 0.75; }
   .sum-dots .sd-dot.geo.on { background: var(--accent); opacity: 1; }
-  .sum-left { grid-column: 1; grid-row: 4; align-self: start; display: flex; flex-direction: column; }
+  /* spans the card; width:0 + min-width:100% keeps its lines out of the column sizing.
+     The ⓘ sits centred on the right edge, beside Wind and Air Quality (the two short
+     lines), so the long Daylight and Moon lines can use the full width. */
+  .sum-left { grid-column: 1 / -1; grid-row: 5; align-self: start; display: flex; flex-direction: column;
+    position: relative; width: 0; min-width: 100%; }
+  .sum-left .about-btn { right: 2px; }
   .sum-hero .ico { font-size: 2.8rem; line-height: 1; }
-  .sum-hero .temp { font-size: 2.9rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .sum-hero .temp { font-size: 2.9rem; font-weight: 400; line-height: 1; letter-spacing: -0.02em; }
   /* metrics column (top-aligned with the right column; typography from .sum-body) */
   .sum-metrics { color: var(--text); }
-  .sum-metrics b { font-weight: 700; color: #eaf1fa; } /* all bold labels share one softened brightness */
+  .sum-metrics b { font-weight: 400; color: #eaf1fa; } /* all bold labels share one softened brightness */
   .sum-metrics .k { color: var(--muted); }
   .sum-metrics .moon-line .moon { vertical-align: -0.22em; margin-right: 1px; }
   /* Tappable summary lines: flat and left-aligned like the other metrics, with a
      small stylized "+" hanging in the left margin as the "there's more" cue —
      no pill, no trailing chevron. The margin gutter keeps labels aligned. */
   .sum-metrics { padding-left: 15px; }
-  .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line, .sum-right .day-line { color: var(--muted); }
-  .air-line b, .moon-line b, .day-line b { font-weight: 700; color: #eaf1fa; }
-  .sum-metrics .tap, .sum-right .tap { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .sum-metrics .tap:active, .sum-right .tap:active { opacity: 0.55; }
-  .sum-metrics .tap::before, .sum-right .tap::before {
+  .sum-metrics .air-line, .sum-metrics .moon-line, .sum-metrics .day-line { color: var(--muted); }
+  .sum-metrics .sun-t { margin-left: 2px; }                       /* Daylight's "(7:52 am to 6:54 pm)" */
+  .sum-metrics .moon-ph + .moon-ph { margin-left: 10px; }          /* gap between "New …" and "Full …" */
+  .air-line b, .moon-line b, .day-line b { font-weight: 400; color: #eaf1fa; }
+  .sum-metrics .tap { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .sum-metrics .tap:active { opacity: 0.55; }
+  .sum-metrics .tap::before {
     content: "+"; position: absolute; left: -16px; top: 0; bottom: 0; width: 14px;
     display: flex; align-items: center; justify-content: center; transform: translateY(-0.08em);
     font-size: 1.2em; line-height: 1; font-weight: 300;
@@ -217,34 +225,15 @@
     position: relative; top: -0.05em; margin: 0 1px; }
   .sum-metrics .wind-line .gust-ico { stroke: #9fb6d0; vertical-align: -0.4em; margin: 0 1px 0 3px; }
   .aqi-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin: 0 5px 0 1px; }
-  .sum-right { grid-column: 2; grid-row: 4; align-self: start; white-space: nowrap; display: flex; flex-direction: column; }
-  /* full-width precipitation outlook (row 2), spanning both grid columns so it
-     never wraps or squeezes the two metric columns below it */
-  .fcast { grid-column: 1 / -1; grid-row: 3; font-size: 0.82rem; font-weight: 600; line-height: 1.32; margin: 6px 0 10px; white-space: normal; text-align: center; }
+  /* full-width precipitation outlook (row 4), under the temperature */
+  .fcast { grid-column: 1 / -1; grid-row: 4; font-size: 0.82rem; font-weight: 400; line-height: 1.32; margin: 6px 0 10px; white-space: normal; text-align: center; }
   .fcast.rain { color: #d4ecff; } /* bright, faint-blue tint keeps the rain cue */
   .fcast.dry { color: #eaf1fb; }  /* bright near-white */
   /* rain within ~6h: flash the line twice to draw the eye */
   .fcast.soon { animation: fcast-flash 0.55s ease-in-out 2; }
   @keyframes fcast-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
   @media (prefers-reduced-motion: reduce) { .fcast.soon { animation: none; } }
-  .sum-right .row { color: var(--text); }
-  .sum-right .row .k { color: var(--muted); }
-  /* de-emphasize the clock times next to H/L and sunrise/sunset */
-  .sum-right .row .t { color: var(--muted); font-weight: 400; }
-  /* fixed-width H:/L: label + 2-digit number column so ° and times align */
-  .sum-right .row .hl { display: inline-block; width: 1.5em; }
-  .sum-right .row .tval { display: inline-block; min-width: 2ch; text-align: right;
-    font-variant-numeric: tabular-nums; }
-  /* sunrise/sunset: pad the label to the wider word ("Sunrise") so both times
-     start at the same column — this right-aligns the am/pm between the two rows.
-     tabular-nums keeps the digits even. Much tighter than the old fixed columns. */
-  .sum-right .sun-group .k { display: inline-block; min-width: 3.8em; }
-  .sum-right .sun-group .clk { font-variant-numeric: tabular-nums; }
-  /* the ⓘ button now sits beside Sunrise/Sunset (see .sr-ss); reserve room for
-     it there so those two rows' times stay clear of it. Daylight runs full width. */
-  .sum-right .sr-ss { position: relative; padding-right: 30px; }
-  /* Small phones (≤384 px): the two-column summary gets cramped, so scale the
-     card down a touch. (The H/L time annotations stay — they fit.) */
+  /* Small phones (≤384 px): scale the card down a touch. */
   @media (max-width: 384px) {
     .sum-hero .ico { font-size: 2.35rem; }
     .sum-hero .temp { font-size: 2.4rem; }
@@ -266,9 +255,8 @@
     flex: 1; min-height: 0;
     display: flex; flex-direction: column; gap: 16px;
   }
-  /* ⓘ "about" button, vertically centered between the Sunrise and Sunset rows
-     (it lives inside .sr-ss, so top:50% is exactly the midpoint of the pair).
-     This frees the card's bottom-right corner that the Daylight line runs into. */
+  /* ⓘ "about" button, at the right edge of the summary's metrics column, vertically
+     centred on it (it lives inside .sum-left, so top:50% is the column's midpoint). */
   .about-btn {
     position: absolute; top: 50%; right: 0; transform: translateY(-50%); z-index: 3;
     width: 26px; height: 26px; border-radius: 50%;
@@ -288,20 +276,20 @@
     margin-top: 6px; padding: 12px 0 2px; font-size: 0.7rem; letter-spacing: 0.05em;
     text-transform: uppercase; color: var(--muted); }
   .about-list .i { font-size: 1.05rem; flex: none; }
-  .about-list b { font-weight: 700; }
+  .about-list b { font-weight: 400; }
   .about-list .d { color: var(--muted); }
   .about-build { margin-top: 6px; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .about-build button { background: none; border: 1px solid var(--border); border-radius: 999px; color: var(--accent); font: inherit; font-size: 0.72rem; padding: 2px 9px; cursor: pointer; }
   .about-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.10);
     font-size: 0.8rem; color: var(--muted); text-align: center; }
   .about-foot .about-src { font-size: 0.74rem; line-height: 1.55; margin-bottom: 8px; }
-  .about-foot .about-src b { color: var(--text); font-weight: 700; }
+  .about-foot .about-src b { color: var(--text); font-weight: 400; }
   .about-foot a { color: var(--accent); text-decoration: none; }
   /* air quality detail panel */
   .air-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill row so ✕ sits in the corner */
   .air-badge { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 12px 14px; }
-  .air-badge .num { font-size: 2.2rem; font-weight: 800; line-height: 1; }
-  .air-badge .lab { font-size: 1.05rem; font-weight: 700; }
+  .air-badge .num { font-size: 2.2rem; font-weight: 400; line-height: 1; }
+  .air-badge .lab { font-size: 1.05rem; font-weight: 400; }
   .air-badge .us { font-size: 0.72rem; color: var(--muted); }
   .air-health { font-size: 0.85rem; line-height: 1.45; margin: 12px 2px; }
   /* where-you-sit scale + legend */
@@ -313,7 +301,7 @@
   .airscale-bar .needle { position: absolute; top: -3px; width: 3px; height: 18px; transform: translateX(-50%);
     background: #fff; border-radius: 2px; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.5); }
   .airscale-bar .bub { position: absolute; bottom: 17px; transform: translateX(-50%);
-    background: #fff; color: #0e2440; font-weight: 800; font-size: 0.78rem; padding: 1px 8px; border-radius: 999px;
+    background: #fff; color: #0e2440; font-weight: 400; font-size: 0.78rem; padding: 1px 8px; border-radius: 999px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.4); white-space: nowrap; }
   .airscale-ticks { position: relative; height: 13px; margin-top: 4px; }
   .airscale-ticks .tk { position: absolute; transform: translateX(-50%); font-size: 0.66rem;
@@ -322,7 +310,7 @@
   .airscale-legend .lg { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--muted); }
   .airscale-legend .lg i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
   .airscale-legend .lg em { font-style: normal; opacity: 0.65; }
-  .airscale-legend .lg.on { color: var(--text); font-weight: 700; }
+  .airscale-legend .lg.on { color: var(--text); font-weight: 400; }
   .airscale-legend .lg.on i { box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
   .air-poll h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px; }
   .air-poll .prow { display: flex; align-items: center; gap: 10px; margin: 7px 0; font-size: 0.84rem; }
@@ -330,7 +318,7 @@
   .air-poll .bar { flex: 1; height: 7px; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
   .air-poll .bar i { display: block; height: 100%; border-radius: 999px; }
   .air-poll .val { width: 84px; flex: none; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .air-poll .val b { color: var(--text); font-weight: 700; }
+  .air-poll .val b { color: var(--text); font-weight: 400; }
   .air-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.10);
     font-size: 0.72rem; color: var(--muted); text-align: center; }
   /* ---------------- Moon panel ---------------- */
@@ -344,14 +332,14 @@
   .mo-now.right { left: auto; right: 14px; }
   .mo-now.right svg { transform: scaleX(-1); }
   .mo-hero .mo-moon { display: block; margin: 0 auto 12px; filter: drop-shadow(0 0 18px rgba(200,215,235,0.12)); }
-  .mo-phase { font-size: 1.25rem; font-weight: 700; }
+  .mo-phase { font-size: 1.25rem; font-weight: 400; }
   .mo-when { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
   /* third line of the hero: where the Moon is in the sky at that hour, or not visible */
   .mo-sky { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
-  .mo-sky b { color: var(--text); font-weight: 600; }
+  .mo-sky b { color: var(--text); font-weight: 400; }
   .mo-sky .mo-eye { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: 6px; opacity: 0.8; }
   /* "Find the Moon" — only offered where the phone can report compass + tilt */
-  .mo-find { display: none; margin: 12px auto 0; padding: 8px 16px; border-radius: 999px; font: inherit; font-size: 0.88rem; font-weight: 600;
+  .mo-find { display: none; margin: 12px auto 0; padding: 8px 16px; border-radius: 999px; font: inherit; font-size: 0.88rem; font-weight: 400;
     border: 1.6px solid #5fb6ff; color: #5fb6ff; background: rgba(95,182,255,0.08); cursor: pointer; align-items: center; gap: 7px; }
   .mo-find.show { display: inline-flex; }
   .mo-find svg { width: 16px; height: 16px; }
@@ -398,25 +386,25 @@
   .mo-track .mt-6 { height: 20px; top: 7px; background: rgba(255,255,255,0.45); }
   .mo-track .mt-day { height: 28px; top: 4px; width: 2px; background: rgba(255,255,255,0.85); }
   .mo-track .ml { position: absolute; top: 34px; transform: translateX(-50%); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-  .mo-track .ml-today { color: var(--text); font-weight: 700; }
+  .mo-track .ml-today { color: var(--text); font-weight: 400; }
   /* stat rows */
   .mo-stats, .mo-cal, .mo-about { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; }
   .mo-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 0.95rem; }
   .mo-row:first-child { border-top: none; }
-  .mo-row span { flex: 1; font-weight: 600; }
-  .mo-row b { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mo-row span { flex: 1; font-weight: 400; }
+  .mo-row b { font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
   .mo-row .mo-dt { font-size: 0.78em; opacity: 0.65; font-weight: 400; margin-right: 2px; }
   /* distance scale: perigee at the left end, apogee at the right, today's value marked */
   .mo-dist { padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); }
-  .mo-dist .md-head { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
+  .mo-dist .md-head { font-weight: 400; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
   .mo-dist .md-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
-  .mo-dist .md-seg button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 600;
+  .mo-dist .md-seg button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 400;
     padding: 3px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .mo-dist .md-seg button.on { background: var(--accent); color: #0b1f3a; }
   .mo-dist .md-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); margin: 30px 7px 8px; }
   .mo-dist .md-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, rgba(255,214,102,0.35), var(--accent)); }
   .mo-dist .md-mark { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0e2440; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(255,214,102,0.35); }
-  .mo-dist .md-val { position: absolute; top: -24px; transform: translateX(-50%); font-size: 0.86rem; font-weight: 700; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mo-dist .md-val { position: absolute; top: -24px; transform: translateX(-50%); font-size: 0.86rem; font-weight: 400; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .mo-dist .md-ends { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .mo-dist .md-ends span:last-child { text-align: right; }
   .mo-dist .md-ends small { display: block; font-size: 0.66rem; opacity: 0.75; letter-spacing: 0.02em; }
@@ -424,14 +412,14 @@
   .mo-h { font-size: 1.05rem; margin: 16px 2px 8px; }
   /* calendar */
   .mc-head { display: flex; align-items: center; padding: 8px 6px; }
-  .mc-title { flex: 1; text-align: center; font-weight: 700; }
+  .mc-title { flex: 1; text-align: center; font-weight: 400; }
   .mc-nav { background: none; border: 0; color: var(--accent); font-size: 1.5rem; line-height: 1; padding: 2px 12px; cursor: pointer; font-family: inherit; }
   .mc-dow { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.72rem; color: var(--muted); padding: 2px 6px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
   .mc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px 6px 10px; }
   .mc-d { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0 5px; border-radius: 9px; border: 1px solid transparent;
     background: none; color: var(--text); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .mc-d.empty { cursor: default; }
-  .mc-d .mc-n { font-size: 0.82rem; font-weight: 600; }
+  .mc-d .mc-n { font-size: 0.82rem; font-weight: 400; }
   .mc-d.today { background: rgba(255,214,102,0.14); }
   .mc-d.today .mc-n { color: var(--accent); }
   .mc-d.sel { border-color: var(--accent); }
@@ -439,9 +427,6 @@
   .mc-ev .mo-row { cursor: pointer; }
   .mo-about { padding: 11px 13px; font-size: 0.88rem; line-height: 1.5; color: var(--text); }
   .day-line .sun-ico { vertical-align: -0.18em; margin-right: 2px; }
-  /* Daylight row sits below sunrise/sunset; no extra margin so it lines up with
-     the fifth left-column row (New Moon) in the balanced two-column body */
-  .sum-right .day-line { white-space: nowrap; }
   /* daylight-over-the-year panel */
   .day-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .day-note { font-size: 0.85rem; color: var(--muted); margin: 2px 2px 12px; line-height: 1.45; }
@@ -450,7 +435,7 @@
   .day-readout { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
     background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; }
-  .day-readout .rd-date { font-weight: 700; font-size: 1.2rem; margin-bottom: 4px; }
+  .day-readout .rd-date { font-weight: 400; font-size: 1.2rem; margin-bottom: 4px; }
   /* back-to-today: the Moon panel's arrow, here in the readout's top corner on the side today lies */
   .day-readout { position: relative; }
   .day-readout .mo-now { top: 7px; bottom: auto; left: 10px; width: 28px; height: 28px; }
@@ -463,9 +448,9 @@
   .day-readout .rd-grid { display: grid; grid-template-columns: max-content max-content; column-gap: 18px; row-gap: 3px; align-items: baseline; }
   .day-readout .rd-item { display: contents; }
   .day-readout .rd-item .k { text-align: right; font-size: 0.85rem; color: var(--muted); line-height: 1.35; }
-  .day-readout .rd-item b { text-align: left; font-size: 0.85rem; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.35; }
+  .day-readout .rd-item b { text-align: left; font-size: 0.85rem; color: var(--text); font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.35; }
   .day-readout .rd-len b { color: var(--accent); }
-  .day-readout .rd-az { font-weight: 500; color: var(--muted); font-size: 0.78em; margin-left: 3px; } /* compass bearing beside a time */
+  .day-readout .rd-az { font-weight: 400; color: var(--muted); font-size: 0.78em; margin-left: 3px; } /* compass bearing beside a time */
   .day-readout .rd-trend { font-size: 0.78rem; margin-top: 2px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* 320px phones: the widest row ("Vitamin D  10:10a–3:50p · 5h 40m") overran the card by a few px */
   @media (max-width: 340px) {
@@ -502,7 +487,7 @@
     background: #040a16; border: 1px solid var(--border); border-radius: 12px; }
   .day-sun .st-svg { flex: none; width: 176px; height: 120px; }
   .day-sun .st-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; font-size: 0.84rem; color: var(--text); }
-  .day-sun .st-row b { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .day-sun .st-row b { color: var(--accent); font-weight: 400; font-variant-numeric: tabular-nums; }
   .day-sun .st-row small { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 1px; line-height: 1.3; }
   .day-sun .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
   .day-sun .st-dot-sun { background: var(--accent); }
@@ -512,12 +497,12 @@
   .st-svg .st-ray-obs { stroke: var(--accent); stroke-width: 1.1; opacity: 0.8; stroke-dasharray: 3 2.5; }
   .st-svg .st-ray-bg { stroke: var(--accent); stroke-width: 0.7; opacity: 0.16; }
   .st-svg .st-axis { stroke: rgba(255,255,255,0.7); stroke-width: 1; }
-  .st-svg .st-n { fill: var(--text); font-size: 7px; font-weight: 700; font-family: inherit; }
+  .st-svg .st-n { fill: var(--text); font-size: 7px; font-weight: 400; font-family: inherit; }
   .st-svg .st-grid { fill: none; stroke: rgba(255,255,255,0.42); stroke-width: 0.7; }
   .st-svg .st-grid-eq { stroke: rgba(255,255,255,0.6); stroke-width: 0.9; }
   .st-svg .st-here { fill: none; stroke: #fff; stroke-width: 1.3; }
   .st-svg .st-lab { fill: rgba(255,255,255,0.8); font-size: 5.4px; font-family: inherit; letter-spacing: 0.02em; paint-order: stroke; stroke: rgba(4,10,22,0.85); stroke-width: 2px; }
-  .st-svg .st-lab-here { fill: #fff; font-size: 5.6px; font-weight: 700; }
+  .st-svg .st-lab-here { fill: #fff; font-size: 5.6px; font-weight: 400; }
   .st-svg .st-sub { fill: var(--accent); stroke: #0e2440; stroke-width: 1; }
   .st-svg .st-obs { fill: #fff; stroke: #0e2440; stroke-width: 1; }
   /* narrow phones: the side-by-side card squeezes the text to ~110px, so stack it —
@@ -538,9 +523,9 @@
     padding: 6px 10px; font-size: 0.86rem; line-height: 1.4; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     transform: translateX(calc(-100% - 9px)); }
   .wind-tip.right { transform: translateX(9px); }
-  .wind-tip .wt-time { font-weight: 700; color: var(--text); margin-bottom: 1px; }
+  .wind-tip .wt-time { font-weight: 400; color: var(--text); margin-bottom: 1px; }
   .wind-tip .wt-row { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .wind-tip .wt-row b { color: var(--text); font-weight: 700; }
+  .wind-tip .wt-row b { color: var(--text); font-weight: 400; }
   .wind-tip .wt-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
   .wind-tip .wt-dot.wind { background: #7fd4ff; }
   .wind-tip .wt-dot.gust { background: #8093ad; }
@@ -567,18 +552,18 @@
   .cd-day { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 3px;
     min-width: 40px; background: none; border: none; color: var(--muted); font-family: inherit;
     cursor: pointer; padding: 2px; -webkit-tap-highlight-color: transparent; }
-  .cd-day .cd-dow { font-size: 0.72rem; font-weight: 700; }
-  .cd-day .cd-num { font-size: 1rem; font-weight: 700; color: var(--text);
+  .cd-day .cd-dow { font-size: 0.72rem; font-weight: 400; }
+  .cd-day .cd-num { font-size: 1rem; font-weight: 400; color: var(--text);
     width: 1.9em; height: 1.9em; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
   /* today: gold weekday letter and an accent ring on the number; selecting it fills the ring */
   .cd-day.today .cd-dow { color: var(--accent); }
   .cd-day.today .cd-num { box-shadow: inset 0 0 0 1.5px var(--accent); }
   .cd-day.sel .cd-num { background: var(--accent); color: #0b1f3a; }
-  .cond-date { text-align: center; font-weight: 700; font-size: 1rem; margin-top: 2px; }
+  .cond-date { text-align: center; font-weight: 400; font-size: 1rem; margin-top: 2px; }
   .cond-hl { text-align: center; color: var(--muted); font-size: 0.9rem; margin: 2px 0 10px;
     font-variant-numeric: tabular-nums; }
   .cond-hl .cc-ic { vertical-align: -0.26em; margin: 0 5px 0 3px; font-size: 1.1em; }
-  .cond-hl b { color: var(--text); font-weight: 700; }
+  .cond-hl b { color: var(--text); font-weight: 400; }
   .cond-plot { position: relative; }
   .cond-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; }
   .cond-scroll.grabbing { cursor: grabbing; }
@@ -591,7 +576,7 @@
   .cond-svg .cc-grid { stroke: rgba(255,255,255,0.08); stroke-width: 1; }
   .cond-svg .cc-day { stroke: rgba(255,255,255,0.20); stroke-width: 1; stroke-dasharray: 3 3; }
   .cond-svg .cc-now { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.85; }
-  .cond-svg .cc-nowlab { fill: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+  .cond-svg .cc-nowlab { fill: var(--accent); font-size: 10px; font-weight: 400; letter-spacing: 0.04em; }
   .cond-read .cr-today { color: var(--accent); }
   .cond-svg .cc-actual { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
   /* Feels Like shares Actual's colour but is dashed to tell them apart */
@@ -607,13 +592,13 @@
      it never covers the lines. Fixed height so values changing never reflow it. */
   .cond-read { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; min-height: 4.5rem; }
-  .cond-read .cr-time { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+  .cond-read .cr-time { font-weight: 400; font-size: 0.95rem; margin-bottom: 6px; }
   .cond-read .cr-time .cr-ic { vertical-align: -0.26em; margin-right: 5px; font-size: 1.15em; }
   .cond-read .cr-time .cr-now { color: var(--accent); }
   .cond-read .cr-items { display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem;
     color: var(--muted); font-variant-numeric: tabular-nums; }
   .cond-read .cr-line { display: flex; flex-wrap: wrap; gap: 4px 18px; } /* Actual+Feels, then Rain+Chance */
-  .cond-read .cr-item b { color: var(--text); font-weight: 700; }
+  .cond-read .cr-item b { color: var(--text); font-weight: 400; }
   .cond-read .cr-item.rain b { color: #7fd4ff; }
   .cond-read .cr-sw { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .cond-read .cr-sw.actual { background: var(--accent); }
@@ -624,7 +609,7 @@
     background: linear-gradient(90deg, #0e2440 0, #0e2440 30px, rgba(14,36,64,0) 42px); }
   .cc-ylab { position: absolute; left: 2px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted);
     font-variant-numeric: tabular-nums; }
-  .cc-plab { position: absolute; left: 2px; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #9fc0e0; }
+  .cc-plab { position: absolute; left: 2px; transform: translateY(-50%); font-size: 10px; font-weight: 400; color: #9fc0e0; }
   /* precip band: clean bars (height = amount, tint = chance) */
   .cond-precip { position: relative; }
   .cond-precip .cp-bar { position: absolute; bottom: 0; border-radius: 2px 2px 0 0; }
@@ -639,7 +624,7 @@
   }
   .section { display: flex; flex-direction: column; }
   .section > h2 {
-    margin: 0 0 6px; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em;
+    margin: 0 0 6px; font-size: 1.4rem; font-weight: 400; letter-spacing: -0.01em;
   }
   .scroller {
     display: flex; gap: 0;
@@ -666,14 +651,14 @@
   /* subtle divider + weekday label at the start of each day (hourly) */
   .cell.daystart { box-shadow: inset 1px 0 0 var(--border); }
   .cell > * { position: relative; z-index: 1; }
-  .cell .lbl { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
-  .cell .lbl.day { color: var(--text); font-weight: 700; } /* day name at midnight */
+  .cell .lbl { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
+  .cell .lbl.day { color: var(--text); font-weight: 400; } /* day name at midnight */
   .cell.now .lbl, .cell.today .lbl { color: var(--accent); }
   .cell .ic { font-size: 1.75rem; line-height: 1.1; }
   .cell .ic.sm { font-size: 1.35rem; }
   /* custom fog glyph scales to whatever icon slot holds it */
   .fog { width: 1em; height: 1em; vertical-align: -0.12em; }
-  .cell .big { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
+  .cell .big { font-size: 1.4rem; font-weight: 400; line-height: 1.1; }
   .cell .sub { font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
   /* precip amount sits on the water; POP goes at the very bottom in brackets */
   .cell .pamt { position: absolute; left: 0; right: 0; bottom: 15px; z-index: 1;
@@ -801,7 +786,7 @@
     padding: 12px 22px; cursor: pointer;
     -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   }
-  .radar-pick #radarPickGo { font-weight: 600; }
+  .radar-pick #radarPickGo { font-weight: 400; }
   .radar-pick #radarPickX { padding: 12px 18px; color: var(--muted); }
   .pick-pin { font-size: 24px; line-height: 1; text-align: center; }
   /* while a pin is pending, hide the legend so the confirm bar has the top row */
@@ -845,7 +830,7 @@
   .tab {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
     background: var(--card-2); border: 1px solid var(--border); border-radius: 12px;
-    color: var(--muted); font-family: inherit; font-weight: 600; padding: 5px 0; cursor: pointer;
+    color: var(--muted); font-family: inherit; font-weight: 400; padding: 5px 0; cursor: pointer;
   }
   .tab .ic { font-size: 1.2rem; line-height: 1.1; }
   .tab .lb { font-size: 0.72rem; }
@@ -1134,7 +1119,6 @@
   // ---- units ----
   function tU() { return units === "imperial" ? "°F" : "°C"; }
   function wU() { return units === "imperial" ? "mph" : "km/h"; }
-  function pU() { return units === "imperial" ? '"' : "mm"; }
   // Water-fill scale as [safe, full] in the current unit:
   //  - up to `safe` the fill uses a sqrt curve within the empty "safe zone"
   //    (spreads the low end so <1mm reads shorter than 2mm, and stays clear
@@ -1653,20 +1637,6 @@
     var i = d.daily.time.indexOf(date);
     return i < 0 ? 0 : i;
   }
-  // Return {maxTime, minTime, minWind} computed from today's hourly slice.
-  function todayExtremes(d) {
-    var date = d.current.time.slice(0, 10), h = d.hourly;
-    var maxT = -Infinity, minT = Infinity, minW = Infinity, maxTime = null, minTime = null;
-    for (var i = 0; i < h.time.length; i++) {
-      if (h.time[i].slice(0, 10) !== date) continue;
-      var t = h.temperature_2m[i];
-      if (t > maxT) { maxT = t; maxTime = h.time[i]; }
-      if (t < minT) { minT = t; minTime = h.time[i]; }
-      if (h.wind_speed_10m[i] < minW) minW = h.wind_speed_10m[i];
-    }
-    return { maxTime: maxTime, minTime: minTime, minWind: isFinite(minW) ? minW : null };
-  }
-
   // Next full moon after `from` (Meeus, Astronomical Algorithms ch. 49).
   function fullMoonJDE(k) {
     var T = k / 1236.85, rad = Math.PI / 180;
@@ -3213,7 +3183,7 @@
   }
 
   function renderSummary(loc, d, air) {
-    var c = d.current, ti = todayIndex(d), dd = d.daily, ex = todayExtremes(d);
+    var c = d.current, ti = todayIndex(d), dd = d.daily;
     var w = wmo(c.weather_code);
     var outlook = precipOutlook(d);
     // Optional air-quality line (tap opens the detail panel). Canada uses the
@@ -3227,14 +3197,8 @@
     }
     document.body.classList.toggle("night", c.is_day === 0);
 
-    var hi = Math.round(dd.temperature_2m_max[ti]);
-    var lo = Math.round(dd.temperature_2m_min[ti]);
-    var hiTime = ex.maxTime ? " (" + fmtClock(ex.maxTime) + ")" : "";
-    var loTime = ex.minTime ? " (" + fmtClock(ex.minTime) + ")" : "";
     var sr = clockParts(dd.sunrise[ti]);
     var ss = clockParts(dd.sunset[ti]);
-    var pop = dd.precipitation_probability_max[ti];
-    var psum = dd.precipitation_sum[ti];
     // Current wind + gust (a "now" snapshot, like the temp/condition); the day's
     // range lives in the wind graph. Direction is the current wind direction.
     var windNow = c.wind_speed_10m == null ? "–" : Math.round(c.wind_speed_10m);
@@ -3242,17 +3206,21 @@
     var windDeg = c.wind_direction_10m != null ? c.wind_direction_10m
       : (dd.wind_direction_10m_dominant ? dd.wind_direction_10m_dominant[ti] : null);
     var windDir = degToCompass(windDeg);
+    // Moon line: the next new moon and the next full moon, soonest first.
     var ms = moonState(new Date());
-    var moonLabel = ms.waxing ? "Full Moon" : "New Moon";
-    var moonDate = (ms.waxing ? ms.nextFull : ms.nextNew)
-      .toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: d.timezone || undefined });
-    // Daylight pill: today's day length, tap for the whole-year daylight chart.
+    var moonDay = function (dt) { return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: d.timezone || undefined }); };
+    // "Moon  New ◯ Oct 10  Full ● Oct 25" — one label, then each phase with its date
+    var moons = '<b>Moon</b> ' + [{ k: "New", t: ms.nextNew, ico: moonSVG(0, true) }, { k: "Full", t: ms.nextFull, ico: moonSVG(1, true) }]
+      .sort(function (a, b) { return a.t - b.t; })
+      .map(function (m) { return '<span class="moon-ph">' + m.k + ' ' + m.ico + ' ' + moonDay(m.t) + '</span>'; }).join('');
+    // Daylight: today's day length and the sunrise–sunset window; tap for the whole-year chart.
     var dayHtml = "";
     if (dd.sunrise && dd.sunset && dd.sunrise[ti] && dd.sunset[ti]) {
       var dayMin = Math.round((new Date(dd.sunset[ti]) - new Date(dd.sunrise[ti])) / 60000);
       if (dayMin > 0) dayHtml =
         '<div class="day-line tap" role="button" tabindex="0" aria-label="Daylight hours — tap for the whole year">' +
-        '<b>Daylight</b> ' + sunGlyph() + ' ' + fmtDur(dayMin) + '</div>';
+        '<b>Daylight</b> ' + sunGlyph() + ' ' + fmtDur(dayMin) +
+        ' <span class="k sun-t">(' + sr.t + ' ' + sr.m + ' to ' + ss.t + ' ' + ss.m + ')</span></div>';
     }
 
     els.summary.innerHTML =
@@ -3268,32 +3236,20 @@
       '<div class="sum-body">' +
         '<div class="sum-left">' +
           '<div class="sum-metrics">' +
-            '<div><b>POP</b> ' + (pop == null ? "–" : pop + "%") + '</div>' +
-            '<div><b>Precip</b> ' + (psum == null ? "0" : psum) + ' ' + pU() + '</div>' +
+            dayHtml +
             '<div class="wind-line tap" role="button" tabindex="0" aria-label="Wind — tap for the hourly wind and gust graph">' +
               '<b>Wind</b> ' + (windDir ? dirArrow(windDeg, windDir) + ' ' : '') + windNow + ' <span class="k">' + wU() + '</span>' +
               (gustNow != null ? gustGlyph() + '<span class="k">' + gustNow + '</span>' : '') + '</div>' +
             airHtml +
             '<div class="moon-line tap" role="button" tabindex="0" aria-label="Moon phase — tap for upcoming new and full moons">' +
-              '<b>' + moonLabel + '</b> ' + moonSVG(ms.illum, ms.waxing) + ' ' + moonDate + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="sum-right">' +
-          '<div class="row"><span class="k hl">H:</span><span class="tval">' + hi + '</span>°<span class="t ext-time">' + hiTime + '</span></div>' +
-          '<div class="row"><span class="k hl">L:</span><span class="tval">' + lo + '</span>°<span class="t ext-time">' + loTime + '</span></div>' +
-          '<div class="sun-group">' +
-            '<div class="sr-ss">' +
-              '<div class="row"><span class="k">Sunrise</span> <span class="t clk">' + sr.t + '</span> <span class="t">' + sr.m + '</span></div>' +
-              '<div class="row"><span class="k">Sunset</span> <span class="t clk">' + ss.t + '</span> <span class="t">' + ss.m + '</span></div>' +
-            '</div>' +
-            dayHtml +
+              moons + '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
-      swipeDotsHtml(loc) + // grid row 1 (top) — DOM order doesn't matter on the card grid
-      sumLocHtml(loc);     // grid row 5 (bottom)
-    // seat the ⓘ vertically centered between Sunrise and Sunset (survives re-renders)
-    (els.summary.querySelector(".sr-ss") || els.summary).appendChild(els.aboutBtn);
+      swipeDotsHtml(loc) + // grid row 2 — DOM order doesn't matter on the card grid
+      sumLocHtml(loc);     // grid row 1 (top)
+    // seat the ⓘ at the right edge of the metrics column (survives re-renders)
+    (els.summary.querySelector(".sum-left") || els.summary).appendChild(els.aboutBtn);
   }
 
   function waterFrac(amount, safe, full) {
@@ -3421,7 +3377,7 @@
           '<div class="ic">' + condIcon(code, 1) + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
           '<div class="ic sm">' + condIcon(code, 0) + '</div>' +
-          '<div class="big" style="font-weight:600">' + Math.round(dd.temperature_2m_min[i]) + '°</div>' +
+          '<div class="big" style="font-weight: 400">' + Math.round(dd.temperature_2m_min[i]) + '°</div>' +
           (amt > 0 ? '<div class="pamt">' + precipLabel(amt, true) + '</div>' : '') +
           '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';

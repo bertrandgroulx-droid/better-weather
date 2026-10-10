@@ -126,6 +126,31 @@ async function run() {
   assert(await page.$eval("#daily .cell.today", (el) => el.offsetParent === document.getElementById("daily")), "daily cell is positioned relative to the strip");
   assert(await page.$eval("#hourly .cell.now", (el) => el.offsetParent === document.getElementById("hourly")), "hourly cell is positioned relative to the strip");
   assert((await page.$eval("#summary .fcast", (e) => e.textContent.trim().length)) > 0, "precip outlook subtitle renders");
+  // Summary card layout (design v5): the place name on top, one metrics column in the order
+  // Daylight · Wind · Air Quality · Moon; POP, Precip, H/L and the right column are gone
+  {
+    const card = await page.$eval("#summary", (c) => {
+      const top = (sel) => { const e = c.querySelector(sel); return e ? e.getBoundingClientRect().top : null; };
+      return {
+        order: [top(".sum-loc"), top(".sum-hero"), top(".fcast"), top(".sum-left")],
+        lines: [...c.querySelectorAll(".sum-metrics > div")].map((d) => d.className.split(" ")[0]),
+        text: c.querySelector(".sum-metrics").textContent.replace(/\s+/g, " "),
+        right: !!c.querySelector(".sum-right"),
+        about: !!c.querySelector(".sum-left #aboutBtn"),
+      };
+    });
+    assert(card.order.every((v, i, a) => v != null && (i === 0 || v > a[i - 1])), `card rows run place · temperature · outlook · metrics, got ${JSON.stringify(card.order)}`);
+    assert(JSON.stringify(card.lines.filter((k) => k !== "air-line")) === JSON.stringify(["day-line", "wind-line", "moon-line"]), `metrics column is Daylight, Wind, (Air), Moon, got ${JSON.stringify(card.lines)}`);
+    assert(!/\bPOP\b|Precip|\bH:|\bL:/.test(card.text) && !card.right, `POP, Precip, H/L and the right column are gone, got "${card.text}"`);
+    assert(/Daylight\s+\d+h \d+m \(\d{1,2}:\d\d [ap]m to \d{1,2}:\d\d [ap]m\)/.test(card.text), `Daylight carries the sunrise–sunset window, got "${card.text}"`);
+    assert(/Moon\s+(New\s+[A-Z][a-z]{2} \d{1,2}\s*Full|Full\s+[A-Z][a-z]{2} \d{1,2}\s*New)\s+[A-Z][a-z]{2} \d{1,2}/.test(card.text), `moon line reads "Moon New <date> Full <date>", got "${card.text}"`);
+    assert(card.about, "the ⓘ sits in the metrics column");
+  }
+  // no bold anywhere (design review): every rendered element uses the regular weight
+  {
+    const heavy = await page.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => e.offsetParent !== null && parseInt(getComputedStyle(e).fontWeight, 10) > 400).map((e) => e.tagName + "." + e.className).slice(0, 5));
+    assert(heavy.length === 0, `no element renders bold, found ${JSON.stringify(heavy)}`);
+  }
   // Wind line: a direction arrow (from-direction, in the accessible name) + unit
   // once, then H/L without repeated units
   const windLine = await page.$eval("#summary .sum-metrics", (e) => {
@@ -204,7 +229,8 @@ async function run() {
   // aim off (above or below the horizon alike), then on
   await aim(mag(tgt.az + 40), tgt.alt - 20);
   const off = await page.$eval("#findBody", (e) => e.textContent.replace(/\s+/g, " "));
-  assert(/left 40°/.test(off) && /up 20°/.test(off), `find guidance says turn left 40° / tilt up 20°, got "${off.slice(0, 200)}"`);
+  // ±1°: the test aims with the declination as displayed (rounded); the app uses the exact value
+  assert(/left (39|40|41)°/.test(off) && /up (19|20|21)°/.test(off), `find guidance says turn left ~40° / tilt up ~20°, got "${off.slice(0, 200)}"`);
   await aim(tgt.az, tgt.alt); // the true bearing fed as a magnetic one: 13° off → ring dark
   assert(!(await page.$eval("#findView", (v) => v.classList.contains("on"))), "ring is dark when the raw heading equals the true bearing (declination applied)");
   await aim(mag(tgt.az), tgt.alt);
