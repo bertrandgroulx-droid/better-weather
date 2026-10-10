@@ -573,7 +573,8 @@
   /* scrubbed-hour readout, laid out above the chart (like the daylight panel) so
      it never covers the lines. Fixed height so values changing never reflow it. */
   .cond-read { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 9px 12px; margin-bottom: 10px; min-height: 4.5rem; text-align: center; } /* centred: the default readout style */
+    padding: 9px 12px; margin-bottom: 10px; min-height: 6.4rem; text-align: center; } /* centred: the default readout style;
+       tall enough for three lines (rain + snow + chance) so it never jumps while scrolling */
   .cond-read .cr-time { font-weight: 400; font-size: 0.95rem; margin-bottom: 6px; }
   .cond-read .cr-time .cr-ic { vertical-align: -0.26em; margin-right: 5px; font-size: 1.15em; }
   .cond-read .cr-time .cr-now { color: var(--accent); }
@@ -588,6 +589,8 @@
   .cond-read .cr-sw.wind { background: #7fd4ff; }
   .cond-read .cr-sw.gust { background: repeating-linear-gradient(90deg, #8093ad 0 3px, transparent 3px 5px); }
   .cond-read .cr-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #4cc9f0; vertical-align: middle; margin-right: 6px; }
+  .cond-read .cr-dot.snow { background: #f2f7ff; }
+  .cond-read .cr-item.snow b { color: #ffffff; }
   /* frozen temperature axis on the left: solid near the edge, fading so the line slides under it cleanly */
   .cond-yaxis { position: absolute; left: 0; top: 0; width: 42px; pointer-events: none; z-index: 2;
     background: linear-gradient(90deg, #0e2440 0, #0e2440 30px, rgba(14,36,64,0) 42px); }
@@ -641,7 +644,11 @@
   .cell .ic { font-size: 1.75rem; line-height: 1.1; }
   .cell .ic.sm { font-size: 1.35rem; }
   /* custom fog glyph scales to whatever icon slot holds it */
-  .fog { width: 1em; height: 1em; vertical-align: -0.12em; }
+  .fog, .wx { width: 1em; height: 1em; vertical-align: -0.12em; }
+  /* amount labels: rain in mm (pale blue), snow in cm (white); a mixed day stacks both */
+  .cell .pamt .pa-rain, .cell .pamt .pa-snow { display: block; line-height: 1.15; }
+  .cell .pamt .pa-snow { color: #ffffff; text-shadow: 0 0 2px rgba(4,12,24,0.95), 0 0 5px rgba(4,12,24,0.7); }
+  .cell .pamt.two { bottom: 14px; }
   .cell .big { font-size: 1.4rem; font-weight: 400; line-height: 1.1; }
   .cell .sub { font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
   /* precip amount sits on the water; POP goes at the very bottom in brackets */
@@ -911,10 +918,10 @@
         <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
-        <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
+        <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
-        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
+        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Fill bars scaled to amount and tinted by probability: rain in blue, labelled in mm; snow as a white layer, labelled in centimetres of fresh snow. A day with both stacks them, rain under snow, with both amounts. Freezing rain and rain-and-snow get their own icons.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, and a readout of wind, direction and gust for the hour under the line.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can scrub hour by hour across a month (15 days either side of today) — the strip under it is a band whose thickness is the Moon’s illumination — with a blue arrow to jump back to now. Under the date, an eye line says where to look — compass bearing and height above (or below) the horizon. Above the Moon, a perigee-to-apogee distance scale (surface to surface) moves as you scrub. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
@@ -1095,9 +1102,42 @@
       '<path d="M9.5 27.6 q3 -1.5 6 0 t6 0"/>' +
       '</g></svg>';
   }
-  // Icon for a condition, using the custom fog glyph for fog / rime fog (45, 48).
-  function condIcon(code, isDay) {
-    return (code === 45 || code === 48) ? fogSVG() : icon(code, isDay);
+  // Custom glyphs for the two conditions that have no emoji of their own: freezing rain
+  // (ice-blue drops over an ice line) and rain and snow together (a drop and a flake).
+  // Snow and rain keep their emoji (🌨️ ❄️ / 🌧️ 🌦️), which already read differently.
+  // A full-width cloud (fills the icon box like the emoji do), with a subtle underside.
+  var WX_CLOUD = '<path d="M6.2 17.6 h18.6 a5.6 5.6 0 0 0 0.9 -11.1 a7.8 7.8 0 0 0 -14.8 -1.6 A6.1 6.1 0 0 0 6.2 17.6 Z" fill="#dde6f2"/>' +
+    '<path d="M6.2 17.6 h18.6 a5.6 5.6 0 0 0 4.6 -2.9 c-1.4 .9-3 1.3-4.6 1.3 H6.2 a6 6 0 0 1-5-2.6 a6.1 6.1 0 0 0 5 4.2 Z" fill="#b9c7da"/>';
+  // A six-armed snowflake with a short branch near the tip of each arm (the mixed glyph's flake).
+  function wxFlake(x, y, r) {
+    var d = "", k, a, ex, ey, bx, by;
+    for (k = 0; k < 6; k++) {
+      a = k * Math.PI / 3; ex = x + r * Math.sin(a); ey = y - r * Math.cos(a);
+      d += "M" + x + " " + y + "L" + ex.toFixed(2) + " " + ey.toFixed(2);
+      bx = x + r * 0.58 * Math.sin(a); by = y - r * 0.58 * Math.cos(a);
+      [-0.62, 0.62].forEach(function (o) { d += "M" + bx.toFixed(2) + " " + by.toFixed(2) + "L" + (bx + r * 0.36 * Math.sin(a + o)).toFixed(2) + " " + (by - r * 0.36 * Math.cos(a + o)).toFixed(2); });
+    }
+    return '<path d="' + d + '" stroke="#ffffff" stroke-width="1.35" stroke-linecap="round" fill="none"/>';
+  }
+  function wxDrop(x, y, col) { return '<path d="M' + x + ' ' + (y - 4.8) + 'c2.2 3.1 3.3 5 3.3 6.3a3.3 3.3 0 0 1-6.6 0c0-1.3 1.1-3.2 3.3-6.3Z" fill="' + col + '"/>'; }
+  function freezingSVG() {
+    return '<svg class="wx" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD +
+      wxDrop(10.5, 23.4, "#bfe9ff") + wxDrop(21.5, 23.4, "#bfe9ff") +
+      '<path d="M4.5 29.8H27.5" stroke="#e6f6ff" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<path d="M8 29.8l-1.4 1.8M13 29.8l-1.4 1.8M18 29.8l-1.4 1.8M23 29.8l-1.4 1.8" stroke="#e6f6ff" stroke-width="1.2" stroke-linecap="round"/></svg>';
+  }
+  function mixSVG() {
+    return '<svg class="wx" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD + wxDrop(10, 24.4, "#4cc9f0") + wxFlake(22, 24.6, 4.8) + '</svg>';
+  }
+  var SNOW_CODES = { 71: 1, 73: 1, 75: 2, 77: 1, 85: 1, 86: 2 }, FREEZE_CODES = { 56: 1, 57: 1, 66: 1, 67: 1 };
+  // Icon for a condition: custom glyphs for fog (45, 48), freezing rain, and — when the
+  // amounts say both fell (sp from precipSplit) — rain and snow together; emoji otherwise.
+  function condIcon(code, isDay, sp) {
+    if (code === 45 || code === 48) return fogSVG();
+    // mixed only when each is a real share (≥15% of the water); a trace of one doesn't count
+    if (sp && sp.total > 0 && sp.rainW / sp.total >= 0.15 && sp.snowW / sp.total >= 0.15 && (code >= 51 || SNOW_CODES[code])) return mixSVG();
+    if (FREEZE_CODES[code]) return freezingSVG();
+    return icon(code, isDay);
   }
 
   // ---- units ----
@@ -1127,6 +1167,35 @@
   function clockParts(iso) {
     var s = fmtClock(iso), i = s.lastIndexOf(" ");
     return i < 0 ? { t: s, m: "" } : { t: s.slice(0, i), m: s.slice(i + 1) };
+  }
+  // Split a precipitation total into rain and snow. Open-Meteo's `precipitation` is the
+  // total as liquid water (snow melted); `rain` + `showers` are the liquid part and
+  // `snowfall` is the snow itself, in cm (or inches) of fresh snow — about 7 cm per 10 mm
+  // of water. Returns { total, rainW, snowW, snowDepth } with snowW = the snow's water.
+  // Without the split fields (older cached data) everything counts as rain.
+  function precipSplit(total, rain, showers, snowfall) {
+    total = total || 0;
+    if (rain == null && snowfall == null) return { total: total, rainW: total, snowW: 0, snowDepth: 0 };
+    var rainW = Math.max(0, (rain || 0) + (showers || 0)), depth = Math.max(0, snowfall || 0);
+    var snowW = depth > 0 ? Math.max(0, total - rainW) : 0;
+    if (depth > 0 && snowW <= 0) snowW = units === "imperial" ? depth / 7 : depth * 10 / 7; // tiny totals: the 7 cm : 10 mm ratio
+    return { total: Math.max(total, rainW + snowW), rainW: rainW, snowW: snowW, snowDepth: depth };
+  }
+  function hourSplit(h, i) { return precipSplit(h.precipitation[i], h.rain ? h.rain[i] : null, h.showers ? h.showers[i] : null, h.snowfall ? h.snowfall[i] : null); }
+  function daySplit(dd, i) { return precipSplit(dd.precipitation_sum[i], dd.rain_sum ? dd.rain_sum[i] : null, dd.showers_sum ? dd.showers_sum[i] : null, dd.snowfall_sum ? dd.snowfall_sum[i] : null); }
+  // Fresh snow depth: "3 cm" / "<1 cm" (daily), "0.4 cm" (hourly); inches in imperial.
+  function snowLabel(v, daily) {
+    if (v == null || v <= 0) return "";
+    if (units === "imperial") return (v < 0.1 ? "<0.1" : v.toFixed(1)) + '"';
+    if (daily) return v < 1 ? "<1 cm" : Math.round(v) + " cm";
+    return (v < 0.1 ? "<0.1" : v.toFixed(1)) + "cm"; // hourly: tight, like "0.4mm"
+  }
+  // The amount label on a cell: rain in mm (blue), snow in cm (white); both on a mixed day.
+  function pamtHtml(sp, daily) {
+    var parts = [];
+    if (sp.snowDepth > 0) parts.push('<span class="pa-snow">' + snowLabel(sp.snowDepth, daily) + '</span>');
+    if (sp.rainW > 0.0001 || (!sp.snowDepth && sp.total > 0)) parts.push('<span class="pa-rain">' + precipLabel(sp.rainW > 0 ? sp.rainW : sp.total, daily) + '</span>');
+    return parts.length ? '<div class="pamt' + (parts.length > 1 ? " two" : "") + '">' + parts.join("") + '</div>' : "";
   }
   function precipLabel(v, daily) {
     if (v == null || v <= 0) return "";
@@ -1459,8 +1528,8 @@
     var url = "https://api.open-meteo.com/v1/forecast" +
       "?latitude=" + loc.lat + "&longitude=" + loc.lon +
       "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,is_day" +
-      "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day" +
-      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset" +
+      "&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,is_day" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,showers_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
       "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFetchFuture;
@@ -1481,7 +1550,7 @@
     var url = "https://archive-api.open-meteo.com/v1/archive" +
       "?latitude=" + loc.lat + "&longitude=" + loc.lon +
       "&start_date=" + iso(d0) + "&end_date=" + iso(d1) +
-      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,sunrise,sunset" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,wind_speed_10m_max,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto";
     return fetchJsonRetry(url, 2);
@@ -1618,7 +1687,13 @@
       if (k == null || a.temperature_2m_max[k] == null) continue; // not in ERA5 yet
       dd.temperature_2m_max[j] = a.temperature_2m_max[k];
       dd.temperature_2m_min[j] = a.temperature_2m_min[k];
-      if (a.precipitation_sum[k] != null) dd.precipitation_sum[j] = a.precipitation_sum[k];
+      if (a.precipitation_sum[k] != null) {
+        dd.precipitation_sum[j] = a.precipitation_sum[k];
+        // keep the rain/snow split consistent with the reanalysis total (ERA5 has no showers)
+        if (dd.rain_sum) dd.rain_sum[j] = a.rain_sum ? a.rain_sum[k] : null;
+        if (dd.showers_sum) dd.showers_sum[j] = 0;
+        if (dd.snowfall_sum) dd.snowfall_sum[j] = a.snowfall_sum ? a.snowfall_sum[k] : null;
+      }
       if (a.weather_code && a.weather_code[k] != null) dd.weather_code[j] = a.weather_code[k];
       if (a.wind_speed_10m_max && a.wind_speed_10m_max[k] != null) dd.wind_speed_10m_max[j] = a.wind_speed_10m_max[k];
       if (a.sunrise && a.sunrise[k]) dd.sunrise[j] = a.sunrise[k];
@@ -2845,7 +2920,7 @@
         prevDay = day;
       }
       if (hr % 6 === 0) xlabs += '<text class="cc-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + shortHour(hr) + '</text>';
-      if (hr % 3 === 0) icons += '<span class="cc-ico" style="left:' + X(i).toFixed(1) + 'px">' + condIcon(h.weather_code[i], h.is_day[i]) + '</span>';
+      if (hr % 3 === 0) icons += '<span class="cc-ico" style="left:' + X(i).toFixed(1) + 'px">' + condIcon(h.weather_code[i], h.is_day[i], hourSplit(h, i)) + '</span>';
     }
 
     var pa = "", pf = "";
@@ -2870,10 +2945,13 @@
     for (i = 0; i < N; i++) {
       var amt = h.precipitation ? h.precipitation[i] : null;
       if (amt == null || amt <= 0) continue;
-      var pp = h.precipitation_probability ? h.precipitation_probability[i] : null;
-      var col = WATER_TONE[pp == null ? 1 : (pp < 33 ? 0 : (pp <= 67 ? 1 : 2))];
-      var bh = Math.max(2, waterFrac(amt, scale[0], scale[1]) * PRECIP_H);
-      precip += '<div class="cp-bar" style="left:' + (X(i) - (HR - 2) / 2).toFixed(1) + 'px;width:' + (HR - 2) + 'px;height:' + bh.toFixed(1) + 'px;background:' + col + '"></div>';
+      var pp = h.precipitation_probability ? h.precipitation_probability[i] : null, bk = pp == null ? 1 : (pp < 33 ? 0 : (pp <= 67 ? 1 : 2));
+      var sp = hourSplit(h, i), share = sp.total > 0 ? Math.min(1, sp.snowW / sp.total) : 0;
+      var bh = Math.max(2, waterFrac(amt, scale[0], scale[1]) * PRECIP_H), rh = bh * (1 - share);
+      var bx = (X(i) - (HR - 2) / 2).toFixed(1), bw = HR - 2;
+      // rain (blue) at the bottom, snow (white) stacked above it
+      if (rh > 0.2) precip += '<div class="cp-bar" style="left:' + bx + 'px;width:' + bw + 'px;height:' + rh.toFixed(1) + 'px;background:' + WATER_TONE[bk] + '"></div>';
+      if (share > 0) precip += '<div class="cp-bar snow" style="left:' + bx + 'px;width:' + bw + 'px;bottom:' + rh.toFixed(1) + 'px;height:' + (bh - rh).toFixed(1) + 'px;background:' + SNOW_TONE[bk] + '"></div>';
     }
 
     // day tabulator
@@ -2899,7 +2977,7 @@
           '</div>' +
         '</div>' +
         '<div class="cond-yaxis" style="height:' + (ICON_H + H + PRECIP_H) + 'px">' + ylabs +
-          '<div class="cc-plab" style="top:' + (ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Rain</div>' +
+          '<div class="cc-plab" style="top:' + (ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Precip</div>' +
         '</div>' +
         '<div class="cond-cursor">' +
           '<div class="cc-cline" style="top:' + (ICON_H + PT) + 'px;height:' + (plotH + PB + PRECIP_H) + 'px"></div>' +
@@ -2921,7 +2999,7 @@
 
     condState = { d: d, t: t, N: N, HR: HR, PADX: PADX, PT: PT, ICON_H: ICON_H, X: X, Y: Y,
       ta: ta, tf: tf, precip: h.precipitation || [], pop: h.precipitation_probability || [],
-      code: h.weather_code || [], isday: h.is_day || [],
+      code: h.weather_code || [], isday: h.is_day || [], h: h,
       nowIdx: nowIdx, focusIdx: fIdx, idx: fIdx, panDir: 0, vx: 0, vw: 0 };
     return true;
   }
@@ -2952,19 +3030,23 @@
       var dstr = isToday
         ? '<span class="cr-today">Today</span>, ' + new Date(day + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
         : new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-      var ico = (S.code[idx] != null) ? '<span class="cr-ic">' + condIcon(S.code[idx], S.isday[idx]) + '</span>' : "";
+      var ico = (S.code[idx] != null) ? '<span class="cr-ic">' + condIcon(S.code[idx], S.isday[idx], hourSplit(S.h, idx)) + '</span>' : "";
       ct.innerHTML = ico + dstr + ' · ' + h12 + ' ' + ap + (idx === S.nowIdx ? ' <span class="cr-now">· now</span>' : '');
     }
     if (ci) {
-      var amt = S.precip[idx], pop = S.pop[idx];
-      var rainVal = (amt != null && amt > 0) ? precipLabel(amt, false) : "none";
+      var amt = S.precip[idx], pop = S.pop[idx], sp = hourSplit(S.h, idx);
+      // "Rain 0.4 mm · Snow 1.2 cm", whichever fell; "Precip none" when dry
+      var pItems = [];
+      if (amt > 0 && (sp.rainW > 0.0001 || !sp.snowDepth)) pItems.push('<span class="cr-item rain"><i class="cr-dot"></i>Rain <b>' + precipLabel(sp.rainW > 0 ? sp.rainW : amt, false) + '</b></span>');
+      if (amt > 0 && sp.snowDepth > 0) pItems.push('<span class="cr-item snow"><i class="cr-dot snow"></i>Snow <b>' + snowLabel(sp.snowDepth, false) + '</b></span>');
+      if (!pItems.length) pItems.push('<span class="cr-item rain"><i class="cr-dot"></i>Precip <b>none</b></span>');
       ci.innerHTML =
         '<div class="cr-line">' +
           '<span class="cr-item"><i class="cr-sw actual"></i>Actual <b>' + (S.ta[idx] != null ? Math.round(S.ta[idx]) + tU() : "–") + '</b></span>' +
           '<span class="cr-item"><i class="cr-sw feels"></i>Feels <b>' + (S.tf[idx] != null ? Math.round(S.tf[idx]) + tU() : "–") + '</b></span>' +
         '</div>' +
         '<div class="cr-line">' +
-          '<span class="cr-item rain"><i class="cr-dot"></i>Rain <b>' + rainVal + '</b></span>' +
+          pItems.join("") +
           '<span class="cr-item">Chance <b>' + (pop != null ? pop + "%" : "–") + '</b></span>' +
         '</div>';
     }
@@ -3032,6 +3114,11 @@
   function closeCond() { els.condBackdrop.classList.add("hidden"); }
 
   // Precipitation type word from a WMO code, for the outlook line.
+  function precipWordAt(h, i, code) {
+    var sp = hourSplit(h, i);
+    if (sp.total > 0 && sp.rainW / sp.total >= 0.15 && sp.snowW / sp.total >= 0.15) return "Rain and snow";
+    return precipWord(code);
+  }
   function precipWord(code) {
     if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
     if (code >= 95) return "Storms";
@@ -3063,13 +3150,13 @@
     // headline shows), not the hourly amount/chance — so the two never disagree.
     var nowCode = d.current.weather_code;
     if (nowCode != null && nowCode >= 51) { // precipitating now — say when it lets up (→ flash)
-      var word = precipWord(nowCode);
+      var word = precipWordAt(h, i0, nowCode);
       for (i = i0 + 1; i < end; i++) if (!wet(i)) return { text: word + " easing by " + hourWord(h.time[i]), rain: true, soon: true };
       return { text: word + " continuing", rain: true, soon: true };
     }
     for (i = i0 + 1; i < end; i++) { // dry now — find the next wet hour
       if (!wet(i)) continue;
-      var word2 = precipWord(h.weather_code[i]), dh = i - i0, when;
+      var word2 = precipWordAt(h, i, h.weather_code[i]), dh = i - i0, when;
       var dNow = new Date(h.time[i0]), dW = new Date(h.time[i]);
       var tomorrow = new Date(dNow); tomorrow.setDate(tomorrow.getDate() + 1);
       if (dh <= 3) when = "in ~" + dh + " h";
@@ -3242,8 +3329,8 @@
     // Moon line: the next new moon and the next full moon, soonest first.
     var ms = moonState(new Date());
     var moonDay = function (dt) { return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: d.timezone || undefined }); };
-    // "Moon  New ◯ Oct 10  Full ● Oct 25" — one label, then each phase with its date
-    var moons = '<b>Moon</b> ' + [{ k: "New", t: ms.nextNew, ico: moonSVG(0, true) }, { k: "Full", t: ms.nextFull, ico: moonSVG(1, true) }]
+    // "Moon: New ◯ Oct 10  Full ● Oct 25" — one label, then each phase with its date
+    var moons = '<b>Moon:</b> ' + [{ k: "New", t: ms.nextNew, ico: moonSVG(0, true) }, { k: "Full", t: ms.nextFull, ico: moonSVG(1, true) }]
       .sort(function (a, b) { return a.t - b.t; })
       .map(function (m) { return '<span class="moon-ph">' + m.k + ' ' + m.ico + ' ' + moonDay(m.t) + '</span>'; }).join('');
     // Daylight: today's day length and the sunrise–sunset window; tap for the whole-year chart.
@@ -3300,14 +3387,23 @@
     "rgba(76,201,240,0.58)",  // mid
     "rgba(48,176,240,0.92)"   // high
   ];
-  function waterHtml(amount, scale, pop) {
+  // Snow's tones, same three chance buckets: a soft white veil, firmer as the chance rises
+  // (kept translucent so the white cm label on it stays readable).
+  var SNOW_TONE = ["rgba(226,236,248,0.20)", "rgba(236,243,252,0.32)", "rgba(246,250,255,0.48)"];
+  // The fill: height from the total (rain + snow as water); on a mixed day it stacks,
+  // rain (blue) at the bottom and snow (white) on top. The wavy top takes the top layer's tone.
+  function waterHtml(amount, scale, pop, sp) {
     var frac = waterFrac(amount, scale[0], scale[1]);
     if (frac <= 0) return "";
-    var col = WATER_TONE[pop == null ? 1 : (pop < 33 ? 0 : (pop <= 67 ? 1 : 2))];
-    var pct = (frac * 100).toFixed(1);
-    return '<div class="water" style="height:' + pct + '%;background:' + col + '">' +
+    var b = pop == null ? 1 : (pop < 33 ? 0 : (pop <= 67 ? 1 : 2));
+    var rainCol = WATER_TONE[b], snowCol = SNOW_TONE[b];
+    var snowShare = sp && sp.total > 0 ? Math.min(1, sp.snowW / sp.total) : 0;
+    var top = snowShare > 0 ? snowCol : rainCol;
+    var bg = snowShare <= 0 ? rainCol : snowShare >= 1 ? snowCol
+      : "linear-gradient(to top, " + rainCol + " 0 " + ((1 - snowShare) * 100).toFixed(1) + "%, " + snowCol + " " + ((1 - snowShare) * 100).toFixed(1) + "% 100%)";
+    return '<div class="water" style="height:' + (frac * 100).toFixed(1) + '%;background:' + bg + '">' +
       '<svg viewBox="0 0 100 8" preserveAspectRatio="none">' +
-      '<path d="M0,5 Q25,0 50,4 T100,3 V8 H0 Z" fill="' + col + '"/></svg></div>';
+      '<path d="M0,5 Q25,0 50,4 T100,3 V8 H0 Z" fill="' + top + '"/></svg></div>';
   }
 
   // Index of the hourly slot that contains the instant `iso`: "…T09:38" → the 09:00 slot.
@@ -3329,7 +3425,7 @@
     var html = "", prevDay = null;
     for (var i = start; i < end; i++) {
       var isNow = i === nowIdx;
-      var amt = h.precipitation[i];
+      var amt = h.precipitation[i], sp = hourSplit(h, i);
       var day = h.time[i].slice(0, 10);
       var boundary = (i === start) || (day !== prevDay);
       prevDay = day;
@@ -3339,12 +3435,12 @@
       var label = isNow ? "Now" : (midnight ? ht.toLocaleDateString(undefined, { weekday: "short" }) : fmtHour(h.time[i]));
       html +=
         '<div class="cell tapcell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '" data-iso="' + h.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this hour">' +
-          waterHtml(amt, scale, pop) +
+          waterHtml(amt, scale, pop, sp) +
           '<div class="lbl' + (midnight && !isNow ? " day" : "") + '">' + label + '</div>' +
-          '<div class="ic">' + condIcon(h.weather_code[i], h.is_day[i]) + '</div>' +
+          '<div class="ic">' + condIcon(h.weather_code[i], h.is_day[i], sp) + '</div>' +
           '<div class="big">' + Math.round(h.temperature_2m[i]) + '°</div>' +
           '<div class="sub">Feels ' + Math.round(h.apparent_temperature[i]) + '°</div>' +
-          (amt > 0 ? '<div class="pamt">' + precipLabel(amt, false) + '</div>' : '') +
+          (amt > 0 ? pamtHtml(sp, false) : '') +
           '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';
     }
@@ -3400,18 +3496,18 @@
       var date = new Date(dd.time[i] + "T00:00:00");
       var name = isToday ? "Today"
         : date.toLocaleDateString(undefined, { weekday: "short" }) + " " + date.getDate();
-      var amt = dd.precipitation_sum[i];
+      var amt = dd.precipitation_sum[i], sp = daySplit(dd, i);
       var code = dayCode[dd.time[i]] != null ? dayCode[dd.time[i]] : dd.weather_code[i];
       var pop = dd.precipitation_probability_max[i] == null ? 0 : dd.precipitation_probability_max[i];
       html +=
         '<div class="cell tapcell' + (isToday ? " today" : "") + '" data-day="' + dd.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this day">' +
-          waterHtml(amt, scale, pop) +
+          waterHtml(amt, scale, pop, sp) +
           '<div class="lbl">' + name + '</div>' +
-          '<div class="ic">' + condIcon(code, 1) + '</div>' +
+          '<div class="ic">' + condIcon(code, 1, sp) + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
-          '<div class="ic sm">' + condIcon(code, 0) + '</div>' +
+          '<div class="ic sm">' + condIcon(code, 0, sp) + '</div>' +
           '<div class="big" style="font-weight: 400">' + Math.round(dd.temperature_2m_min[i]) + '°</div>' +
-          (amt > 0 ? '<div class="pamt">' + precipLabel(amt, true) + '</div>' : '') +
+          (amt > 0 ? pamtHtml(sp, true) : '') +
           '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';
     }

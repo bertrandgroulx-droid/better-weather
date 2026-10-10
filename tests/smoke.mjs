@@ -143,7 +143,7 @@ async function run() {
     assert(JSON.stringify(card.lines.filter((k) => k !== "air-line")) === JSON.stringify(["day-line", "wind-line", "moon-line"]), `metrics column is Daylight, Wind, (Air), Moon, got ${JSON.stringify(card.lines)}`);
     assert(!/\bPOP\b|Precip|\bH:|\bL:/.test(card.text) && !card.right, `POP, Precip, H/L and the right column are gone, got "${card.text}"`);
     assert(/Daylight\s+\d+h \d+m \(\d{1,2}:\d\d [ap]m to \d{1,2}:\d\d [ap]m\)/.test(card.text), `Daylight carries the sunrise–sunset window, got "${card.text}"`);
-    assert(/Moon\s+(New\s+[A-Z][a-z]{2} \d{1,2}\s*Full|Full\s+[A-Z][a-z]{2} \d{1,2}\s*New)\s+[A-Z][a-z]{2} \d{1,2}/.test(card.text), `moon line reads "Moon New <date> Full <date>", got "${card.text}"`);
+    assert(/Moon:\s+(New\s+[A-Z][a-z]{2} \d{1,2}\s*Full|Full\s+[A-Z][a-z]{2} \d{1,2}\s*New)\s+[A-Z][a-z]{2} \d{1,2}/.test(card.text), `moon line reads "Moon: New <date> Full <date>", got "${card.text}"`);
     assert(card.about, "the ⓘ sits in the metrics column");
   }
   // no bold anywhere (design review): every rendered element uses the regular weight
@@ -669,6 +669,72 @@ async function run() {
     await wpage.waitForSelector("#condBackdrop:not(.hidden)", { timeout: 5000 });
     assert(await wpage.$eval("#condRead", (e) => getComputedStyle(e).textAlign === "center" && [...e.querySelectorAll(".cr-line")].every((l) => getComputedStyle(l).justifyContent === "center")), "conditions readout is centred");
     await wctx.close();
+  }
+
+  // 12) Snow: rain and snow are told apart. Snow is labelled in cm of snow (white, stacked
+  // above any rain), an hour/day with both gets the rain-and-snow glyph and wording, freezing
+  // rain gets its own glyph, and Conditions reads out Rain and Snow separately.
+  {
+    const sctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const spage = await sctx.newPage();
+    const snowy = () => {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], rain: [], showers: [], snowfall: [], weather_code: [], wind_speed_10m: [], wind_gusts_10m: [], wind_direction_10m: [], is_day: [] };
+      for (let i = -48; i <= 200; i++) {
+        const t = new Date(now.getTime() + i * 3600e3);
+        // 2–3 h ahead: rain and snow; 4–8 h: snow; 30–32 h: freezing rain
+        let rain = 0, snowW = 0, code = 3, pop = 10;
+        if (i >= 2 && i <= 3) { rain = 0.3; snowW = 0.4; code = 71; pop = 80; }
+        if (i >= 4 && i <= 8) { snowW = 0.8; code = 73; pop = 85; }
+        if (i >= 30 && i <= 32) { rain = 0.4; code = 67; pop = 70; }
+        H.time.push(fmt(t)); H.temperature_2m.push(0); H.apparent_temperature.push(-5); H.precipitation_probability.push(pop);
+        H.precipitation.push(+(rain + snowW).toFixed(2)); H.rain.push(rain); H.showers.push(0); H.snowfall.push(+(snowW * 0.7).toFixed(2));
+        H.weather_code.push(code); H.wind_speed_10m.push(12); H.wind_gusts_10m.push(20); H.wind_direction_10m.push(300); H.is_day.push(1);
+      }
+      const D = { time: [], weather_code: [], temperature_2m_max: [], temperature_2m_min: [], precipitation_sum: [], rain_sum: [], showers_sum: [], snowfall_sum: [], precipitation_probability_max: [], wind_speed_10m_max: [], sunrise: [], sunset: [] };
+      const sd = new Date(now); sd.setHours(0, 0, 0, 0);
+      for (let k = -7; k < 16; k++) {
+        const d = new Date(sd.getTime() + k * 86400e3), ds = fmtDate(d);
+        // tomorrow: a snow day (8 mm water = 5.6 cm); the day after: rain and snow
+        const pr = k === 1 ? 8 : k === 2 ? 5 : 0, rn = k === 2 ? 3 : 0, sn = k === 1 ? 5.6 : k === 2 ? 1.4 : 0;
+        D.time.push(ds); D.weather_code.push(k === 1 ? 73 : k === 2 ? 71 : 3); D.temperature_2m_max.push(2); D.temperature_2m_min.push(-4);
+        D.precipitation_sum.push(pr); D.rain_sum.push(rn); D.showers_sum.push(0); D.snowfall_sum.push(sn);
+        D.precipitation_probability_max.push(pr ? 80 : 10); D.wind_speed_10m_max.push(20); D.sunrise.push(ds + "T07:50"); D.sunset.push(ds + "T18:50");
+      }
+      return { latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton", current: { time: fmt(new Date(now.getTime() + 15 * 60000)), temperature_2m: 0, apparent_temperature: -5, weather_code: 3, wind_speed_10m: 12, wind_gusts_10m: 20, wind_direction_10m: 300, precipitation: 0, is_day: 1 }, hourly: H, daily: D };
+    };
+    await spage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    let fUrl = "";
+    await spage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => { fUrl = r.request().url(); r.fulfill(json(snowy())); });
+    await spage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await spage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await spage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await spage.goto(URL);
+    await spage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    assert(/hourly=[^&]*\brain\b[^&]*\bsnowfall\b/.test(fUrl) && /daily=[^&]*\bsnowfall_sum\b/.test(fUrl), "forecast requests the rain/snowfall split");
+    // outlook: the first wet hour has both
+    const sOut = await spage.$eval("#summary .fcast", (e) => e.textContent);
+    assert(/^Rain and snow/.test(sOut), `outlook names rain and snow, got "${sOut}"`);
+    // daily: tomorrow is snow in cm (no mm), the day after shows both; the snow layer is drawn
+    const dcells = await spage.$$eval("#daily .cell", (cs) => { const t = cs.findIndex((c) => c.classList.contains("today")); return [cs[t + 1], cs[t + 2]].map((c) => ({ amt: (c.querySelector(".pamt") || {}).textContent || "", snow: !!c.querySelector(".pa-snow"), rain: !!c.querySelector(".pa-rain"), mixIcon: !!c.querySelector(".ic .wx"), fill: (c.querySelector(".water") || {}).getAttribute ? c.querySelector(".water").getAttribute("style") : "" })); });
+    assert(/^6 cm$/.test(dcells[0].amt) && dcells[0].snow && !dcells[0].rain, `snow day labelled in cm only, got ${JSON.stringify(dcells[0])}`);
+    assert(!dcells[0].mixIcon, "a snow day keeps the snow emoji (no custom glyph)");
+    assert(dcells[1].snow && dcells[1].rain && /1 cm/.test(dcells[1].amt) && /3 mm/.test(dcells[1].amt), `mixed day shows cm and mm, got ${JSON.stringify(dcells[1])}`);
+    assert(/linear-gradient/.test(dcells[1].fill), "mixed day's fill stacks rain under snow");
+    assert(dcells[1].mixIcon, "mixed day gets the rain-and-snow glyph");
+    // hourly: the mixed hour has the glyph; the freezing-rain hour has its own
+    const hglyphs = await spage.$$eval("#hourly .cell", (cs) => { const n = cs.findIndex((c) => c.classList.contains("now")); return { mix: !!cs[n + 2].querySelector(".ic .wx"), snow: !!cs[n + 5].querySelector(".ic .wx"), freeze: !!cs[n + 31].querySelector(".ic .wx") }; });
+    assert(hglyphs.mix && !hglyphs.snow && hglyphs.freeze, `glyphs: mixed and freezing custom, snow emoji, got ${JSON.stringify(hglyphs)}`);
+    // Conditions on the mixed hour: Precip row label, Rain and Snow read out separately
+    const n = await spage.$$eval("#hourly .cell", (cs) => cs.findIndex((c) => c.classList.contains("now")));
+    await (await spage.$$("#hourly .cell"))[n + 2].click();
+    await spage.waitForSelector("#condBackdrop:not(.hidden)", { timeout: 5000 });
+    await spage.waitForTimeout(300);
+    const sRead = await spage.$eval("#condRead", (e) => e.textContent.replace(/\s+/g, " "));
+    assert(/Rain 0\.3mm/.test(sRead) && /Snow 0\.3cm/.test(sRead), `conditions reads out rain and snow, got "${sRead}"`);
+    assert((await spage.$eval("#condBody .cc-plab", (e) => e.textContent)) === "Precip", "precip row is labelled Precip");
+    assert(await spage.$("#condBody .cp-bar.snow"), "snow bars drawn in the precip row");
+    await sctx.close();
   }
 
   await browser.close();

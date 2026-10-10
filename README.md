@@ -24,7 +24,8 @@ through — including recent history. Powered by the free
 - ⏱️ **Hourly strip** — swipe left/right through **48 hours of history** and
   **72 hours ahead** of "Now". A weekday label and divider mark each new day.
   Each hour shows the icon, temperature, feels-like, precipitation chance, and a
-  rising "water" fill for the amount.
+  rising fill for the amount — rain in blue (mm), snow as a white layer in cm of
+  fresh snow, stacked when both fall.
 - 📅 **Daily strip** — swipe through the full range, with **7 days of history**
   behind "Today", out to ~16 days ahead. Each day shows day/night icons,
   high/low, precipitation chance, and the precip "water" fill.
