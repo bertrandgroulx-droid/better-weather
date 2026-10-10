@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RainViewer snow check</title>
+<!-- PREVIEW / DIAGNOSTIC ONLY — not part of the app. Shows RainViewer's latest radar with its
+     snow marking off (as the app uses it) and on, and reads the pixel colours where it marks
+     snow, to see whether snow can be told apart and repainted. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  html, body { margin: 0; background: #14181f; color: #f3f6fa; font: 14px/1.35 system-ui, -apple-system, sans-serif; }
+  .wrap { padding: calc(env(safe-area-inset-top) + 8px) 8px 16px; }
+  h1 { font-size: 1rem; margin: 0 0 6px; }
+  .lbl { font-size: 0.78rem; color: #a7b2c2; margin: 8px 0 3px; }
+  .map { height: 210px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); }
+  .leaflet-container { background: #14181f; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+  .btns button { font: inherit; font-size: 0.78rem; color: #f3f6fa; background: #232a36; border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 4px 10px; }
+  pre { white-space: pre-wrap; font: 12px/1.4 ui-monospace, Menlo, monospace; background: #1c222c; border-radius: 10px; padding: 8px 10px; margin: 8px 0 0; }
+  .sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(255,255,255,0.3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RainViewer snow check</h1>
+  <div class="btns">
+    <button data-at="53.55,-113.49">Edmonton</button><button data-at="52.27,-113.81">Red Deer</button><button data-at="51.05,-114.07">Calgary</button><button id="here">My saved place</button>
+  </div>
+  <div class="lbl">Snow marking OFF — what the app shows today</div>
+  <div class="map" id="m0"></div>
+  <div class="lbl">Snow marking ON</div>
+  <div class="map" id="m1"></div>
+  <pre id="out">Loading…</pre>
+</div>
+<script>
+(function () {
+  var out = document.getElementById("out"), log = function (s) { out.innerHTML += "\n" + s; };
+  var at = [53.55, -113.49], Z = 6;
+  var base = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+  function mk(id) { var m = L.map(id, { zoomControl: false, attributionControl: false }).setView(at, Z); L.tileLayer(base, { maxNativeZoom: 16 }).addTo(m); return m; }
+  var m0 = mk("m0"), m1 = mk("m1"), syncing = false;
+  [[m0, m1], [m1, m0]].forEach(function (p) { p[0].on("move", function () { if (syncing) return; syncing = true; p[1].setView(p[0].getCenter(), p[0].getZoom(), { animate: false }); syncing = false; }); });
+  var host = "", path = "", l0 = null, l1 = null;
+
+  function hex(r, g, b) { return "#" + [r, g, b].map(function (v) { return ("0" + v.toString(16)).slice(-2); }).join(""); }
+  function loadImg(url) {
+    return new Promise(function (res, rej) { var i = new Image(); i.crossOrigin = "anonymous"; i.onload = function () { res(i); }; i.onerror = function () { rej(new Error("load failed")); }; i.src = url; });
+  }
+  function pixels(img) { var c = document.createElement("canvas"); c.width = c.height = 256; var g = c.getContext("2d"); g.drawImage(img, 0, 0); return g.getImageData(0, 0, 256, 256).data; }
+  function top(map, n) { return Object.keys(map).map(function (k) { return [k, map[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, n); }
+
+  // Compare the snow-off and snow-on versions of the 3×3 tiles around the point, pixel by pixel.
+  function analyse() {
+    out.textContent = "Point " + at.map(function (v) { return v.toFixed(2); }).join(", ") + " · frame " + new Date(+path.match(/(\d{9,})/)[1] * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    var n = Math.pow(2, Z), tx = Math.floor((at[1] + 180) / 360 * n), la = at[0] * Math.PI / 180, ty = Math.floor((1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2 * n);
+    var jobs = [];
+    for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) (function (x, y) {
+      var u = function (opt) { return host + path + "/256/" + Z + "/" + x + "/" + y + "/2/" + opt + ".png"; };
+      jobs.push(Promise.all([loadImg(u("1_0")), loadImg(u("1_1"))]));
+    })(tx + dx, ty + dy);
+    Promise.all(jobs).then(function (pairs) {
+      var echoOff = 0, echoOn = 0, diff = 0, snowCols = {}, rainCols = {}, sameCols = {};
+      try {
+        pairs.forEach(function (p) {
+          var a = pixels(p[0]), b = pixels(p[1]);
+          for (var i = 0; i < a.length; i += 4) {
+            var ea = a[i + 3] > 10, eb = b[i + 3] > 10;
+            if (ea) echoOff++; if (eb) echoOn++;
+            if (!ea && !eb) continue;
+            var ka = hex(a[i], a[i + 1], a[i + 2]), kb = hex(b[i], b[i + 1], b[i + 2]);
+            if (ka !== kb || ea !== eb) { diff++; if (eb) snowCols[kb] = (snowCols[kb] || 0) + 1; if (ea) rainCols[ka] = (rainCols[ka] || 0) + 1; }
+            else sameCols[kb] = (sameCols[kb] || 0) + 1;
+          }
+        });
+      } catch (e) { log("✗ Can't read RainViewer's pixels here (" + e.name + "), so repainting wouldn't work."); return; }
+      log("✓ Pixels readable (repainting is possible).");
+      log("Echo pixels: snow-off " + echoOff + " · snow-on " + echoOn + " · changed by snow marking " + diff + " (" + (echoOn ? Math.round(diff / echoOn * 100) : 0) + "%)");
+      var sw = function (list) { return list.length ? list.map(function (e) { return '<span class="sw" style="background:' + e[0] + '"></span>' + e[0] + " ×" + e[1]; }).join("  ") : "(none)"; };
+      log("\nSnow-on colours where it marks snow (top 10):\n" + sw(top(snowCols, 10)));
+      log("\nSame pixels with snow off (top 6):\n" + sw(top(rainCols, 6)));
+      log("\nColours not marked as snow (top 6):\n" + sw(top(sameCols, 6)));
+    }).catch(function (e) { log("✗ Tiles didn't load: " + e.message); });
+  }
+  function show() {
+    [m0, m1].forEach(function (m) { m.setView(at, Z, { animate: false }); });
+    var u = function (opt) { return host + path + "/256/{z}/{x}/{y}/2/" + opt + ".png"; };
+    if (l0) { l0.setUrl(u("1_0")); l1.setUrl(u("1_1")); }
+    else { l0 = L.tileLayer(u("1_0"), { opacity: 0.9, maxNativeZoom: 7 }).addTo(m0); l1 = L.tileLayer(u("1_1"), { opacity: 0.9, maxNativeZoom: 7 }).addTo(m1); }
+    analyse();
+  }
+  fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (api) {
+    host = api.host; var past = api.radar.past; path = past[past.length - 1].path; show();
+  }).catch(function (e) { out.textContent = "✗ RainViewer didn't respond: " + e.message; });
+  document.querySelectorAll("[data-at]").forEach(function (b) { b.addEventListener("click", function () { at = b.dataset.at.split(",").map(Number); show(); }); });
+  document.getElementById("here").addEventListener("click", function () {
+    try { var s = JSON.parse(localStorage.getItem("bw-last-loc") || "null"); if (s && s.lat != null) { at = [s.lat, s.lon]; show(); } } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
