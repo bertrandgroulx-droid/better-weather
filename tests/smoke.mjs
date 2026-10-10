@@ -655,6 +655,10 @@ async function run() {
     await wpage.$eval("#windScroll", (e) => { e.scrollLeft += 15 * 30; }); // 30 hours on
     await wpage.waitForTimeout(500);
     assert(!/now/.test(await wpage.$eval("#windRead", (e) => e.textContent)), "scrolling off now updates the readout");
+    // back-to-now arrow: hidden at now, shown once scrolled off (pointing back), tap glides home
+    assert(await wpage.$eval("#windNow", (b) => getComputedStyle(b).display !== "none" && !b.classList.contains("right")), "wind back-to-now arrow shows, pointing left");
+    await wpage.click("#windNow"); await wpage.waitForTimeout(1000);
+    assert(/now/.test(await wpage.$eval("#windRead", (e) => e.textContent)) && await wpage.$eval("#windNow", (b) => getComputedStyle(b).display === "none"), "wind arrow returns to now and hides");
     // the day picker jumps to a day
     const lastDay = await wpage.$$eval("#windDays .cd-day", (b) => b[b.length - 1].dataset.day);
     await wpage.click(`#windDays .cd-day[data-day="${lastDay}"]`); await wpage.waitForTimeout(300);
@@ -668,6 +672,12 @@ async function run() {
     await (await wpage.$$("#hourly .cell"))[nowI + 2].click();
     await wpage.waitForSelector("#condBackdrop:not(.hidden)", { timeout: 5000 });
     assert(await wpage.$eval("#condRead", (e) => getComputedStyle(e).textAlign === "center" && [...e.querySelectorAll(".cr-line")].every((l) => getComputedStyle(l).justifyContent === "center")), "conditions readout is centred");
+    // its back-to-now arrow: shown once scrolled off now, tap returns to now
+    await wpage.waitForTimeout(400);
+    await wpage.$eval("#condScroll", (e) => { e.scrollLeft += 15 * 20; }); await wpage.waitForTimeout(700);
+    assert(await wpage.$eval("#condNow", (b) => getComputedStyle(b).display !== "none"), "conditions back-to-now arrow shows off now");
+    await wpage.click("#condNow"); await wpage.waitForTimeout(1000);
+    assert(/now/.test(await wpage.$eval("#condRead", (e) => e.textContent)), "conditions arrow returns to now");
     await wctx.close();
   }
 
