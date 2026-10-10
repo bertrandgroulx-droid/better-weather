@@ -42,7 +42,7 @@
   function mk(id) { var m = L.map(id, { zoomControl: false, attributionControl: false }).setView(at, Z); L.tileLayer(base, { maxNativeZoom: 16 }).addTo(m); return m; }
   var m0 = mk("m0"), m1 = mk("m1"), syncing = false;
   [[m0, m1], [m1, m0]].forEach(function (p) { p[0].on("move", function () { if (syncing) return; syncing = true; p[1].setView(p[0].getCenter(), p[0].getZoom(), { animate: false }); syncing = false; }); });
-  var host = "", path = "", l0 = null, l1 = null;
+  var host = "", path = "", ftime = 0, l0 = null, l1 = null;
 
   function hex(r, g, b) { return "#" + [r, g, b].map(function (v) { return ("0" + v.toString(16)).slice(-2); }).join(""); }
   function loadImg(url) {
@@ -53,7 +53,7 @@
 
   // Compare the snow-off and snow-on versions of the 3×3 tiles around the point, pixel by pixel.
   function analyse() {
-    out.textContent = "Point " + at.map(function (v) { return v.toFixed(2); }).join(", ") + " · frame " + new Date(+path.match(/(\d{9,})/)[1] * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    out.textContent = "Point " + at.map(function (v) { return v.toFixed(2); }).join(", ") + " · frame " + new Date(ftime * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     var n = Math.pow(2, Z), tx = Math.floor((at[1] + 180) / 360 * n), la = at[0] * Math.PI / 180, ty = Math.floor((1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2 * n);
     var jobs = [];
     for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) (function (x, y) {
@@ -91,7 +91,7 @@
     analyse();
   }
   fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (api) {
-    host = api.host; var past = api.radar.past; path = past[past.length - 1].path; show();
+    host = api.host; var past = api.radar.past; path = past[past.length - 1].path; ftime = past[past.length - 1].time; show();
   }).catch(function (e) { out.textContent = "✗ RainViewer didn't respond: " + e.message; });
   document.querySelectorAll("[data-at]").forEach(function (b) { b.addEventListener("click", function () { at = b.dataset.at.split(",").map(Number); show(); }); });
   document.getElementById("here").addEventListener("click", function () {
