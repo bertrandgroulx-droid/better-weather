@@ -391,7 +391,10 @@
   .mo-band .mb-illum { fill: #f1f4f8; fill-opacity: 0.92; }
   .mo-band .mb-day { stroke: rgba(255,255,255,0.22); stroke-width: 1; }
   /* fixed centre line through the band (the dipstick), under the yellow pointer */
-  .mo-cursor::after { content: ""; position: absolute; left: 50%; top: 2px; height: 30px; width: 3px; transform: translateX(-50%); background: var(--accent); border-radius: 2px; box-shadow: 0 0 0 1.5px rgba(14,36,64,0.9); }
+  /* the centre: the yellow pointer over a thin white line (dark edge so it reads on a full-moon band) */
+  .mo-cursor::after { content: ""; position: absolute; left: 50%; top: 2px; height: 30px; width: 2px; transform: translateX(-50%); background: #ffffff; border-radius: 1px; box-shadow: 0 0 0 1.5px rgba(14,36,64,0.95); }
+  /* NOW: a bold yellow bar on the band that moves with it, over the yellow NOW label */
+  .mo-nowbar { position: absolute; top: 0; height: 30px; width: 3px; margin-left: -1.5px; background: var(--accent); border-radius: 2px; box-shadow: 0 0 0 1.5px rgba(14,36,64,0.9); z-index: 1; }
   .mo-track .ml { position: absolute; top: 33px; transform: translateX(-50%); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
   .mo-track .ml-now { color: var(--accent); font-weight: 400; }
   /* stat rows */
@@ -2265,7 +2268,8 @@
     }
     var tr = $("moTrack"); tr.style.width = W + "px";
     tr.innerHTML = '<svg class="mo-band" width="' + W + '" height="' + (MO_BAND_Y * 2) + '" viewBox="0 0 ' + W + ' ' + (MO_BAND_Y * 2) + '" aria-hidden="true">' +
-      ticks + '<polygon class="mb-illum" points="' + top + bot + '"/></svg>' + labs;
+      ticks + '<polygon class="mb-illum" points="' + top + bot + '"/></svg>' + labs +
+      '<i class="mo-nowbar" style="left:' + nowX.toFixed(1) + 'px"></i>';
   }
   function moonScrollFor(ms) { return Math.round((ms - moonUI.t0) / 3600000) * MO_PX; }
   // Put the scrubber on an instant and hold it there for a moment. iOS Safari can drop or

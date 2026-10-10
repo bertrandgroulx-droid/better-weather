@@ -263,6 +263,7 @@ async function run() {
   assert((await page.$eval("#moWhen", (e) => e.textContent)) !== when0, "scrubbing moves the selected time");
   // the track marks the current hour "Now" (in place of today's date)
   assert((await page.$$eval("#moTrack .ml-now", (e) => e.map((x) => x.textContent))).join() === "Now", "moon track labels the current hour Now");
+  assert(await page.$eval("#moTrack .mo-nowbar", (b) => Math.abs(parseFloat(b.style.left) - parseFloat(document.querySelector("#moTrack .ml-now").style.left)) < 0.5), "the NOW bar sits over the Now label");
   // drag anywhere: a sideways drag across the Moon picture moves the scrubber; an up/down one doesn't
   const drag = async (pg, sel, dx, dy) => { const b = await (await pg.$(sel)).boundingBox(); const x = b.x + b.width / 2, y = b.y + b.height / 2; await pg.mouse.move(x, y); await pg.mouse.down(); for (let k = 1; k <= 10; k++) await pg.mouse.move(x + dx * k / 10, y + dy * k / 10); await pg.mouse.up(); await pg.waitForTimeout(300); };
   const sl0 = await page.$eval("#moScroll", (e) => e.scrollLeft), when1 = await page.$eval("#moWhen", (e) => e.textContent);
