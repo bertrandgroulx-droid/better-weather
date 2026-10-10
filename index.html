@@ -655,6 +655,8 @@
   .cell .pamt .pa-rain, .cell .pamt .pa-snow { display: block; line-height: 1.15; }
   .cell .pamt .pa-snow { color: #16304f; text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.6); } /* white halo: readable even where a tiny fill sits below the label */
   .cell .pamt.two { bottom: 14px; }
+  /* rain and snow: the mm label can sit on the white snow, so it turns dark blue there */
+  .cell .pamt.two .pa-rain { color: #0d4f9e; text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.6); }
   .cell .big { font-size: 1.4rem; font-weight: 400; line-height: 1.1; }
   .cell .sub { font-size: 0.66rem; color: var(--muted); white-space: nowrap; }
   /* precip amount sits on the water; POP goes at the very bottom in brackets */
@@ -3436,9 +3438,9 @@
     "rgba(76,201,240,0.58)",  // mid
     "rgba(48,176,240,0.92)"   // high
   ];
-  // Snow's tones, same three chance buckets: near-solid white, firmer as the chance rises
-  // (its cm label is dark navy to read on it).
-  var SNOW_TONE = ["rgba(240,246,255,0.62)", "rgba(246,250,255,0.80)", "rgba(255,255,255,0.95)"];
+  // Snow's tones, same three chance buckets: always clearly white, so snow never reads as rain
+  // even at a low chance (the chance shows under the column); its cm label is dark navy.
+  var SNOW_TONE = ["rgba(250,252,255,0.92)", "rgba(252,253,255,0.95)", "rgba(255,255,255,0.97)"];
   // The fill: height from the total (rain + snow as water); on a mixed day it stacks,
   // rain (blue) at the bottom and snow (white) on top. The wavy top takes the top layer's tone.
   function waterHtml(amount, scale, pop, sp) {
