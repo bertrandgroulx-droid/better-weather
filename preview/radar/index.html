@@ -4,168 +4,210 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Radar preview · rain vs snow</title>
-<!-- PREVIEW ONLY — not part of the app. A standalone page for trying Environment Canada's
-     rain/snow radar layers side by side with the app's current RainViewer radar. -->
+<!-- PREVIEW ONLY — not part of the app. Version 2: Environment Canada's rain and snow radar,
+     each repainted in its own colour scale (rain green→purple, snow pale→deep blue), city
+     labels drawn above the radar, lightly smoothed; with a switch to the app's RainViewer. -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  :root { --bg: #0b1f3a; --card: rgba(11,31,58,0.88); --border: rgba(255,255,255,0.14); --text: #f3f8ff; --muted: #9fb6d0; --accent: #ffd166; }
+  :root { --bg: #14181f; --card: rgba(24,29,38,0.9); --border: rgba(255,255,255,0.14); --text: #f3f6fa; --muted: #a7b2c2; --accent: #ffd166; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
   #map { position: fixed; inset: 0; }
   .leaflet-container { background: var(--bg); font-family: inherit; }
+  /* the radar sits under the labels, softened a touch so the 1 km pixels don't read as blocks */
+  .leaflet-radar-pane { filter: blur(0.7px); }
   .panel { position: fixed; z-index: 1000; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-  .top { top: calc(env(safe-area-inset-top) + 10px); left: 10px; right: 10px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
-  .top .ttl { font-size: 0.8rem; color: var(--muted); flex-basis: 100%; }
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
-  .seg button, .chip { background: none; border: 0; color: var(--muted); font: inherit; font-size: 0.8rem; padding: 5px 11px; cursor: pointer; }
-  .seg button.on { background: var(--accent); color: #0b1f3a; }
-  .chip { border: 1px solid var(--border); border-radius: 999px; }
-  .chip.on { color: var(--text); border-color: var(--text); }
-  .chip i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
-  .bottom { left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom) + 26px); padding: 8px 10px; } /* clear of the map credits */
-  .row { display: flex; align-items: center; gap: 10px; }
-  .row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
-  .row .t { font-size: 0.8rem; min-width: 104px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .play { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: none; color: var(--text); font-size: 0.9rem; cursor: pointer; }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; align-items: flex-start; }
-  .legend .lg { font-size: 0.68rem; color: var(--muted); }
-  .legend img { display: block; max-height: 104px; background: rgba(255,255,255,0.92); border-radius: 6px; padding: 3px; margin-top: 2px; }
-  .legend .grad { width: 130px; height: 9px; border-radius: 5px; margin-top: 3px; background: linear-gradient(90deg, #4f8fff, #34c6ff, #4fe08b, #ffd84a, #ff8a3d, #ff3b3b); }
-  .status { font-size: 0.72rem; color: var(--muted); margin-top: 5px; }
+  /* slim legend bar across the top, like a weather app's */
+  .legend { top: calc(env(safe-area-inset-top) + 8px); left: 8px; right: 8px; padding: 7px 10px; display: flex; gap: 12px; align-items: center; font-size: 0.78rem; }
+  .legend .lg { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; cursor: pointer; }
+  .legend .lg.off { opacity: 0.35; }
+  .legend .bar { flex: 1; height: 8px; border-radius: 4px; min-width: 50px; }
+  .bar.rain { background: linear-gradient(90deg, #6fbf5a, #2f9a4c, #f2d43c, #f08a2c, #d93636, #b03aa8, #7d3cc0); }
+  .bar.snow { background: linear-gradient(90deg, #cfe8f3, #8cc3de, #4f93c4, #2a5f9e, #1c3d73); }
+  .bar.rv { background: linear-gradient(90deg, #4f8fff, #34c6ff, #4fe08b, #ffd84a, #ff8a3d, #ff3b3b); }
+  /* source switch: small, under the legend */
+  .src { top: calc(env(safe-area-inset-top) + 50px); left: 8px; padding: 3px; display: inline-flex; border-radius: 999px; }
+  .src button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 0.74rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+  .src button.on { background: var(--accent); color: #14181f; }
+  /* timeline */
+  .time { left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 24px); padding: 8px 12px; display: flex; align-items: center; gap: 12px; }
+  .time .when { font-size: 0.82rem; line-height: 1.2; min-width: 72px; font-variant-numeric: tabular-nums; }
+  .time .when small { display: block; color: var(--muted); font-size: 0.7rem; }
+  .play { width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--text); font-size: 1.05rem; cursor: pointer; flex: none; }
+  .time input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .status { position: fixed; z-index: 1000; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 84px); font-size: 0.7rem; color: var(--muted); text-shadow: 0 1px 3px #000; }
   .status.err { color: #ffb4b4; }
-  .note { font-size: 0.66rem; color: var(--muted); opacity: 0.85; margin-top: 4px; }
+  .leaflet-control-attribution { font-size: 9px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
-<div class="panel top">
-  <div class="ttl">Radar preview — rain vs snow · not part of the app</div>
-  <div class="seg" role="group" aria-label="Radar source">
-    <button type="button" data-src="ec" class="on">Environment Canada</button><button type="button" data-src="rv">RainViewer (current)</button>
-  </div>
-  <button type="button" class="chip on" data-layer="rain"><i style="background:#34c6ff"></i>Rain</button>
-  <button type="button" class="chip on" data-layer="snow"><i style="background:#f2f6ff"></i>Snow</button>
+<div class="panel legend" id="legend"></div>
+<div class="panel src" role="group" aria-label="Radar source">
+  <button type="button" data-src="ec" class="on">Environment Canada</button><button type="button" data-src="rv">RainViewer (app today)</button>
 </div>
-
-<div class="panel bottom">
-  <div class="row">
-    <button type="button" class="play" id="play" aria-label="Play">▶</button>
-    <input type="range" id="slider" min="0" max="0" value="0" aria-label="Time">
-    <span class="t" id="time">loading…</span>
-  </div>
-  <div class="legend" id="legend"></div>
-  <div class="status" id="status"></div>
-  <div class="note">Environment Canada GeoMet radar (rain rate and snow rate, every 6 min, Canada + northern US border) · RainViewer free tier (one colour scale, no rain/snow split).</div>
+<div class="status" id="status"></div>
+<div class="panel time">
+  <div class="when" id="when">–<small>loading</small></div>
+  <button type="button" class="play" id="play" aria-label="Play">▶</button>
+  <input type="range" id="slider" min="0" max="0" value="0" aria-label="Time">
 </div>
 
 <script>
 (function () {
   var EC = "https://geo.weather.gc.ca/geomet";
-  var EC_RAIN = "RADAR_1KM_RRAI", EC_SNOW = "RADAR_1KM_RSNO";
-  var TOKEN = atob("cGsuZXlKMUlqb2lZbVZ5ZEhKaGJtUm5jbTkxYkhnaUxDSmhJam9pWTIxMGJIcG1ZbkUyTURGd2NqTTBjSGwxYlhGaWIyWnROQ0o5LnJjamswWkNPQzh0ZFFVN1lOcDlUYnc=");
+  var LAYER = { rain: "RADAR_1KM_RRAI", snow: "RADAR_1KM_RSNO" };
   var $ = function (id) { return document.getElementById(id); };
-  var status = function (msg, err) { var s = $("status"); s.textContent = msg; s.classList.toggle("err", !!err); };
+  var status = function (msg, err) { var s = $("status"); s.textContent = msg || ""; s.classList.toggle("err", !!err); };
 
-  // Start on the place the app last showed (same site, so its saved location is readable),
-  // else ?lat=&lon=, else Calgary.
-  var q = new URLSearchParams(location.search), start = { lat: 51.05, lon: -114.07, name: "Calgary" };
-  try { var s = JSON.parse(localStorage.getItem("bw-last-loc") || "null"); if (s && s.lat != null) start = s; } catch (e) {}
+  // open on the place the app last showed (same site), else ?lat=&lon=, else Calgary
+  var q = new URLSearchParams(location.search), start = { lat: 51.05, lon: -114.07 };
+  try { var sv = JSON.parse(localStorage.getItem("bw-last-loc") || "null"); if (sv && sv.lat != null) start = sv; } catch (e) {}
   if (q.get("lat") && q.get("lon")) start = { lat: +q.get("lat"), lon: +q.get("lon") };
 
-  var map = L.map("map", { zoomControl: false, attributionControl: true }).setView([start.lat, start.lon], 7);
-  L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
-    id: "mapbox/dark-v11", tileSize: 512, zoomOffset: -1, maxZoom: 12, accessToken: TOKEN, attribution: "&copy; Mapbox &copy; OpenStreetMap"
-  }).addTo(map);
-  L.circleMarker([start.lat, start.lon], { radius: 5, color: "#ffd166", weight: 2, fillOpacity: 0.9 }).addTo(map);
+  var map = L.map("map", { zoomControl: false }).setView([start.lat, start.lon], 7);
+  // dark basemap without labels, radar above it, then the labels on top (own panes)
+  map.createPane("radar").style.zIndex = 380;
+  map.createPane("labels").style.zIndex = 420; map.getPane("labels").style.pointerEvents = "none";
+  var carto = "https://{s}.basemaps.cartocdn.com/{style}/{z}/{x}/{y}{r}.png", cAttr = '&copy; OpenStreetMap &copy; CARTO';
+  L.tileLayer(carto, { style: "dark_nolabels", subdomains: "abcd", maxZoom: 12, attribution: cAttr }).addTo(map);
+  L.tileLayer(carto, { style: "dark_only_labels", subdomains: "abcd", maxZoom: 12, pane: "labels" }).addTo(map);
+  L.circleMarker([start.lat, start.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#3b6cff", fillOpacity: 1, pane: "labels" }).addTo(map);
 
-  var source = "ec", show = { rain: true, snow: true }, times = [], idx = 0, timer = null;
-  var ecRain = null, ecSnow = null, rvLayer = null, rvHost = "", rvFrames = [];
-
-  // ---------- Environment Canada (WMS, with a TIME parameter per frame) ----------
-  function ecLayer(name) {
-    var l = L.tileLayer.wms(EC, { layers: name, format: "image/png", transparent: true, version: "1.3.0", opacity: 0.85, attribution: "Radar &copy; Environment and Climate Change Canada", uppercase: true });
-    var bad = 0;
-    l.on("tileerror", function () { if (++bad === 4) status("Some Environment Canada tiles failed to load (" + name + ").", true); });
-    l.on("load", function () { if (source === "ec") status("Environment Canada · " + times.length + " frames, 6 min apart · tiles loaded"); });
-    return l;
+  // ---------- repaint: Environment Canada draws both layers on the same rainbow scale ----------
+  // Their scale runs light blue → blue → green → yellow → orange → red → magenta → purple as the
+  // rate rises. Read each pixel's position on that scale from its hue, then paint it on a scale
+  // of its own: rain green→yellow→red→purple, snow pale→deep blue.
+  var RAMP = {
+    rain: [[111,191,90],[47,154,76],[242,212,60],[240,138,44],[217,54,54],[176,58,168],[125,60,192]],
+    snow: [[207,232,243],[140,195,222],[79,147,196],[42,95,158],[28,61,115]]
+  };
+  function scaleT(r, g, b) { // 0 (lightest) … 1 (heaviest) from the source colour
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h;
+    if (d < 12) return 0.05;                                  // greys/whites: the lightest step
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    if (h >= 180 && h < 255) return 0.02 + 0.16 * (1 - (mx + mn) / 510) * 1.6;   // blues (lighter = lower)
+    if (h >= 70 && h < 180) return 0.2 + (180 - h) / 110 * 0.25;                // cyan-green → yellow-green
+    if (h >= 40 && h < 70) return 0.45 + (70 - h) / 30 * 0.15;                  // yellow
+    if (h < 40) return 0.6 + (40 - h) / 40 * 0.2;                               // orange → red
+    return 0.8 + (360 - h) / 105 * 0.2;                                          // red → magenta → purple
   }
-  // Available times from the layer's capabilities ("start/end/PT6M"); if that request fails
-  // (network or CORS), fall back to the last 3 hours at 6-minute steps ending ~12 min ago.
+  function rampAt(ramp, t) {
+    t = Math.max(0, Math.min(1, t)) * (ramp.length - 1);
+    var i = Math.floor(t), f = t - i, a = ramp[i], b = ramp[Math.min(ramp.length - 1, i + 1)];
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  }
+  var remapOK = true;
+  // A WMS tile layer that fetches each tile as an image and repaints it on a canvas.
+  var RepaintWMS = L.GridLayer.extend({
+    initialize: function (kind, opts) { this.kind = kind; this.time = null; L.setOptions(this, opts); },
+    tileUrl: function (c) {
+      var size = this.getTileSize(), nw = this._map.unproject([c.x * size.x, c.y * size.y], c.z), se = this._map.unproject([(c.x + 1) * size.x, (c.y + 1) * size.y], c.z);
+      var a = L.CRS.EPSG3857.project(nw), b = L.CRS.EPSG3857.project(se);
+      return EC + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&CRS=EPSG:3857&WIDTH=256&HEIGHT=256" +
+        "&LAYERS=" + LAYER[this.kind] + "&STYLES=&BBOX=" + [a.x, b.y, b.x, a.y].join(",") + (this.time ? "&TIME=" + this.time : "");
+    },
+    createTile: function (c, done) {
+      var tile = document.createElement("canvas"), kind = this.kind; tile.width = tile.height = 256;
+      var img = new Image(); img.crossOrigin = "anonymous";
+      img.onload = function () {
+        var g = tile.getContext("2d"); g.drawImage(img, 0, 0);
+        try {
+          var d = g.getImageData(0, 0, 256, 256), p = d.data, ramp = RAMP[kind];
+          for (var i = 0; i < p.length; i += 4) {
+            if (p[i + 3] < 16) { p[i + 3] = 0; continue; }
+            var c2 = rampAt(ramp, scaleT(p[i], p[i + 1], p[i + 2]));
+            p[i] = c2[0]; p[i + 1] = c2[1]; p[i + 2] = c2[2]; p[i + 3] = 215;
+          }
+          g.putImageData(d, 0, 0);
+        } catch (e) { // the server didn't allow reading the pixels (CORS): keep its own colours
+          if (remapOK) { remapOK = false; status("Couldn't repaint Environment Canada's colours here (their server blocks it), so rain and snow show in their original shared colours.", true); }
+        }
+        done(null, tile);
+      };
+      var url = this.tileUrl(c);
+      // If the server won't allow reading the pixels, the image fails to load with crossOrigin
+      // set: load it again without, and show it in Environment Canada's own colours.
+      img.onerror = function () {
+        if (!img.crossOrigin) return done(new Error("tile"), tile);
+        if (remapOK) { remapOK = false; status("Couldn't repaint Environment Canada's colours here (their server blocks it), so rain and snow show in their original shared colours.", true); }
+        img = new Image();
+        img.onload = function () { tile.getContext("2d").drawImage(img, 0, 0); done(null, tile); };
+        img.onerror = function () { done(new Error("tile"), tile); };
+        img.src = url;
+      };
+      img.src = url;
+      return tile;
+    },
+    setTime: function (iso) { this.time = iso; this.redraw(); }
+  });
+
+  var src = "ec", show = { rain: true, snow: true }, times = [], idx = 0, timer = null;
+  var ec = { rain: new RepaintWMS("rain", { pane: "radar", opacity: 0.9, attribution: "Radar &copy; Environment and Climate Change Canada" }), snow: new RepaintWMS("snow", { pane: "radar", opacity: 0.9 }) };
+  var rvLayer = null, rvHost = "", rvFrames = [];
+
   function ecTimes() {
-    var url = EC + "?service=WMS&version=1.3.0&request=GetCapabilities&layer=" + EC_RAIN;
-    return fetch(url).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }).then(function (xml) {
-      var m = xml.match(/<Dimension[^>]*name="time"[^>]*>([^<]+)<\/Dimension>/i);
-      if (!m) throw new Error("no time dimension");
-      var p = m[1].trim().split("/"), t0 = Date.parse(p[0]), t1 = Date.parse(p[1]), step = 6 * 60000;
-      var out = []; for (var t = Math.max(t0, t1 - 3 * 3600000); t <= t1; t += step) out.push(t);
-      return { list: out, how: "from Environment Canada's capabilities" };
-    }).catch(function (e) {
+    return fetch(EC + "?service=WMS&version=1.3.0&request=GetCapabilities&layer=" + LAYER.rain).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }).then(function (xml) {
+      var m = xml.match(/<Dimension[^>]*name="time"[^>]*>([^<]+)<\/Dimension>/i); if (!m) throw new Error("no time list");
+      var p = m[1].trim().split("/"), t1 = Date.parse(p[1]), t0 = Math.max(Date.parse(p[0]), t1 - 3 * 3600000), out = [];
+      for (var t = t0; t <= t1; t += 360000) out.push(t);
+      return out;
+    }).catch(function () {
       var end = Math.floor((Date.now() - 12 * 60000) / 360000) * 360000, out = [];
       for (var t = end - 3 * 3600000; t <= end; t += 360000) out.push(t);
-      return { list: out, how: "estimated (capabilities request failed: " + e.message + ")" };
+      return out;
     });
   }
-  function ecLegend() {
-    var lg = function (layer) { return EC + "?service=WMS&version=1.3.0&request=GetLegendGraphic&sld_version=1.1.0&format=image/png&layer=" + layer; };
-    $("legend").innerHTML =
-      (show.rain ? '<div class="lg">Rain<img alt="Rain legend" src="' + lg(EC_RAIN) + '"></div>' : "") +
-      (show.snow ? '<div class="lg">Snow<img alt="Snow legend" src="' + lg(EC_SNOW) + '"></div>' : "");
+  function legend() {
+    $("legend").innerHTML = src === "ec"
+      ? '<div class="lg' + (show.rain ? "" : " off") + '" data-k="rain">Rain<i class="bar rain"></i></div><div class="lg' + (show.snow ? "" : " off") + '" data-k="snow">Snow<i class="bar snow"></i></div>'
+      : '<div class="lg">Precipitation (rain and snow look alike)<i class="bar rv"></i></div>';
   }
-
-  // ---------- RainViewer (what the app uses today) ----------
-  function rvLoad() {
-    return fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (api) {
-      rvHost = api.host; rvFrames = (api.radar && api.radar.past) || [];
-      return rvFrames.map(function (f) { return f.time * 1000; });
-    });
-  }
-  function rvUrl(i) { return rvHost + rvFrames[i].path + "/256/{z}/{x}/{y}/2/1_0.png"; }
-
-  // ---------- frames ----------
-  function label(t) { return new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + (idx === times.length - 1 ? " · latest" : ""); }
   function showFrame(i) {
-    idx = Math.max(0, Math.min(times.length - 1, i)); $("slider").value = idx; $("time").textContent = label(times[idx]);
-    if (source === "ec") {
-      var iso = new Date(times[idx]).toISOString().replace(/\.\d{3}Z$/, "Z");
-      [[ecRain, "rain"], [ecSnow, "snow"]].forEach(function (p) {
-        if (show[p[1]]) { p[0].setParams({ TIME: iso }); if (!map.hasLayer(p[0])) p[0].addTo(map); } else if (map.hasLayer(p[0])) map.removeLayer(p[0]);
+    idx = Math.max(0, Math.min(times.length - 1, i)); $("slider").value = idx;
+    var d = new Date(times[idx]);
+    $("when").innerHTML = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "<small>" + (idx === times.length - 1 ? "latest" : d.toLocaleDateString([], { weekday: "short", day: "numeric" })) + "</small>";
+    if (src === "ec") {
+      var iso = d.toISOString().replace(/\.\d{3}Z$/, "Z");
+      ["rain", "snow"].forEach(function (k) {
+        if (show[k]) { if (!map.hasLayer(ec[k])) { ec[k].time = iso; ec[k].addTo(map); } else ec[k].setTime(iso); }
+        else if (map.hasLayer(ec[k])) map.removeLayer(ec[k]);
       });
     } else {
-      var url = rvUrl(idx);
-      if (!rvLayer) rvLayer = L.tileLayer(url, { opacity: 0.8, maxNativeZoom: 7, maxZoom: 12, attribution: "Radar &copy; RainViewer" }).addTo(map);
-      else rvLayer.setUrl(url);
+      var url = rvHost + rvFrames[idx].path + "/256/{z}/{x}/{y}/2/1_0.png";
+      if (!rvLayer) rvLayer = L.tileLayer(url, { pane: "radar", opacity: 0.85, maxNativeZoom: 7, maxZoom: 12, attribution: "Radar &copy; RainViewer" }).addTo(map); else rvLayer.setUrl(url);
     }
   }
-  function setSource(src) {
-    source = src; stop();
-    document.querySelectorAll(".seg button").forEach(function (b) { b.classList.toggle("on", b.dataset.src === src); });
-    document.querySelectorAll(".chip").forEach(function (c) { c.style.display = src === "ec" ? "" : "none"; });
-    if (src === "ec") {
+  function setSource(s) {
+    src = s; stop(); legend(); status("");
+    document.querySelectorAll(".src button").forEach(function (b) { b.classList.toggle("on", b.dataset.src === s); });
+    if (s === "ec") {
       if (rvLayer) { map.removeLayer(rvLayer); rvLayer = null; }
-      if (!ecRain) { ecRain = ecLayer(EC_RAIN); ecSnow = ecLayer(EC_SNOW); }
-      status("Loading Environment Canada radar…");
-      ecTimes().then(function (r) { times = r.list; $("slider").max = times.length - 1; status("Environment Canada · times " + r.how); ecLegend(); showFrame(times.length - 1); });
+      ecTimes().then(function (list) { times = list; $("slider").max = times.length - 1; showFrame(times.length - 1); });
     } else {
-      [ecRain, ecSnow].forEach(function (l) { if (l && map.hasLayer(l)) map.removeLayer(l); });
-      $("legend").innerHTML = '<div class="lg">Precipitation (rain and snow look the same)<div class="grad"></div></div>';
-      status("Loading RainViewer…");
-      rvLoad().then(function (list) { times = list; $("slider").max = times.length - 1; status("RainViewer · " + times.length + " frames (free tier: past ~2 h, one colour scale)"); showFrame(times.length - 1); })
-        .catch(function (e) { status("RainViewer didn't respond: " + e.message, true); });
+      ["rain", "snow"].forEach(function (k) { if (map.hasLayer(ec[k])) map.removeLayer(ec[k]); });
+      fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (api) {
+        rvHost = api.host; rvFrames = (api.radar && api.radar.past) || [];
+        times = rvFrames.map(function (f) { return f.time * 1000; }); $("slider").max = times.length - 1; showFrame(times.length - 1);
+      }).catch(function (e) { status("RainViewer didn't respond: " + e.message, true); });
     }
   }
   function stop() { if (timer) { clearInterval(timer); timer = null; } $("play").textContent = "▶"; }
   $("play").addEventListener("click", function () {
     if (timer) return stop();
     $("play").textContent = "❚❚";
-    timer = setInterval(function () { showFrame(idx >= times.length - 1 ? 0 : idx + 1); }, 700);
+    timer = setInterval(function () { showFrame(idx >= times.length - 1 ? 0 : idx + 1); }, 800);
   });
   $("slider").addEventListener("input", function () { stop(); showFrame(+this.value); });
-  document.querySelectorAll(".seg button").forEach(function (b) { b.addEventListener("click", function () { setSource(b.dataset.src); }); });
-  document.querySelectorAll(".chip").forEach(function (c) { c.addEventListener("click", function () {
-    show[c.dataset.layer] = !show[c.dataset.layer]; c.classList.toggle("on", show[c.dataset.layer]); ecLegend(); if (times.length) showFrame(idx);
-  }); });
+  document.querySelectorAll(".src button").forEach(function (b) { b.addEventListener("click", function () { setSource(b.dataset.src); }); });
+  // tap Rain or Snow in the legend to hide/show that layer
+  $("legend").addEventListener("click", function (e) {
+    var lg = e.target.closest(".lg[data-k]"); if (!lg) return;
+    show[lg.dataset.k] = !show[lg.dataset.k]; legend(); if (times.length) showFrame(idx);
+  });
   setSource("ec");
 })();
 </script>
