@@ -208,7 +208,7 @@ async function run() {
   const phase = await page.$eval("#moPhase", (e) => e.textContent);
   assert(/^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent)$/.test(phase), `phase name, got "${phase}"`);
   const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
-  assert(stats.some((t) => /^Illumination\d+%$/.test(t)), "illumination row");
+  assert(!stats.some((t) => /^Illumination/.test(t)), "no Illumination row (the scrubber band shows it)");
   assert(stats.some((t) => /^(Moonrise|Moonset)/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
   // Find the Moon: offered on a touch device with orientation events; synthetic sensor
   // events drive the turn/tilt guidance and the on-target ring
@@ -243,9 +243,14 @@ async function run() {
   // each rise/set carries its compass bearing ahead of the time, e.g. "NE 55° 1:18 AM"
   assert(stats.filter((t) => /^(Moonrise|Moonset)/.test(t)).every((t) => /^Moon(rise|set)[NESW]{1,3} \d{1,3}° \d{1,2}:\d\d [AP]M$/.test(t)), `moonrise/moonset bearings, got ${JSON.stringify(stats)}`);
   assert(stats.some((t) => /^Next full moon\([A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}\) (Today|Tomorrow|\d+ days)$/.test(t)), "next full moon row shows the date then the count");
-  assert(/^[\d,]+ (km|mi)$/.test(await page.$eval("#moStats .mo-dist .md-val", (e) => e.textContent)), "distance figure on the perigee–apogee scale");
-  assert(await page.$("#moStats .mo-dist .md-mark"), "distance marker on the scale");
-  assert((await page.$$eval("#moTrack .mt-day", (e) => e.length)) >= 7, "scrubber marks each midnight");
+  // distance: surface to surface, no toggle, above the moon so it stays in view while scrubbing
+  assert(/^[\d,]+ (km|mi)$/.test(await page.$eval("#moDist .md-val", (e) => e.textContent)), "distance figure on the perigee–apogee scale");
+  assert(await page.$("#moDist .md-mark"), "distance marker on the scale");
+  assert(!(await page.$("#moonBody [data-dm]")), "no Centre/Surface toggle");
+  assert(await page.$eval("#moonBody", (b) => { const d = b.querySelector("#moDist"), h = b.querySelector(".mo-hero"); return d.getBoundingClientRect().bottom <= h.getBoundingClientRect().top; }), "distance sits above the moon");
+  // scrubber: a month (15 days either side), drawn as the illumination band with a tick per midnight
+  assert((await page.$$eval("#moTrack .mb-day", (e) => e.length)) >= 30, "scrubber spans a month of midnights");
+  assert(await page.$("#moTrack .mb-illum"), "illumination band drawn");
   const calDays = await page.$$eval("#moCal .mc-d[data-ms]", (e) => e.length);
   assert(calDays >= 28 && calDays <= 31, `calendar has a cell per day, got ${calDays}`);
   assert(await page.$("#moCal .mc-d.today"), "today highlighted in the calendar");
@@ -614,11 +619,13 @@ async function run() {
     await yctx.close();
   }
 
-  // 11) Hourly wind graph: the Wind line opens a modal with a wind + gust chart,
-  // band labels, direction arrows, a now marker, and a scrubbing readout.
+  // 11) Hourly wind graph: the Wind line opens a dipstick chart like Conditions — wind +
+  // gust lines, band labels, direction arrows, a now marker, a day picker, a centred readout.
   {
     const wctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
     const wpage = await wctx.newPage();
+    // reopen on a saved place whose address carries a postal code (the card must drop it)
+    await wpage.addInitScript(() => localStorage.setItem("bw-last-loc", JSON.stringify({ name: "8524 48 Avenue NW", sub: "Calgary, Alberta T3B 2A6, Canada", lat: 51.05, lon: -114.07, cc: "CA" })));
     await wpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
     await wpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
     await wpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
@@ -630,24 +637,37 @@ async function run() {
     assert(await wpage.$("#summary .wind-line.tap"), "wind line is marked tappable (+ cue)");
     await wpage.click("#summary .wind-line");
     await wpage.waitForSelector("#windBackdrop:not(.hidden)", { timeout: 5000 });
+    await wpage.waitForTimeout(300);
     assert(await wpage.$("#windBody .wind-chart .wind-line"), "wind-speed line is drawn");
     assert(await wpage.$("#windBody .wind-chart .wind-gustline"), "gust line is drawn");
     assert((await wpage.$$eval("#windBody .wind-chart .wind-arrow", (e) => e.length)) > 0, "direction arrows drawn");
-    assert(await wpage.$("#windBody .wind-chart .now-line"), "now marker drawn");
-    const bands = await wpage.$$eval("#windBody .wind-band", (e) => e.map((t) => t.textContent));
+    assert(await wpage.$("#windBody .wind-chart .cc-now"), "now marker drawn");
+    const bands = await wpage.$$eval("#windBody .cc-ylab", (e) => e.map((t) => t.textContent));
     assert(["Light", "Mod", "Strong", "Severe"].every((b) => bands.includes(b)), `band labels present, got ${JSON.stringify(bands)}`);
-    // the cursor tooltip carries time + wind (speed/dir) + gust, starting at now
-    const tip0 = await wpage.$eval("#windTip", (e) => e.textContent);
-    assert(/now/.test(tip0), `tooltip starts at now, got "${tip0}"`);
-    assert(/Wind\s*\d+ km\/h [NSEW]/.test(tip0), `tooltip shows wind speed + direction, got "${tip0}"`);
-    assert(/Gust\s*\d+ km\/h/.test(tip0), `tooltip shows gust speed, got "${tip0}"`);
-    // scrubbing to the far right moves the tooltip off "now"
-    const wbox = await wpage.$eval("#windWrap", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
-    await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2);
-    await wpage.mouse.down(); await wpage.mouse.move(wbox.x + wbox.w * 0.95, wbox.y + wbox.h / 2); await wpage.mouse.up();
-    assert(!/now/.test(await wpage.$eval("#windTip", (e) => e.textContent)), "scrubbing off now updates the tooltip");
-    // near the right edge the tooltip flips to sit on the left (default, no .right)
-    assert(!(await wpage.$eval("#windTip", (e) => e.classList.contains("right"))), "tooltip sits left of the cursor near the right edge");
+    // dipstick: the centre line is fixed and the chart scrolls; the centred card reads the hour under it
+    const rd0 = await wpage.$eval("#windRead", (e) => e.textContent);
+    assert(/now/.test(rd0), `readout starts at now, got "${rd0}"`);
+    assert(/Wind\s*\d+ km\/h [NSEW]/.test(rd0), `readout shows wind speed + direction, got "${rd0}"`);
+    assert(/Gust\s*\d+ km\/h/.test(rd0), `readout shows gust speed, got "${rd0}"`);
+    assert(await wpage.$eval("#windRead", (e) => getComputedStyle(e).textAlign === "center"), "wind readout is centred");
+    // the whole fetched range is scrollable: more than a day of chart beyond the viewport
+    assert(await wpage.$eval("#windScroll", (e) => e.scrollWidth > e.clientWidth * 4), "wind chart spans several days");
+    await wpage.$eval("#windScroll", (e) => { e.scrollLeft += 15 * 30; }); // 30 hours on
+    await wpage.waitForTimeout(500);
+    assert(!/now/.test(await wpage.$eval("#windRead", (e) => e.textContent)), "scrolling off now updates the readout");
+    // the day picker jumps to a day
+    const lastDay = await wpage.$$eval("#windDays .cd-day", (b) => b[b.length - 1].dataset.day);
+    await wpage.click(`#windDays .cd-day[data-day="${lastDay}"]`); await wpage.waitForTimeout(300);
+    assert(await wpage.$eval(`#windDays .cd-day[data-day="${lastDay}"]`, (b) => b.classList.contains("sel")), "day picker selects the tapped day");
+    await wpage.click("#windClose");
+    // the card's address line drops the postal code (search/saved places keep it)
+    const locLine = await wpage.$eval("#summary .sum-loc", (e) => e.textContent);
+    assert(/Calgary, Alberta, Canada/.test(locLine) && !/T3B|2A6/.test(locLine), `card address drops the postal code, got "${locLine}"`);
+    // Conditions (tap an hour): its readout card is centred — the default readout style
+    const nowI = await wpage.$$eval("#hourly .cell", (cs) => cs.findIndex((c) => c.classList.contains("now")));
+    await (await wpage.$$("#hourly .cell"))[nowI + 2].click();
+    await wpage.waitForSelector("#condBackdrop:not(.hidden)", { timeout: 5000 });
+    assert(await wpage.$eval("#condRead", (e) => getComputedStyle(e).textAlign === "center" && [...e.querySelectorAll(".cr-line")].every((l) => getComputedStyle(l).justifyContent === "center")), "conditions readout is centred");
     await wctx.close();
   }
 

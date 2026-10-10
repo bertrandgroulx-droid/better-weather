@@ -382,10 +382,12 @@
   .mo-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; padding: 0 50%; }
   .mo-scroll::-webkit-scrollbar { display: none; }
   .mo-track { position: relative; height: 50px; }
-  .mo-track .mt { position: absolute; top: 10px; width: 1px; height: 14px; background: rgba(255,255,255,0.28); }
-  .mo-track .mt-6 { height: 20px; top: 7px; background: rgba(255,255,255,0.45); }
-  .mo-track .mt-day { height: 28px; top: 4px; width: 2px; background: rgba(255,255,255,0.85); }
-  .mo-track .ml { position: absolute; top: 34px; transform: translateX(-50%); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .mo-track .mo-band { position: absolute; left: 0; top: 0; display: block; }
+  .mo-band .mb-illum { fill: #e8ecf2; fill-opacity: 0.82; }
+  .mo-band .mb-day { stroke: rgba(255,255,255,0.22); stroke-width: 1; }
+  /* fixed centre line through the band (the dipstick), under the yellow pointer */
+  .mo-cursor::after { content: ""; position: absolute; left: 50%; top: 4px; height: 34px; width: 1.4px; transform: translateX(-50%); background: var(--text); opacity: 0.85; }
+  .mo-track .ml { position: absolute; top: 33px; transform: translateX(-50%); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
   .mo-track .ml-today { color: var(--text); font-weight: 400; }
   /* stat rows */
   .mo-stats, .mo-cal, .mo-about { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; }
@@ -396,11 +398,8 @@
   .mo-row .mo-dt { font-size: 0.78em; opacity: 0.65; font-weight: 400; margin-right: 2px; }
   /* distance scale: perigee at the left end, apogee at the right, today's value marked */
   .mo-dist { padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); }
+  .mo-dist-top { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; margin: 0 0 10px; }
   .mo-dist .md-head { font-weight: 400; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
-  .mo-dist .md-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
-  .mo-dist .md-seg button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 400;
-    padding: 3px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .mo-dist .md-seg button.on { background: var(--accent); color: #0b1f3a; }
   .mo-dist .md-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); margin: 30px 7px 8px; }
   .mo-dist .md-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, rgba(255,214,102,0.35), var(--accent)); }
   .mo-dist .md-mark { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0e2440; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(255,214,102,0.35); }
@@ -513,32 +512,13 @@
     .day-sun .st-txt { flex-direction: row; gap: 12px; }
     .day-sun .st-row { flex: 1; min-width: 0; }
   }
-  /* hourly wind panel: bright sky-blue wind line, a quiet recessive gust line */
+  /* hourly wind panel (shares the Conditions chart's scroller, cursor and readout):
+     bright sky-blue wind line, a quiet recessive gust line */
   .wind-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .cond-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill row so ✕ sits in the corner */
-  .wind-chart-wrap { position: relative; touch-action: none; -webkit-user-select: none; user-select: none; cursor: ew-resize; }
-  /* scrub tooltip: rides at the top of the cursor line, on its left (flips right near the edge) */
-  .wind-tip { position: absolute; top: 4px; z-index: 2; pointer-events: none; white-space: nowrap;
-    background: rgba(14,36,64,0.94); border: 1px solid var(--border); border-radius: 8px;
-    padding: 6px 10px; font-size: 0.86rem; line-height: 1.4; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-    transform: translateX(calc(-100% - 9px)); }
-  .wind-tip.right { transform: translateX(9px); }
-  .wind-tip .wt-time { font-weight: 400; color: var(--text); margin-bottom: 1px; }
-  .wind-tip .wt-row { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .wind-tip .wt-row b { color: var(--text); font-weight: 400; }
-  .wind-tip .wt-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
-  .wind-tip .wt-dot.wind { background: #7fd4ff; }
-  .wind-tip .wt-dot.gust { background: #8093ad; }
-  .wind-chart { display: block; width: 100%; height: auto; }
-  .wind-chart .ax-line { stroke: rgba(255,255,255,0.10); stroke-width: 1; }
-  .wind-chart .wind-band { fill: var(--muted); font-size: 11.5px; font-family: inherit; }
-  .wind-chart .wind-xlab { fill: var(--muted); font-size: 10.5px; font-family: inherit; }
   .wind-chart .wind-line { fill: none; stroke: #7fd4ff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
   .wind-chart .wind-gustline { fill: none; stroke: #8093ad; stroke-width: 1.6; stroke-dasharray: 1.5 2.6; stroke-linecap: round; }
   .wind-chart .wind-arrow path { fill: #7fd4ff; stroke: #0e2440; stroke-width: 0.6; }
-  .wind-chart .now-line { stroke: rgba(255,255,255,0.55); stroke-width: 1; stroke-dasharray: 2 2; }
-  .wind-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
-  .wind-chart .cursor-dot { fill: #fff; stroke: #0e2440; stroke-width: 1; }
   .wind-legend { display: flex; gap: 22px; justify-content: center; margin: 12px 0 2px; font-size: 0.95rem; color: var(--muted); }
   .wind-legend i { display: inline-block; width: 18px; height: 5px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .wind-legend .lg-wind { background: #7fd4ff; }
@@ -588,21 +568,25 @@
   .cond-cursor .cc-cdot { position: absolute; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); border: 1px solid #0e2440; }
   .cond-cursor .cc-cdot.actual { background: var(--accent); }
   .cond-cursor .cc-cdot.feels { background: #e4eefb; }
+  .cond-cursor .cc-cdot.wind { background: #7fd4ff; }
+  .cond-cursor .cc-cdot.gust { background: #8093ad; }
   /* scrubbed-hour readout, laid out above the chart (like the daylight panel) so
      it never covers the lines. Fixed height so values changing never reflow it. */
   .cond-read { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 9px 12px; margin-bottom: 10px; min-height: 4.5rem; }
+    padding: 9px 12px; margin-bottom: 10px; min-height: 4.5rem; text-align: center; } /* centred: the default readout style */
   .cond-read .cr-time { font-weight: 400; font-size: 0.95rem; margin-bottom: 6px; }
   .cond-read .cr-time .cr-ic { vertical-align: -0.26em; margin-right: 5px; font-size: 1.15em; }
   .cond-read .cr-time .cr-now { color: var(--accent); }
   .cond-read .cr-items { display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem;
     color: var(--muted); font-variant-numeric: tabular-nums; }
-  .cond-read .cr-line { display: flex; flex-wrap: wrap; gap: 4px 18px; } /* Actual+Feels, then Rain+Chance */
+  .cond-read .cr-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; } /* Actual+Feels, then Rain+Chance */
   .cond-read .cr-item b { color: var(--text); font-weight: 400; }
   .cond-read .cr-item.rain b { color: #7fd4ff; }
   .cond-read .cr-sw { display: inline-block; width: 16px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .cond-read .cr-sw.actual { background: var(--accent); }
   .cond-read .cr-sw.feels { background: repeating-linear-gradient(90deg, var(--accent) 0 4px, transparent 4px 7px); }
+  .cond-read .cr-sw.wind { background: #7fd4ff; }
+  .cond-read .cr-sw.gust { background: repeating-linear-gradient(90deg, #8093ad 0 3px, transparent 3px 5px); }
   .cond-read .cr-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #4cc9f0; vertical-align: middle; margin-right: 6px; }
   /* frozen temperature axis on the left: solid near the edge, fading so the line slides under it cleanly */
   .cond-yaxis { position: absolute; left: 0; top: 0; width: 42px; pointer-events: none; z-index: 2;
@@ -928,12 +912,12 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and rain (amount &amp; chance) for the hour under it; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); the dots at the top of the card show where you are, and its name sits along the bottom. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Water-fill bars scaled to amount, tinted by probability.</span></span></li>
-        <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph — Light→Severe bands, a “now” marker, and a draggable readout for any hour.</span></span></li>
+        <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, and a readout of wind, direction and gust for the hour under the line.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
-        <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can scrub hour by hour through the week, with a blue arrow to jump back to now. Under the date, an eye line says where to look — compass bearing and height above (or below) the horizon. Then illumination, moonrise and moonset with the compass point they happen at, days to the next full and new moon, a perigee-to-apogee distance scale (centre-to-centre or surface-to-surface), and a month calendar of phases. All computed on-device for this place.</span></span></li>
+        <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can scrub hour by hour across a month (15 days either side of today) — the strip under it is a band whose thickness is the Moon’s illumination — with a blue arrow to jump back to now. Under the date, an eye line says where to look — compass bearing and height above (or below) the horizon. Above the Moon, a perigee-to-apogee distance scale (surface to surface) moves as you scrub. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
         <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon”: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. The compass is corrected from magnetic to true north for your location automatically.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for the daylight band widening toward summer and pinching toward winter — a full year on screen, slidable a year back or ahead, with an arrow back to today. Dots mark the solstices, rings the equinoxes, dotted lines the clock changes, and a brighter band inside shows the vitamin D hours (Sun above 45°). The readout gives sunrise and sunset with their compass bearings, day length, the vitamin D window, and the change from the day before; a card beneath shows where the Sun is overhead and how high it climbs at noon here. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
@@ -1251,10 +1235,22 @@
     var done = function () { navBusy = false; els.summary.classList.remove("nav-loading"); };
     if (p && p.then) p.then(done, done); else done();
   }
-  // The place's name along the bottom of the card (the header pill truncates long
+  // The place's name along the top of the card (the header pill truncates long
   // addresses, and once you can page between places the card itself must say where it is).
+  // The postal code is dropped here only; search and the saved list keep the full address.
   function sumLocHtml(loc) {
-    return '<div class="sum-loc">' + esc(loc.name) + (loc.sub ? ' <span class="sl-sub">· ' + esc(loc.sub) + '</span>' : '') + '</div>';
+    var sub = stripPostal(loc.sub || "");
+    return '<div class="sum-loc">' + esc(loc.name) + (sub ? ' <span class="sl-sub">· ' + esc(sub) + '</span>' : '') + '</div>';
+  }
+  // "Calgary, Alberta T3B 2A6, Canada" → "Calgary, Alberta, Canada". Covers Canadian, US,
+  // UK and Dutch formats plus plain 4–6 digit codes (most other countries).
+  function stripPostal(s) {
+    return s
+      .replace(/\b[A-Z]\d[A-Z] ?\d[A-Z]\d\b/g, "")                 // Canada: T3B 2A6
+      .replace(/\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/g, "")         // UK: SW1A 1AA
+      .replace(/\b\d{4} ?[A-Z]{2}\b/g, "")                          // Netherlands: 1012 AB
+      .replace(/\b\d{5}(-\d{4})?\b/g, "").replace(/\b\d{4,6}\b/g, "") // US ZIP+4, other numeric codes
+      .replace(/\s+,/g, ",").replace(/,\s*,/g, ",").replace(/\s{2,}/g, " ").replace(/^[\s,]+|[\s,]+$/g, "");
   }
   // ---- page between places: the whole weather view slides out and the neighbour's
   //      fully rendered view slides in under the finger (Apple-Weather style) ----
@@ -2096,21 +2092,22 @@
     drawMoonCanvas(cv, date, illum);
   }
   // Panel state: the selected instant, the scrubber's start, and the calendar month.
-  var moonUI = null, MO_PX = 7, MO_DAYS = 7;
-  var moonDistMode = localStorage.getItem("bw-moon-dist") || "cc"; // "cc" centre to centre | "ss" surface to surface
+  // Scrubber: a month of hours, 15 days either side of today, 2 px per hour (~a week on screen)
+  var moonUI = null, MO_PX = 2, MO_BACK = 15, MO_DAYS = 31;
   function fillMoonModal() {
     var loc = lastLoc || { lat: 51.05, lon: -114.07 }, tz = lastTz || null, now = new Date();
     var p0 = tzParts(now, tz), todayMid = localMidnight(p0.y, p0.m, p0.d, tz);
-    moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - 3 * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
+    moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - MO_BACK * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
     els.moonBody.innerHTML =
+      '<div class="mo-dist mo-dist-top" id="moDist"></div>' + // above the moon, so it stays in view while you scrub
       '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div><div class="mo-sky" id="moSky"></div>' +
         '<button type="button" class="mo-find' + (canFindMoon() ? ' show' : '') + '" id="moFind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>Find the Moon</button>' +
         '<button type="button" class="mo-now" id="moNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
       '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
       '<div class="mo-stats" id="moStats"></div>' +
       '<h3 class="mo-h">Calendar</h3><div class="mo-cal" id="moCal"></div>' +
-      '<h3 class="mo-h">About illumination</h3><div class="mo-about">How much of the Moon’s face is in sunlight: 0% at new, 100% at full. Geometry only — cloud and the horizon don’t enter into it.</div>' +
-      '<h3 class="mo-h">About distance</h3><div class="mo-about">The orbit is oval, so each month the Moon swings between about ' + fmtKm(356500) + ' (perigee) and ' + fmtKm(406700) + ' (apogee), centre to centre; a full moon at the near end is a “supermoon”. “Surface” on the scale measures from the ground here to the ground there — about ' + fmtKm(8108) + ' less.</div>' +
+      '<h3 class="mo-h">About the scrubber</h3><div class="mo-about">The band under the Moon is its illumination: thickest at full, a hairline at new. Slide it to move through a month, 15 days either side of today.</div>' +
+      '<h3 class="mo-h">About distance</h3><div class="mo-about">Measured surface to surface, from the ground here to the Moon’s surface. The orbit is oval, so each month the distance swings between about ' + fmtKm(356500 - 8108) + ' (perigee) and ' + fmtKm(406700 - 8108) + ' (apogee); a full moon at the near end is a “supermoon”.</div>' +
       '<div class="air-foot">Computed on-device from the Moon’s and Sun’s positions (Meeus, <i>Astronomical Algorithms</i>). Rise and set times are for this place.<span id="moCredit"></span></div>';
     buildMoonTrack();
     renderMoonCal();
@@ -2130,32 +2127,39 @@
     $("moCal").addEventListener("click", onMoonCalClick);
     $("moNow").addEventListener("click", moonGoNow);
     $("moFind").addEventListener("click", openFind);
-    $("moStats").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-dm]"); if (!b || b.dataset.dm === moonDistMode) return;
-      moonDistMode = b.dataset.dm;
-      try { localStorage.setItem("bw-moon-dist", moonDistMode); } catch (_) {}
-      setMoonSel(moonUI.sel, false);
-    });
   }
   function moonGoNow() {
     var U = moonUI, now = Date.now(); if (!U) return;
-    if (now < U.t0 || now > U.t0 + MO_DAYS * 86400000) { var p = tzParts(new Date(now), U.tz); U.todayMid = localMidnight(p.y, p.m, p.d, U.tz); U.t0 = U.todayMid - 3 * 86400000; buildMoonTrack(); }
+    if (now < U.t0 || now > U.t0 + MO_DAYS * 86400000) { var p = tzParts(new Date(now), U.tz); U.todayMid = localMidnight(p.y, p.m, p.d, U.tz); U.t0 = U.todayMid - MO_BACK * 86400000; buildMoonTrack(); }
     setMoonSel(now, false);
     var sc = $("moScroll"); if (sc) sc.scrollTo({ left: moonScrollFor(U.sel), behavior: "smooth" });
   }
-  // The hour ticks: a tall tick at each local midnight, day labels centred under each day.
+  // The track: the Moon's illumination as a band (thickness = illuminated fraction, a
+  // hairline at new moon, full height at full), a tick at each local midnight, and the
+  // date under each day. It slides under the fixed centre line, like the Daylight chart.
+  var MO_BAND_H = 26, MO_BAND_Y = 15; // band's full thickness and its centre line (px)
   function buildMoonTrack() {
-    var U = moonUI, n = MO_DAYS * 24, html = "", i, t, p, cls, lab;
+    var U = moonUI, n = MO_DAYS * 24, W = n * MO_PX, i, t, p, lab;
+    var top = "", bot = "";
+    for (i = 0; i <= n; i += 2) { // every 2 h is plenty smooth at 2 px/h
+      t = U.t0 + i * 3600000;
+      var hh = Math.max(0.6, moonInfo(new Date(t)).illum * MO_BAND_H) / 2, x = (i * MO_PX).toFixed(1);
+      top += (top ? " " : "") + x + "," + (MO_BAND_Y - hh).toFixed(1);
+      bot = " " + x + "," + (MO_BAND_Y + hh).toFixed(1) + bot;
+    }
+    var ticks = "", labs = "";
     for (i = 0; i <= n; i++) {
       t = U.t0 + i * 3600000; p = tzParts(new Date(t), U.tz);
-      cls = p.h === 0 ? "mt mt-day" : (p.h % 6 === 0 ? "mt mt-6" : "mt");
-      html += '<i class="' + cls + '" style="left:' + (i * MO_PX) + 'px"></i>';
+      if (p.h === 0) ticks += '<line class="mb-day" x1="' + i * MO_PX + '" y1="' + (MO_BAND_Y - MO_BAND_H / 2 - 3) + '" x2="' + i * MO_PX + '" y2="' + (MO_BAND_Y + MO_BAND_H / 2 + 3) + '"/>';
       if (p.h === 12) {
-        lab = localMidnight(p.y, p.m, p.d, U.tz) === U.todayMid ? "Today" : new Date(t).toLocaleDateString([], { weekday: "short", timeZone: U.tz || undefined });
-        html += '<span class="ml' + (lab === "Today" ? " ml-today" : "") + '" style="left:' + (i * MO_PX) + 'px">' + lab + '</span>';
+        var today = localMidnight(p.y, p.m, p.d, U.tz) === U.todayMid;
+        lab = today ? "Today" : String(p.d);
+        labs += '<span class="ml' + (today ? " ml-today" : "") + '" style="left:' + (i * MO_PX) + 'px">' + lab + '</span>';
       }
     }
-    var tr = $("moTrack"); tr.style.width = (n * MO_PX) + "px"; tr.innerHTML = html;
+    var tr = $("moTrack"); tr.style.width = W + "px";
+    tr.innerHTML = '<svg class="mo-band" width="' + W + '" height="' + (MO_BAND_Y * 2) + '" viewBox="0 0 ' + W + ' ' + (MO_BAND_Y * 2) + '" aria-hidden="true">' +
+      ticks + '<polygon class="mb-illum" points="' + top + bot + '"/></svg>' + labs;
   }
   function moonScrollFor(ms) { return Math.round((ms - moonUI.t0) / 3600000) * MO_PX; }
   // Put the scrubber on an instant and hold it there for a moment. iOS Safari can drop or
@@ -2223,23 +2227,20 @@
       var ds = when.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: tz });
       return '<small class="mo-dt">(' + ds + ')</small> ' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n + " days");
     };
-    var rows = [["Illumination", Math.round(mi.illum * 100) + "%"]];
+    var rows = [];
     // "NE 55° 1:18 AM" — the bearing subdued ahead of the time, like the dates below
     ev.forEach(function (e) { rows.push([e.k, bearingHtml(moonAzimuth(e.t, U.loc.lat, U.loc.lon), "mo-dt mo-az").trim() + " " + clockInTz(new Date(e.t), U.tz)]); });
     if (!ev.length) rows.push(["Moonrise / set", "none today"]);
     rows.push(["Next full moon", dayWord(daysFull, fullD)], ["Next new moon", dayWord(daysNew, newD)]);
-    // Distance as a scale from perigee to apogee with a marker (and the figure) at today's
-    // value. Centre to centre by default; "Surface" subtracts both radii (Earth 6371 km +
-    // Moon 1737 km), which moves the ends of the scale as well as the marker's figure.
-    var ss = moonDistMode === "ss", off = ss ? 6371 + 1737.4 : 0;
-    var PERI = 356500 - off, APO = 406700 - off, dist = mi.dist - off;
+    // Distance as a scale from perigee to apogee with a marker (and the figure) at this
+    // hour's value, surface to surface (centre distance less Earth 6371 km + Moon 1737 km).
+    var off = 6371 + 1737.4, PERI = 356500 - off, APO = 406700 - off, dist = mi.dist - off;
     var f = Math.max(0, Math.min(1, (dist - PERI) / (APO - PERI))), pct = (f * 100).toFixed(1);
     var lblPct = (Math.max(0.13, Math.min(0.87, f)) * 100).toFixed(1); // keep the floating figure inside the bar
-    var distHtml = '<div class="mo-dist"><div class="md-head"><span>Distance</span>' +
-      '<div class="md-seg" role="group" aria-label="Measure distance"><button type="button" data-dm="cc"' + (ss ? '' : ' class="on"') + '>Centre</button><button type="button" data-dm="ss"' + (ss ? ' class="on"' : '') + '>Surface</button></div></div>' +
+    $("moDist").innerHTML = '<div class="md-head"><span>Distance</span></div>' +
       '<div class="md-bar"><i class="md-fill" style="width:' + pct + '%"></i><i class="md-mark" style="left:' + pct + '%"></i><span class="md-val" style="left:' + lblPct + '%">' + fmtKm(dist) + '</span></div>' +
-      '<div class="md-ends"><span>' + fmtKm(PERI) + '<small>closest · perigee</small></span><span>' + fmtKm(APO) + '<small>farthest · apogee</small></span></div></div>';
-    $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("") + distHtml;
+      '<div class="md-ends"><span>' + fmtKm(PERI) + '<small>closest · perigee</small></span><span>' + fmtKm(APO) + '<small>farthest · apogee</small></span></div>';
+    $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
     // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
     var nowH = Math.round(Date.now() / 3600000) * 3600000, nb = $("moNow");
     if (nb) { nb.classList.toggle("show", U.sel !== nowH); nb.classList.toggle("right", nowH > U.sel); }
@@ -2286,9 +2287,9 @@
     if (nav) { U.calM += +nav.dataset.nav; if (U.calM < 1) { U.calM = 12; U.calY--; } if (U.calM > 12) { U.calM = 1; U.calY++; } renderMoonCal(); return; }
     var ms = day ? +day.dataset.ms : ev ? +ev.dataset.ms : null;
     if (ms == null) return;
-    // scrub to that day — rebuilding the strip around it if it's outside the current week
+    // scrub to that day — rebuilding the strip around it if it's outside the current month
     if (ms < U.t0 || ms > U.t0 + MO_DAYS * 86400000) {
-      var p = tzParts(new Date(ms), U.tz); U.t0 = localMidnight(p.y, p.m, p.d, U.tz) - 3 * 86400000; buildMoonTrack();
+      var p = tzParts(new Date(ms), U.tz); U.t0 = localMidnight(p.y, p.m, p.d, U.tz) - MO_BACK * 86400000; buildMoonTrack();
     }
     setMoonSel(ms, false);
     var sc = $("moScroll"); if (sc) sc.scrollTo({ left: moonScrollFor(U.sel), behavior: "smooth" });
@@ -2650,114 +2651,146 @@
   }
   var dayResize = null;
 
-  // Interactive hourly wind chart: a wind-speed line with direction arrows, a
-  // dotted gust line, Light/Mod/Strong/Severe bands, a "now" marker, and a
-  // draggable scrubber that reads out wind (speed + direction) and gust.
+  // Hourly wind chart, in the same "dipstick" style as Conditions and Daylight: the centre
+  // line stays put and the chart (wind line with direction arrows, dotted gusts, and the
+  // Light/Mod/Strong/Severe bands) slides under it across every fetched hour — 2 days back
+  // to 16 days ahead. A day picker jumps between days; the centred card above reads out
+  // the hour under the line.
+  var windState = null;
   function buildWindChart(d, tz) {
     var h = d && d.hourly;
-    if (!h || !h.time || !h.wind_speed_10m) return false;
+    if (!h || !h.time || !h.wind_speed_10m || h.time.length < 2) return false;
     var t = h.time, ws = h.wind_speed_10m, wg = h.wind_gusts_10m || [], wd = h.wind_direction_10m || [];
-    var nowIso = d.current.time;
-    var i0 = hourIdx(t, nowIso);
+    var N = t.length, i0 = hourIdx(t, d.current.time);
     if (i0 < 0) i0 = 0;
-    var span = 25, A = Math.max(0, i0 - 3), B = Math.min(t.length, A + span);
-    A = Math.max(0, B - span); // keep full width near the end of the data
-    var n = B - A;
-    if (n < 2) return false;
 
-    var factor = units === "imperial" ? 0.621371 : 1; // wind band levels are defined in km/h
+    // geometry: identical to the Conditions chart (15 px/hour, lead/trail room so the
+    // first and last hours can reach the centre line)
+    var HR = 15, PADX = 180, PT = 14, PB = 24, plotH = 200, H = PT + plotH + PB;
+    var totalW = PADX * 2 + (N - 1) * HR;
+    function X(i) { return PADX + i * HR; }
+    var factor = units === "imperial" ? 0.621371 : 1; // band levels are defined in km/h
     var lvl = [10, 28, 46, 64].map(function (x) { return x * factor; });
     var names = ["Light", "Mod", "Strong", "Severe"];
-    var maxObs = 0;
-    for (var i = A; i < B; i++) { if (ws[i] != null) maxObs = Math.max(maxObs, ws[i]); if (wg[i] != null) maxObs = Math.max(maxObs, wg[i]); }
+    var maxObs = 0, i;
+    for (i = 0; i < N; i++) { if (ws[i] != null) maxObs = Math.max(maxObs, ws[i]); if (wg[i] != null) maxObs = Math.max(maxObs, wg[i]); }
     var yMax = Math.max(74 * factor, maxObs * 1.08);
-
-    var W = 364, H = 256, PL = 48, PR = 16, PT = 16, PB = 30;
-    var plotW = W - PL - PR, plotH = H - PT - PB;
-    function X(i) { return PL + ((i - A) / (n - 1)) * plotW; }
     function Y(v) { return PT + (1 - Math.max(0, Math.min(yMax, v)) / yMax) * plotH; }
 
-    // band gridlines + names
-    var bands = "";
+    var grid = "", ylabs = "";
     for (i = 0; i < lvl.length; i++) {
-      var by = Y(lvl[i]).toFixed(1);
-      bands += '<line class="ax-line" x1="' + PL + '" y1="' + by + '" x2="' + (W - PR) + '" y2="' + by + '"/>' +
-        '<text class="wind-band" x="' + (PL - 6) + '" y="' + (Y(lvl[i]) + 3.9).toFixed(1) + '" text-anchor="end">' + names[i] + '</text>';
+      grid += '<line class="cc-grid" x1="0" y1="' + Y(lvl[i]).toFixed(1) + '" x2="' + totalW + '" y2="' + Y(lvl[i]).toFixed(1) + '"/>';
+      ylabs += '<div class="cc-ylab" style="top:' + Y(lvl[i]).toFixed(1) + 'px">' + names[i] + '</div>';
     }
-    // wind + gust polylines
-    var wPts = "", gPts = "", haveG = false;
-    for (i = A; i < B; i++) {
+    var dayLines = "", xlabs = "", arrows = "", prevDay = null, wPts = "", gPts = "", haveG = false;
+    for (i = 0; i < N; i++) {
+      var hr = +t[i].slice(11, 13), day = t[i].slice(0, 10);
+      if (day !== prevDay) {
+        if (prevDay !== null) dayLines += '<line class="cc-day" x1="' + X(i).toFixed(1) + '" y1="' + PT + '" x2="' + X(i).toFixed(1) + '" y2="' + (PT + plotH) + '"/>';
+        prevDay = day;
+      }
+      if (hr % 6 === 0) xlabs += '<text class="cc-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + shortHour(hr) + '</text>';
       if (ws[i] != null) wPts += (wPts ? " " : "") + X(i).toFixed(1) + "," + Y(ws[i]).toFixed(1);
       if (wg[i] != null) { gPts += (gPts ? " " : "") + X(i).toFixed(1) + "," + Y(wg[i]).toFixed(1); haveG = true; }
-    }
-    // hour labels + (larger) direction arrows every 3 h
-    var xlab = "", arrows = "";
-    for (i = A; i < B; i++) {
-      if ((i - A) % 3 !== 0) continue;
-      xlab += '<text class="wind-xlab" x="' + X(i).toFixed(1) + '" y="' + (H - PB + 17) + '" text-anchor="middle">' + hourLabelShort(t[i]) + '</text>';
-      if (wd[i] != null && ws[i] != null) {
+      if (hr % 3 === 0 && wd[i] != null && ws[i] != null) {
         var head = (Math.round(wd[i]) + 180) % 360; // point the way the wind blows (toward)
         arrows += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + Y(ws[i]).toFixed(1) + ') rotate(' + head + ')">' +
           '<path d="M0,-9 L5.4,6.4 L0,2.6 L-5.4,6.4 Z"/></g>';
       }
     }
-    var svg =
-      '<svg class="wind-chart" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
-      bands + xlab +
+    var nowLine = '<line class="cc-now" x1="' + X(i0).toFixed(1) + '" y1="' + PT + '" x2="' + X(i0).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' +
+      '<text class="cc-nowlab" x="' + X(i0).toFixed(1) + '" y="' + (PT + 11) + '" text-anchor="middle">NOW</text>';
+    var svg = '<svg class="cond-svg wind-chart" width="' + totalW + '" height="' + H + '" viewBox="0 0 ' + totalW + ' ' + H + '">' +
+      grid + dayLines + nowLine +
       (haveG ? '<polyline class="wind-gustline" points="' + gPts + '"/>' : '') +
-      '<polyline class="wind-line" points="' + wPts + '"/>' + arrows +
-      '<line class="now-line" x1="' + X(i0).toFixed(1) + '" y1="' + PT + '" x2="' + X(i0).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
-      '<line class="cursor-line" id="windCursor" x1="0" y1="' + PT + '" x2="0" y2="' + (H - PB) + '"/>' +
-      '<circle class="cursor-dot" id="windDotW" r="3"/>' +
-      (haveG ? '<circle class="cursor-dot" id="windDotG" r="3"/>' : '') +
-      '</svg>';
+      '<polyline class="wind-line" points="' + wPts + '"/>' + arrows + xlabs + '</svg>';
 
-    // The scrubbed values ride in a small tooltip at the top of the cursor line
-    // (kept to its side so a dragging finger never covers it) — no big rows.
+    var days = [], seen = null;
+    for (i = 0; i < N; i++) { var dy = t[i].slice(0, 10); if (dy !== seen) { days.push(dy); seen = dy; } }
+    var todayStr = t[i0].slice(0, 10);
+    var dayBtns = days.map(function (dy) {
+      var dt = new Date(dy + "T00:00:00");
+      return '<button class="cd-day' + (dy === todayStr ? " today" : "") + '" type="button" data-day="' + dy + '">' +
+        '<span class="cd-dow">' + dt.toLocaleDateString(undefined, { weekday: "narrow" }) + '</span>' +
+        '<span class="cd-num">' + dt.getDate() + '</span></button>';
+    }).join("");
+
     els.windBody.innerHTML =
-      '<div class="wind-chart-wrap" id="windWrap">' + svg +
-        '<div class="wind-tip" id="windTip"></div>' +
+      '<div class="cond-days" id="windDays">' + dayBtns + '</div>' +
+      '<div class="cond-read" id="windRead"><div class="cr-time" id="wrTime"></div><div class="cr-items" id="wrItems"></div></div>' +
+      '<div class="cond-plot">' +
+        '<div class="cond-scroll" id="windScroll"><div class="cond-track" style="width:' + totalW + 'px">' + svg + '</div></div>' +
+        '<div class="cond-yaxis" style="height:' + H + 'px">' + ylabs + '</div>' +
+        '<div class="cond-cursor">' +
+          '<div class="cc-cline" style="top:' + PT + 'px;height:' + (plotH + PB) + 'px"></div>' +
+          (haveG ? '<div class="cc-cdot gust" id="windDotG" style="display:none"></div>' : '') +
+          '<div class="cc-cdot wind" id="windDotW" style="display:none"></div>' +
+        '</div>' +
       '</div>' +
-      '<div class="wind-legend"><span><i class="lg-wind"></i> Wind</span>' +
-        (haveG ? '<span><i class="lg-gust"></i> Wind Gust</span>' : '') + '</div>';
+      '<div class="wind-legend"><span><i class="lg-wind"></i> Wind</span>' + (haveG ? '<span><i class="lg-gust"></i> Wind Gust</span>' : '') + '</div>';
 
-    var wrap = $("windWrap"), cursor = $("windCursor"), dotW = $("windDotW"), dotG = $("windDotG"), tip = $("windTip");
-    function setScrub(i) {
-      i = Math.max(A, Math.min(B - 1, i));
-      var x = X(i);
-      cursor.setAttribute("x1", x); cursor.setAttribute("x2", x);
-      if (ws[i] != null) { dotW.setAttribute("cx", x); dotW.setAttribute("cy", Y(ws[i])); dotW.style.display = ""; } else dotW.style.display = "none";
-      if (dotG) { if (wg[i] != null) { dotG.setAttribute("cx", x); dotG.setAttribute("cy", Y(wg[i])); dotG.style.display = ""; } else dotG.style.display = "none"; }
-      var dir = wd[i] != null ? degToCompass(wd[i]) : null;
-      var wtxt = ws[i] == null ? "–" : Math.round(ws[i]) + " " + wU();
-      var gtxt = wg[i] == null ? "–" : Math.round(wg[i]) + " " + wU();
-      tip.innerHTML =
-        '<div class="wt-time">' + hourLabelLong(t[i]) + (i === i0 ? " · now" : "") + '</div>' +
-        '<div class="wt-row"><i class="wt-dot wind"></i>Wind <b>' + wtxt + (dir ? " " + dir : "") + '</b></div>' +
-        (dotG ? '<div class="wt-row"><i class="wt-dot gust"></i>Gust <b>' + gtxt + '</b></div>' : '');
-      // sit the tooltip to the left of the line, flipping to the right near the edge
-      tip.style.left = (x / W * 100).toFixed(2) + "%";
-      tip.classList.toggle("right", (x - PL) / plotW < 0.42);
-    }
-    function scrubFromX(clientX) {
-      var r = wrap.getBoundingClientRect();
-      var px = (clientX - r.left) / r.width * W;
-      setScrub(A + Math.round((px - PL) / plotW * (n - 1)));
-    }
-    var dragging = false;
-    wrap.addEventListener("pointerdown", function (e) { dragging = true; try { wrap.setPointerCapture(e.pointerId); } catch (_) {} scrubFromX(e.clientX); e.preventDefault(); });
-    wrap.addEventListener("pointermove", function (e) { if (dragging) scrubFromX(e.clientX); });
-    wrap.addEventListener("pointerup", function () { dragging = false; });
-    wrap.addEventListener("pointercancel", function () { dragging = false; });
-    setScrub(i0);
+    windState = { t: t, N: N, HR: HR, PADX: PADX, X: X, Y: Y, ws: ws, wg: wg, wd: wd, nowIdx: i0, idx: i0 };
     return true;
   }
-  function hourLabelShort(iso) { // "3pm"
-    return new Date(iso).toLocaleTimeString([], { hour: "numeric" }).replace(/\s/g, "").toLowerCase();
+  function windCenterIdx(sc) {
+    var S = windState;
+    return Math.max(0, Math.min(S.N - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2 - S.PADX) / S.HR)));
   }
-  function hourLabelLong(iso) { // "Mon 3 PM"
-    var dt = new Date(iso);
-    return dt.toLocaleDateString([], { weekday: "short" }) + " " + dt.toLocaleTimeString([], { hour: "numeric" });
+  // Fill the centred card for hour idx, sit the dots on the lines, highlight the day.
+  function windUpdateCenter() {
+    var S = windState, sc = $("windScroll"); if (!S || !sc) return;
+    var idx = windCenterIdx(sc); S.idx = idx;
+    var dw = $("windDotW"), dg = $("windDotG");
+    if (dw) { if (S.ws[idx] != null) { dw.style.top = S.Y(S.ws[idx]).toFixed(1) + "px"; dw.style.display = ""; } else dw.style.display = "none"; }
+    if (dg) { if (S.wg[idx] != null) { dg.style.top = S.Y(S.wg[idx]).toFixed(1) + "px"; dg.style.display = ""; } else dg.style.display = "none"; }
+    var iso = S.t[idx], day = iso.slice(0, 10), hr = +iso.slice(11, 13), h12 = hr % 12 || 12, ap = hr < 12 ? "AM" : "PM";
+    var isToday = S.t[S.nowIdx].slice(0, 10) === day;
+    var dstr = isToday
+      ? '<span class="cr-today">Today</span>, ' + new Date(day + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    $("wrTime").innerHTML = dstr + ' · ' + h12 + ' ' + ap + (idx === S.nowIdx ? ' <span class="cr-now">· now</span>' : '');
+    var dir = S.wd[idx] != null ? degToCompass(S.wd[idx]) : null;
+    $("wrItems").innerHTML = '<div class="cr-line">' +
+      '<span class="cr-item"><i class="cr-sw wind"></i>Wind <b>' + (S.ws[idx] == null ? "–" : Math.round(S.ws[idx]) + " " + wU() + (dir ? " " + dir : "")) + '</b></span>' +
+      (dg ? '<span class="cr-item"><i class="cr-sw gust"></i>Gust <b>' + (S.wg[idx] == null ? "–" : Math.round(S.wg[idx]) + " " + wU()) + '</b></span>' : '') +
+      '</div>';
+    var days = $("windDays");
+    if (days) days.querySelectorAll(".cd-day").forEach(function (b) {
+      var on = b.dataset.day === day; b.classList.toggle("sel", on);
+      if (on) { var r = b.getBoundingClientRect(), pr = days.getBoundingClientRect();
+        if (r.left < pr.left + 6) days.scrollLeft += r.left - pr.left - 6; else if (r.right > pr.right - 6) days.scrollLeft += r.right - pr.right + 6; }
+    });
+  }
+  // Wire the scroller once the panel is visible: same settle rules as Conditions.
+  function windInit() {
+    var sc = $("windScroll"), days = $("windDays"), raf = null, settleTimer = null, interacting = false;
+    function doSettle() {
+      settleTimer = null; if (interacting) return;
+      var idx = windCenterIdx(sc), max = sc.scrollWidth - sc.clientWidth;
+      var target = Math.max(0, Math.min(max, windState.X(idx) - sc.clientWidth / 2));
+      if (Math.abs(target - sc.scrollLeft) >= 1) sc.scrollTo({ left: target, behavior: "smooth" });
+    }
+    function scheduleSettle() { clearTimeout(settleTimer); settleTimer = setTimeout(doSettle, 150); }
+    sc.addEventListener("scroll", function () {
+      if (!raf) raf = requestAnimationFrame(function () { raf = null; windUpdateCenter(); });
+      scheduleSettle();
+    });
+    sc.addEventListener("pointerdown", function () { interacting = true; clearTimeout(settleTimer); settleTimer = null; });
+    sc.addEventListener("pointerup", function () { interacting = false; scheduleSettle(); });
+    sc.addEventListener("pointercancel", function () { interacting = false; scheduleSettle(); });
+    var down = false, sx = 0, sl = 0; // desktop click-drag (touch pans natively)
+    sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} sc.classList.add("grabbing"); e.preventDefault(); });
+    sc.addEventListener("pointermove", function (e) { if (down) sc.scrollLeft = sl - (e.clientX - sx); });
+    function up() { if (!down) return; down = false; sc.classList.remove("grabbing"); }
+    sc.addEventListener("pointerup", up); sc.addEventListener("pointercancel", up);
+    sc.addEventListener("wheel", function (e) { sc.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; e.preventDefault(); }, { passive: false });
+    days.addEventListener("click", function (e) {
+      var b = e.target.closest(".cd-day"); if (!b) return;
+      var idx = windState.t.findIndex(function (x) { return x.slice(0, 10) === b.dataset.day && x.slice(11, 13) === "12"; });
+      if (idx < 0) idx = windState.t.findIndex(function (x) { return x.slice(0, 10) === b.dataset.day; });
+      if (idx >= 0) { sc.scrollLeft = Math.max(0, windState.X(idx) - sc.clientWidth / 2); windUpdateCenter(); }
+    });
+    requestAnimationFrame(function () { sc.scrollLeft = Math.max(0, windState.X(windState.nowIdx) - sc.clientWidth / 2); windUpdateCenter(); });
   }
 
   // ===== Day-conditions chart =====
@@ -3971,7 +4004,7 @@
   }
   function openDay() { if (buildDaylightChart(lastLoc, lastTz)) els.dayBackdrop.classList.remove("hidden"); }
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
-  function openWind() { if (buildWindChart(lastData, lastTz)) els.windBackdrop.classList.remove("hidden"); }
+  function openWind() { if (buildWindChart(lastData, lastTz)) { els.windBackdrop.classList.remove("hidden"); windInit(); } }
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
   // Swipe between places: the whole view pages (see pagerStart). Starts on the summary
   // card and section headings (touch-action: pan-y there); the strips keep their own scroll.
