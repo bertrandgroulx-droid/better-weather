@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Radar preview · rain vs snow</title>
+<!-- PREVIEW ONLY — not part of the app. Version 3: the app's RainViewer radar, with RainViewer's
+     own snow marking used to repaint rain (green→red) and snow (blues) on scales of their own,
+     city labels above the radar; with switches to RainViewer's colours and to the app today. -->
 <!-- PREVIEW ONLY — not part of the app. Version 2: Environment Canada's rain and snow radar,
      each repainted in its own colour scale (rain green→purple, snow pale→deep blue), city
      labels drawn above the radar, lightly smoothed; with a switch to the app's RainViewer. -->
@@ -23,8 +26,9 @@
   .legend .lg { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; cursor: pointer; }
   .legend .lg.off { opacity: 0.35; }
   .legend .bar { flex: 1; height: 8px; border-radius: 4px; min-width: 50px; }
-  .bar.rain { background: linear-gradient(90deg, #6fbf5a, #2f9a4c, #f2d43c, #f08a2c, #d93636, #b03aa8, #7d3cc0); }
-  .bar.snow { background: linear-gradient(90deg, #cfe8f3, #8cc3de, #4f93c4, #2a5f9e, #1c3d73); }
+  .bar.rain { background: linear-gradient(90deg, #8fd47a, #3fae55, #1f8a3e, #f2d43c, #f08a2c, #d93636, #c23fb0); }
+  .bar.rvs { background: linear-gradient(90deg, #c0ffff, #9fdfff, #72b2ff); }
+  .bar.snow { background: linear-gradient(90deg, #e4f4ff, #a8d6f7, #6aaef0, #3f74e3, #6a4fd6); }
   .bar.rv { background: linear-gradient(90deg, #4f8fff, #34c6ff, #4fe08b, #ffd84a, #ff8a3d, #ff3b3b); }
   /* source switch: small, under the legend */
   .src { top: calc(env(safe-area-inset-top) + 50px); left: 8px; padding: 3px; display: inline-flex; border-radius: 999px; }
@@ -46,7 +50,7 @@
 
 <div class="panel legend" id="legend"></div>
 <div class="panel src" role="group" aria-label="Radar source">
-  <button type="button" data-src="ec" class="on">Environment Canada</button><button type="button" data-src="rv">RainViewer (app today)</button>
+  <button type="button" data-src="paint" class="on">Repainted</button><button type="button" data-src="rvs">RainViewer snow colours</button><button type="button" data-src="rv">App today</button>
 </div>
 <div class="status" id="status"></div>
 <div class="panel time">
@@ -57,13 +61,11 @@
 
 <script>
 (function () {
-  var EC = "https://geo.weather.gc.ca/geomet";
-  var LAYER = { rain: "RADAR_1KM_RRAI", snow: "RADAR_1KM_RSNO" };
   var $ = function (id) { return document.getElementById(id); };
   var status = function (msg, err) { var s = $("status"); s.textContent = msg || ""; s.classList.toggle("err", !!err); };
 
-  // open on the place the app last showed (same site), else ?lat=&lon=, else Calgary
-  var q = new URLSearchParams(location.search), start = { lat: 51.05, lon: -114.07 };
+  // open on the place the app last showed (same site), else ?lat=&lon=, else Edmonton
+  var q = new URLSearchParams(location.search), start = { lat: 53.55, lon: -113.49 };
   try { var sv = JSON.parse(localStorage.getItem("bw-last-loc") || "null"); if (sv && sv.lat != null) start = sv; } catch (e) {}
   if (q.get("lat") && q.get("lon")) start = { lat: +q.get("lat"), lon: +q.get("lon") };
 
@@ -88,141 +90,99 @@
   });
   L.circleMarker([start.lat, start.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#3b6cff", fillOpacity: 1, pane: "labels" }).addTo(map);
 
-  // ---------- repaint: Environment Canada draws both layers on the same rainbow scale ----------
-  // Their scale runs light blue → blue → green → yellow → orange → red → magenta → purple as the
-  // rate rises. Read each pixel's position on that scale from its hue, then paint it on a scale
-  // of its own: rain green→yellow→red→purple, snow pale→deep blue.
+  // ---------- repaint ----------
+  // RainViewer serves each frame twice: snow marking off (1_0, what the app shows) and on (1_1).
+  // A pixel that differs between the two is one RainViewer calls snow. Its strength is read from
+  // the snow-off colour (RainViewer's "Universal Blue": tan drizzle → light → dark blue → yellow →
+  // orange → red → pink), then painted on a scale of its own: rain green→red, snow pale→deep blue.
   var RAMP = {
-    rain: [[111,191,90],[47,154,76],[242,212,60],[240,138,44],[217,54,54],[176,58,168],[125,60,192]],
-    snow: [[207,232,243],[140,195,222],[79,147,196],[42,95,158],[28,61,115]]
+    rain: [[143,212,122],[63,174,85],[31,138,62],[242,212,60],[240,138,44],[217,54,54],[194,63,176]],
+    snow: [[228,244,255],[168,214,247],[106,174,240],[63,116,227],[106,79,214]]
   };
-  function scaleT(r, g, b) { // 0 (lightest) … 1 (heaviest) from the source colour
-    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h;
-    if (d < 12) return 0.05;                                  // greys/whites: the lightest step
+  function strength(r, g, b) { // 0 (lightest) … 1 (heaviest)
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h, L = (mx + mn) / 510;
+    if (d < 12) return L > 0.8 ? 1 : 0.05;                    // white = extreme; greys = lightest
     if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
     h = (h * 60 + 360) % 360;
-    if (h >= 180 && h < 255) return 0.02 + 0.16 * (1 - (mx + mn) / 510) * 1.6;   // blues (lighter = lower)
-    if (h >= 70 && h < 180) return 0.2 + (180 - h) / 110 * 0.25;                // cyan-green → yellow-green
-    if (h >= 40 && h < 70) return 0.45 + (70 - h) / 30 * 0.15;                  // yellow
-    if (h < 40) return 0.6 + (40 - h) / 40 * 0.2;                               // orange → red
-    return 0.8 + (360 - h) / 105 * 0.2;                                          // red → magenta → purple
+    if (h >= 25 && h < 70 && d / mx < 0.5) return 0.04;        // tan: drizzle
+    if (h >= 150 && h < 260) return 0.1 + 0.35 * Math.max(0, Math.min(1, (0.8 - L) / 0.5)); // blues, darker = heavier
+    if (h >= 40 && h < 150) return 0.5 + (70 - Math.min(70, h)) / 30 * 0.1;  // yellow
+    if (h < 40) return 0.6 + (40 - h) / 40 * 0.22;             // orange → red
+    return 0.85 + (360 - h) / 100 * 0.15;                      // red → pink → purple
   }
   function rampAt(ramp, t) {
     t = Math.max(0, Math.min(1, t)) * (ramp.length - 1);
     var i = Math.floor(t), f = t - i, a = ramp[i], b = ramp[Math.min(ramp.length - 1, i + 1)];
     return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
   }
-  var remapOK = true;
-  // A WMS tile layer that fetches each tile as an image and repaints it on a canvas.
-  var RepaintWMS = L.GridLayer.extend({
-    initialize: function (kind, opts) { this.kind = kind; this.time = null; L.setOptions(this, opts); },
-    tileUrl: function (c) {
-      var size = this.getTileSize(), nw = this._map.unproject([c.x * size.x, c.y * size.y], c.z), se = this._map.unproject([(c.x + 1) * size.x, (c.y + 1) * size.y], c.z);
-      var a = L.CRS.EPSG3857.project(nw), b = L.CRS.EPSG3857.project(se);
-      return EC + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&CRS=EPSG:3857&WIDTH=256&HEIGHT=256" +
-        "&LAYERS=" + LAYER[this.kind] + "&STYLES=&BBOX=" + [a.x, b.y, b.x, a.y].join(",") + (this.time ? "&TIME=" + this.time : "");
-    },
+  function loadImg(url) {
+    return new Promise(function (res, rej) { var i = new Image(); i.crossOrigin = "anonymous"; i.onload = function () { res(i); }; i.onerror = rej; i.src = url; });
+  }
+  var paintOK = true;
+  var RepaintRV = L.GridLayer.extend({
+    initialize: function (path, opts) { this.path = path; L.setOptions(this, opts); },
     createTile: function (c, done) {
-      var tile = document.createElement("canvas"), kind = this.kind; tile.width = tile.height = 256;
-      var img = new Image(); img.crossOrigin = "anonymous";
-      img.onload = function () {
-        var g = tile.getContext("2d"); g.drawImage(img, 0, 0);
+      var tile = document.createElement("canvas"); tile.width = tile.height = 256;
+      var u = function (opt) { return rvHost + this.path + "/256/" + c.z + "/" + c.x + "/" + c.y + "/2/" + opt + ".png"; }.bind(this);
+      Promise.all([loadImg(u("1_0")), loadImg(u("1_1"))]).then(function (im) {
+        var g = tile.getContext("2d"), cv = document.createElement("canvas"); cv.width = cv.height = 256;
+        var g2 = cv.getContext("2d"); g2.drawImage(im[1], 0, 0); g.drawImage(im[0], 0, 0);
         try {
-          var d = g.getImageData(0, 0, 256, 256), p = d.data, ramp = RAMP[kind];
+          var d = g.getImageData(0, 0, 256, 256), p = d.data, s = g2.getImageData(0, 0, 256, 256).data;
           for (var i = 0; i < p.length; i += 4) {
-            if (p[i + 3] < 16) { p[i + 3] = 0; continue; }
-            var c2 = rampAt(ramp, scaleT(p[i], p[i + 1], p[i + 2]));
-            p[i] = c2[0]; p[i + 1] = c2[1]; p[i + 2] = c2[2]; p[i + 3] = 215;
+            if (p[i + 3] < 16 && s[i + 3] < 16) { p[i + 3] = 0; continue; }
+            var snow = s[i + 3] >= 16 && (p[i + 3] < 16 || Math.abs(p[i] - s[i]) + Math.abs(p[i + 1] - s[i + 1]) + Math.abs(p[i + 2] - s[i + 2]) > 24);
+            var t = p[i + 3] >= 16 ? strength(p[i], p[i + 1], p[i + 2]) : 0.1;
+            var c2 = rampAt(snow ? RAMP.snow : RAMP.rain, t);
+            p[i] = c2[0]; p[i + 1] = c2[1]; p[i + 2] = c2[2]; p[i + 3] = 225;
           }
           g.putImageData(d, 0, 0);
-        } catch (e) { // the server didn't allow reading the pixels (CORS): keep its own colours
-          if (remapOK) { remapOK = false; status("Couldn't repaint Environment Canada's colours here (their server blocks it), so rain and snow show in their original shared colours.", true); }
+        } catch (e) {
+          if (paintOK) { paintOK = false; status("Couldn't repaint RainViewer's colours here, so this shows RainViewer's own.", true); }
+          g.drawImage(im[1], 0, 0);
         }
         done(null, tile);
-      };
-      var url = this.tileUrl(c);
-      // If the server won't allow reading the pixels, the image fails to load with crossOrigin
-      // set: load it again without, and show it in Environment Canada's own colours.
-      img.onerror = function () {
-        if (!img.crossOrigin) return done(new Error("tile"), tile);
-        img = new Image();
-        img.onload = function () { // it loads without the pixel-read request: so it really is blocked
-          if (remapOK) { remapOK = false; status("Couldn't repaint Environment Canada's colours here (their server blocks it), so rain and snow show in their original shared colours.", true); }
-          tile.getContext("2d").drawImage(img, 0, 0); done(null, tile);
-        };
-        img.onerror = function () { done(new Error("tile"), tile); };
-        img.src = url;
-      };
-      img.src = url;
+      }).catch(function () { done(null, tile); });
       return tile;
-    },
-    setTime: function (iso) { this.time = iso; this.redraw(); }
+    }
   });
 
-  var src = "ec", show = { rain: true, snow: true }, times = [], idx = 0, timer = null;
-  var ec = { rain: new RepaintWMS("rain", { pane: "radar", opacity: 0.9, attribution: "Radar &copy; Environment and Climate Change Canada" }), snow: new RepaintWMS("snow", { pane: "radar", opacity: 0.9 }) };
-  var rvLayer = null, rvHost = "", rvFrames = [];
-
-  function ecTimes() {
-    return fetch(EC + "?service=WMS&version=1.3.0&request=GetCapabilities&layer=" + LAYER.rain).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }).then(function (xml) {
-      var m = xml.match(/<Dimension[^>]*name="time"[^>]*>([^<]+)<\/Dimension>/i); if (!m) throw new Error("no time list");
-      var p = m[1].trim().split("/"), t1 = Date.parse(p[1]), t0 = Math.max(Date.parse(p[0]), t1 - 3 * 3600000), out = [];
-      for (var t = t0; t <= t1; t += 360000) out.push(t);
-      return out;
-    }).catch(function () {
-      var end = Math.floor((Date.now() - 12 * 60000) / 360000) * 360000, out = [];
-      for (var t = end - 3 * 3600000; t <= end; t += 360000) out.push(t);
-      return out;
-    });
-  }
+  var src = "paint", times = [], idx = 0, timer = null, layer = null, rvHost = "", rvFrames = [];
   function legend() {
-    $("legend").innerHTML = src === "ec"
-      ? '<div class="lg' + (show.rain ? "" : " off") + '" data-k="rain">Rain<i class="bar rain"></i></div><div class="lg' + (show.snow ? "" : " off") + '" data-k="snow">Snow<i class="bar snow"></i></div>'
+    $("legend").innerHTML = src === "paint"
+      ? '<div class="lg">Rain<i class="bar rain"></i></div><div class="lg">Snow<i class="bar snow"></i></div>'
+      : src === "rvs" ? '<div class="lg">Rain<i class="bar rv"></i></div><div class="lg">Snow<i class="bar rvs"></i></div>'
       : '<div class="lg">Precipitation (rain and snow look alike)<i class="bar rv"></i></div>';
   }
   function showFrame(i) {
     idx = Math.max(0, Math.min(times.length - 1, i)); $("slider").value = idx;
     var d = new Date(times[idx]);
     $("when").innerHTML = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "<small>" + (idx === times.length - 1 ? "latest" : d.toLocaleDateString([], { weekday: "short", day: "numeric" })) + "</small>";
-    if (src === "ec") {
-      var iso = d.toISOString().replace(/\.\d{3}Z$/, "Z");
-      ["rain", "snow"].forEach(function (k) {
-        if (show[k]) { if (!map.hasLayer(ec[k])) { ec[k].time = iso; ec[k].addTo(map); } else ec[k].setTime(iso); }
-        else if (map.hasLayer(ec[k])) map.removeLayer(ec[k]);
-      });
-    } else {
-      var url = rvHost + rvFrames[idx].path + "/256/{z}/{x}/{y}/2/1_0.png";
-      if (!rvLayer) rvLayer = L.tileLayer(url, { pane: "radar", opacity: 0.85, maxNativeZoom: 7, maxZoom: 12, attribution: "Radar &copy; RainViewer" }).addTo(map); else rvLayer.setUrl(url);
-    }
+    var path = rvFrames[idx].path, opts = { pane: "radar", opacity: 0.9, maxNativeZoom: 7, maxZoom: 12, attribution: "Radar &copy; RainViewer" };
+    var next = src === "paint" ? new RepaintRV(path, opts) : L.tileLayer(rvHost + path + "/256/{z}/{x}/{y}/2/" + (src === "rvs" ? "1_1" : "1_0") + ".png", opts);
+    // swap once the new frame has drawn, so the animation doesn't flash
+    var old = layer; layer = next;
+    next.once("load", function () { if (old && map.hasLayer(old)) map.removeLayer(old); });
+    next.addTo(map);
   }
   function setSource(s) {
-    src = s; stop(); legend(); status("");
+    src = s; legend();
     document.querySelectorAll(".src button").forEach(function (b) { b.classList.toggle("on", b.dataset.src === s); });
-    if (s === "ec") {
-      if (rvLayer) { map.removeLayer(rvLayer); rvLayer = null; }
-      ecTimes().then(function (list) { times = list; $("slider").max = times.length - 1; showFrame(times.length - 1); });
-    } else {
-      ["rain", "snow"].forEach(function (k) { if (map.hasLayer(ec[k])) map.removeLayer(ec[k]); });
-      fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (api) {
-        rvHost = api.host; rvFrames = (api.radar && api.radar.past) || [];
-        times = rvFrames.map(function (f) { return f.time * 1000; }); $("slider").max = times.length - 1; showFrame(times.length - 1);
-      }).catch(function (e) { status("RainViewer didn't respond: " + e.message, true); });
-    }
+    if (times.length) showFrame(idx);
   }
   function stop() { if (timer) { clearInterval(timer); timer = null; } $("play").textContent = "▶"; }
   $("play").addEventListener("click", function () {
     if (timer) return stop();
     $("play").textContent = "❚❚";
-    timer = setInterval(function () { showFrame(idx >= times.length - 1 ? 0 : idx + 1); }, 800);
+    timer = setInterval(function () { showFrame(idx >= times.length - 1 ? 0 : idx + 1); }, 900);
   });
   $("slider").addEventListener("input", function () { stop(); showFrame(+this.value); });
   document.querySelectorAll(".src button").forEach(function (b) { b.addEventListener("click", function () { setSource(b.dataset.src); }); });
-  // tap Rain or Snow in the legend to hide/show that layer
-  $("legend").addEventListener("click", function (e) {
-    var lg = e.target.closest(".lg[data-k]"); if (!lg) return;
-    show[lg.dataset.k] = !show[lg.dataset.k]; legend(); if (times.length) showFrame(idx);
-  });
-  setSource("ec");
+  legend();
+  fetch("https://api.rainviewer.com/public/weather-maps.json").then(function (r) { return r.json(); }).then(function (api) {
+    rvHost = api.host; rvFrames = (api.radar && api.radar.past) || [];
+    times = rvFrames.map(function (f) { return f.time * 1000; }); $("slider").max = times.length - 1; showFrame(times.length - 1);
+  }).catch(function (e) { status("RainViewer didn't respond: " + e.message, true); });
 })();
 </script>
 </body>
