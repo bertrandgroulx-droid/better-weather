@@ -689,7 +689,7 @@ async function run() {
   {
     const sctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
     const spage = await sctx.newPage();
-    const snowy = () => {
+    const snowy = (rainNow) => {
       const now = new Date(); now.setMinutes(0, 0, 0);
       const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], rain: [], showers: [], snowfall: [], weather_code: [], wind_speed_10m: [], wind_gusts_10m: [], wind_direction_10m: [], is_day: [] };
       for (let i = -48; i <= 200; i++) {
@@ -699,6 +699,7 @@ async function run() {
         if (i >= 2 && i <= 3) { rain = 0.3; snowW = 0.4; code = 71; pop = 80; }
         if (i >= 4 && i <= 8) { snowW = 0.8; code = 73; pop = 85; }
         if (i >= 30 && i <= 32) { rain = 0.4; code = 67; pop = 70; }
+        if (rainNow && i >= 0 && i <= 1) { rain = 0.6; code = 61; pop = 80; }
         H.time.push(fmt(t)); H.temperature_2m.push(0); H.apparent_temperature.push(-5); H.precipitation_probability.push(pop);
         H.precipitation.push(+(rain + snowW).toFixed(2)); H.rain.push(rain); H.showers.push(0); H.snowfall.push(+(snowW * 0.7).toFixed(2));
         H.weather_code.push(code); H.wind_speed_10m.push(12); H.wind_gusts_10m.push(20); H.wind_direction_10m.push(300); H.is_day.push(1);
@@ -713,7 +714,7 @@ async function run() {
         D.precipitation_sum.push(pr); D.rain_sum.push(rn); D.showers_sum.push(0); D.snowfall_sum.push(sn);
         D.precipitation_probability_max.push(pr ? 80 : 10); D.wind_speed_10m_max.push(20); D.sunrise.push(ds + "T07:50"); D.sunset.push(ds + "T18:50");
       }
-      return { latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton", current: { time: fmt(new Date(now.getTime() + 15 * 60000)), temperature_2m: 0, apparent_temperature: -5, weather_code: 3, wind_speed_10m: 12, wind_gusts_10m: 20, wind_direction_10m: 300, precipitation: 0, is_day: 1 }, hourly: H, daily: D };
+      return { latitude: 51.05, longitude: -114.07, timezone: "America/Edmonton", current: { time: fmt(new Date(now.getTime() + 15 * 60000)), temperature_2m: 0, apparent_temperature: -5, weather_code: rainNow ? 61 : 3, wind_speed_10m: 12, wind_gusts_10m: 20, wind_direction_10m: 300, precipitation: 0, is_day: 1 }, hourly: H, daily: D };
     };
     await spage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
     let fUrl = "";
@@ -746,6 +747,17 @@ async function run() {
     assert(/Rain 0\.3mm/.test(sRead) && /Snow 0\.3cm/.test(sRead), `conditions reads out rain and snow, got "${sRead}"`);
     assert((await spage.$eval("#condBody .cc-plab", (e) => e.textContent)) === "Precip", "precip row is labelled Precip");
     assert(await spage.$("#condBody .cp-bar.snow"), "snow bars drawn in the precip row");
+    // raining now, turning to snow before it stops: the outlook says so
+    const tpage = await sctx.newPage();
+    await tpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await tpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(snowy(true))));
+    await tpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await tpage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await tpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await tpage.goto(URL);
+    await tpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const tOut = await tpage.$eval("#summary .fcast", (e) => e.textContent);
+    assert(/^Rain turning to snow, easing by \d+\s?(AM|PM)/i.test(tOut), `outlook says rain turning to snow, got "${tOut}"`);
     await sctx.close();
   }
 

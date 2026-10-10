@@ -3147,6 +3147,24 @@
     if (sp.total > 0 && sp.rainW / sp.total >= 0.15 && sp.snowW / sp.total >= 0.15) return "Rain and snow";
     return precipWord(code);
   }
+  // Is an hour's precipitation rain, snow or a mix (each ≥15% of the water)?
+  function precipKind(h, i, code) {
+    var sp = hourSplit(h, i);
+    if (!(sp.total > 0)) return (code >= 71 && code <= 77) || code === 85 || code === 86 ? "snow" : "rain";
+    var r = sp.rainW / sp.total, sn = sp.snowW / sp.total;
+    return r >= 0.15 && sn >= 0.15 ? "mix" : sn > r ? "snow" : "rain";
+  }
+  // Over a wet spell [i0, stop): the kind it settles into ("snow" or "rain") if that differs
+  // from now's — held for 2+ hours (or to the end) so a one-hour blip doesn't count — else null.
+  function precipTurn(h, i0, stop, code) {
+    var k0 = precipKind(h, i0, code);
+    for (var j = i0 + 1; j < stop; j++) {
+      var k = precipKind(h, j, h.weather_code[j]);
+      if (k === k0 || k === "mix") continue;
+      if (j + 1 >= stop || precipKind(h, j + 1, h.weather_code[j + 1]) === k) return k;
+    }
+    return null;
+  }
   function precipWord(code) {
     if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
     if (code >= 95) return "Storms";
@@ -3178,9 +3196,12 @@
     // headline shows), not the hourly amount/chance — so the two never disagree.
     var nowCode = d.current.weather_code;
     if (nowCode != null && nowCode >= 51) { // precipitating now — say when it lets up (→ flash)
-      var word = precipWordAt(h, i0, nowCode);
-      for (i = i0 + 1; i < end; i++) if (!wet(i)) return { text: word + " easing by " + hourWord(h.time[i]), rain: true, soon: true };
-      return { text: word + " continuing", rain: true, soon: true };
+      var word = precipWordAt(h, i0, nowCode), stop = end;
+      for (i = i0 + 1; i < end; i++) if (!wet(i)) { stop = i; break; }
+      // Say so if it changes over before it lets up: "Rain turning to snow, easing by 9 AM".
+      var turn = precipTurn(h, i0, stop, nowCode);
+      if (turn) word = (word === "Rain and snow" ? "Turning to " : word + " turning to ") + turn;
+      return { text: word + (stop < end ? (turn ? ", easing by " : " easing by ") + hourWord(h.time[stop]) : (turn ? ", continuing" : " continuing")), rain: true, soon: true };
     }
     for (i = i0 + 1; i < end; i++) { // dry now — find the next wet hour
       if (!wet(i)) continue;
