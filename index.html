@@ -435,23 +435,17 @@
     background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; }
   .day-readout .rd-date { font-weight: 400; font-size: 1.2rem; margin-bottom: 4px; }
-  /* back-to-now/today: the Moon panel's arrow, in the readout card's bottom corner (nearest the
-     scroller) on the side now lies; shared by the Daylight, Conditions and Wind panels */
+  /* back-to-now/today: the Moon panel's arrow, on the side now lies; shared by the Daylight,
+     Conditions and Wind panels. */
   .day-readout { position: relative; }
-  .day-readout .mo-now, .cond-read .mo-now { top: auto; bottom: 7px; left: 10px; width: 28px; height: 28px; }
-  .day-readout .mo-now svg, .cond-read .mo-now svg { width: 16px; height: 16px; }
-  .day-readout .mo-now.right, .cond-read .mo-now.right { left: auto; right: 10px; }
-  .cond-read { position: relative; }
-  /* Daylight: keep the bottom line ("▲ 4m longer than the day before") clear of the arrow
-     in either corner — it truncates instead — and on small phones use a smaller arrow tucked
-     lower, clear of the Vitamin D row above it */
-  .day-readout .rd-item.rd-trend { display: block; max-width: calc(100% - 68px); } /* a real box (rd-item is display: contents) */
-  @media (max-width: 340px) {
-    .day-readout .mo-now { width: 22px; height: 22px; bottom: 4px; left: 6px; }
-    .day-readout .mo-now.right { left: auto; right: 6px; }
-    .day-readout .mo-now svg { width: 13px; height: 13px; }
-    .day-readout .rd-item.rd-trend { max-width: calc(100% - 56px); }
-  }
+  /* It floats over the top corner of the sliding chart itself, where your thumb is: just inside
+     the frozen axis on the left, or at the right edge (no extra height). */
+  .cond-plot .mo-now, .day-chart-wrap .mo-now { bottom: auto; top: 4px; left: 46px; width: 28px; height: 28px; z-index: 4;
+    background: rgba(14,36,64,0.88); }
+  .cond-plot .mo-now svg, .day-chart-wrap .mo-now svg { width: 16px; height: 16px; }
+  .cond-plot .mo-now.right, .day-chart-wrap .mo-now.right { left: auto; right: 6px; }
+  .cond-plot.has-icons .mo-now { top: 30px; } /* Conditions: below its row of weather icons */
+  .day-chart-wrap .mo-now { left: 32px; }
   /* the three label | value pairs share one small two-column grid, centred as a block with
      a fixed gap: labels end on one line, values start on another, and as the screen widens
      the card's margins take up the slack, not the gap. It's its own box so the longer date
@@ -2652,6 +2646,7 @@
         '<div class="day-scroll" id="dayScroll"></div>' +
         '<svg class="day-yaxis" width="28" height="' + H + '" viewBox="0 0 28 ' + H + '" aria-hidden="true">' + yaxis + '</svg>' +
         '<div class="day-cursor" aria-hidden="true"><i class="dc-line" style="top:' + PT + 'px;height:' + plotH + 'px"></i><i class="dc-dot" id="dayDotR"></i><i class="dc-dot" id="dayDotS"></i></div>' +
+        '<button type="button" class="mo-now" id="dayNow" aria-label="Back to today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
       '</div>' +
       '<div class="day-sun" id="daySun"></div>' +
       '<div class="air-foot">Sun times computed on-device (NOAA solar algorithm) for ' + (loc.name || "this location") + '.</div>';
@@ -2675,10 +2670,9 @@
       var trend = delta > 0 ? '<span class="rd-item rd-trend" style="color:#7fd4ff">▲ ' + delta + 'm longer than the day before</span>'
         : delta < 0 ? '<span class="rd-item rd-trend" style="color:var(--muted)">▼ ' + (-delta) + 'm shorter than the day before</span>'
         : '<span class="rd-item rd-trend" style="color:var(--muted)">turning point — day length steady</span>';
+      // back-to-today arrow (over the chart): shown once scrubbed off today, on the side today lies
+      var dn = $("dayNow"); if (dn) { dn.classList.toggle("show", i !== todayIdx); dn.classList.toggle("right", todayIdx > i); }
       readout.innerHTML =
-        // back-to-today arrow: shown once scrubbed off today, on the side today lies
-        '<button type="button" class="mo-now' + (i !== todayIdx ? ' show' : '') + (todayIdx > i ? ' right' : '') + '" id="dayNow" aria-label="Back to today">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
         '<span class="rd-date">' + dstr + (i === todayIdx ? ' · today' : '') + (season[i] ? ' · ' + season[i] : '') + '</span>' +
         '<div class="rd-grid">' +
           '<span class="rd-item"><span class="k">Sunrise</span> <b>' + clockInTz(sunrise[i], tz) + bearingHtml(azR[i], "rd-az") + '</b></span>' +
@@ -2715,7 +2709,7 @@
       curI = todayIdx;
       sc.scrollTo({ left: Math.max(0, X(todayIdx) - sc.clientWidth / 2), behavior: "smooth" });
     }
-    readout.addEventListener("click", function (e) { if (e.target.closest("#dayNow")) goToday(); });
+    $("dayNow").addEventListener("click", goToday);
     sc.addEventListener("scroll", function () {
       if (!raf) raf = requestAnimationFrame(function () { raf = 0; setScrub(centreIdx()); });
       scheduleSettle();
@@ -2805,8 +2799,9 @@
     els.windBody.innerHTML =
       '<div class="cond-days" id="windDays">' + dayBtns + '</div>' +
       '<div class="cond-read" id="windRead"><div class="cr-time" id="wrTime"></div><div class="cr-items" id="wrItems"></div>' +
-        '<button type="button" class="mo-now" id="windNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
+        '</div>' +
       '<div class="cond-plot">' +
+        '<button type="button" class="mo-now" id="windNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
         '<div class="cond-scroll" id="windScroll"><div class="cond-track" style="width:' + totalW + 'px">' + svg + '</div></div>' +
         '<div class="cond-yaxis" style="height:' + H + 'px">' + ylabs + '</div>' +
         '<div class="cond-cursor">' +
@@ -2986,8 +2981,9 @@
     els.condBody.innerHTML =
       '<div class="cond-days" id="condDays">' + dayBtns + '</div>' +
       '<div class="cond-read" id="condRead"><div class="cr-time" id="crTime"></div><div class="cr-items" id="crItems"></div>' +
-        '<button type="button" class="mo-now" id="condNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
-      '<div class="cond-plot">' +
+        '</div>' +
+      '<div class="cond-plot has-icons">' +
+        '<button type="button" class="mo-now" id="condNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
         '<div class="cond-scroll" id="condScroll">' +
           '<div class="cond-track" style="width:' + totalW + 'px">' +
             '<div class="cond-icons" style="height:' + ICON_H + 'px;width:' + totalW + 'px">' + icons + '</div>' +
