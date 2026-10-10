@@ -31,13 +31,16 @@ through — including recent history. Powered by the free
   high/low, precipitation chance, and the precip "water" fill.
 - 🟡 **Scroll indicators** — a position bar under each strip shows where you are.
 - 🗺️ **Animated radar tab** — a bottom tab opens a full-screen zoomable map with
-  animated precipitation radar (rain and snow) you scrub through the recent past
-  and short-term nowcast, centered on your location. Radar tiles are the free,
+  animated precipitation radar you scrub through the recent past and
+  short-term nowcast, centered on your location. Radar tiles are the free,
   keyless [RainViewer](https://www.rainviewer.com/) feed on a
-  [Leaflet](https://leafletjs.com/) map. The basemap uses
-  [Mapbox](https://www.mapbox.com/) (dark style) — set your token in the
-  `MAPBOX_TOKEN` constant near the top of the script; leave it blank to fall
-  back to OpenStreetMap. Restrict the token to your site's URL in the Mapbox
+  [Leaflet](https://leafletjs.com/) map, repainted on-device so rain (green →
+  red) and snow (pale blue → violet) each get their own colours, using
+  RainViewer's snow marking (estimated from temperatures). The basemap is Esri's
+  free dark grey canvas, with place names drawn above the radar; if it won't
+  load, the app falls back to [Mapbox](https://www.mapbox.com/) (dark style) —
+  set your token in the `MAPBOX_TOKEN` constant near the top of the script;
+  leave it blank to fall back to OpenStreetMap. Restrict the token to your site's URL in the Mapbox
   dashboard, since it's visible in the page.
 - 🎨 **No build step** — plain static files served as-is: `index.html` holds the
   forecast app (CSS + inline script), and the radar map lives in a separate
@@ -66,8 +69,9 @@ what can break and where:
 | [Open-Meteo Forecast](https://open-meteo.com/) | Current + hourly + daily forecast | none | Free, no key |
 | [Open-Meteo Archive](https://open-meteo.com/en/docs/historical-weather-api) | ERA5 reanalysis for older history days | none | ~5-day latency |
 | [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api) | City search fallback | none | Used only if no Mapbox token |
-| [Mapbox](https://www.mapbox.com/) | Map dark basemap **and** address/POI geocoding | **`pk.` token** | Free tier; token is in `MAPBOX_TOKEN` (base64) and must be **URL-restricted** to your site |
-| [RainViewer](https://www.rainviewer.com/) | Animated precipitation radar tiles | none | Free tier: ~2h past, no future, zoom ≤ 7, rate-limited |
+| [Mapbox](https://www.mapbox.com/) | Fallback dark basemap **and** address/POI geocoding | **`pk.` token** | Free tier; token is in `MAPBOX_TOKEN` (base64) and must be **URL-restricted** to your site |
+| [RainViewer](https://www.rainviewer.com/) | Animated precipitation radar tiles | none | Free tier: ~2h past, no future, zoom ≤ 7, rate-limited; two tiles per view tile (snow marking off and on) |
+| [Esri](https://www.esri.com/) Dark Gray Canvas | Basemap and place-name labels | none | Free tiles; Mapbox/OSM is the fallback |
 | [Leaflet](https://leafletjs.com/) (cdnjs) | Map rendering library | none | Loaded from CDN in `<head>` |
 | [OpenStreetMap tiles](https://www.openstreetmap.org/) | Basemap fallback when no Mapbox token | none | Light theme |
 

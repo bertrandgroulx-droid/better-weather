@@ -98,7 +98,7 @@ async function run() {
     r.fulfill(json({ features: [{ properties: { name: "Lisbon", place_formatted: "Portugal" }, geometry: { coordinates: [-9.13, 38.72] } }] })));
   await page.route(/api\.rainviewer\.com/, (r) => r.fulfill(json({ host: "https://x", radar: { past: [], nowcast: [] } })));
   // Don't hit real tile servers.
-  await page.route(/(tilecache\.rainviewer\.com|api\.mapbox\.com\/styles|tile\.openstreetmap\.org)/, (r) => r.abort());
+  await page.route(/(tilecache\.rainviewer\.com|api\.mapbox\.com\/styles|tile\.openstreetmap\.org|arcgisonline\.com)/, (r) => r.abort());
 
   await page.goto(URL);
 
@@ -274,6 +274,8 @@ async function run() {
   assert((await page.getAttribute("#tabRadar", "aria-selected")) === "true", "aria-selected on map tab");
   // Tap-to-pick confirm bar exists and starts hidden (map itself can't init headlessly).
   assert(await page.$eval("#radarPick", (e) => e.classList.contains("hidden")), "pick bar hidden until a point is tapped");
+  // Legend: separate rain and snow scales.
+  assert(await page.$$eval(".radar-legend .lg-grad", (g) => g.map((e) => e.className).join()) === "lg-grad rain,lg-grad snow", "legend has rain and snow scales");
   // Search dialog opens cleanly over the map: overlays hidden, dialog stacked above them.
   await page.click("#cityPill");
   assert(await page.$eval("body", (b) => b.classList.contains("searching")), "searching class set over map");

@@ -1,4 +1,5 @@
-// Radar map module — Leaflet map + Mapbox dark basemap + RainViewer radar tiles.
+// Radar map module — Leaflet map + Esri dark basemap (labels above the radar, Mapbox as the
+// fallback) + RainViewer radar tiles, repainted so rain and snow each get their own colours.
 // A factory: app.js calls createRadar(ctx) and wires the returned API to the UI.
 // ctx = { fetchJson, token, getLastLoc, CONFIG }.
 window.createRadar = function (ctx) {
@@ -8,8 +9,7 @@ window.createRadar = function (ctx) {
   // ---- module config ----
   var RADAR = {
     colorScheme: 2,          // RainViewer palette (free tier serves Universal Blue regardless)
-    snow: "1_0",             // smoothed, snow not coloured separately (avoids "snow everywhere")
-    opacity: 0.72,
+    opacity: 0.85,
     tileSize: 256,
     maxNativeZoom: 7,        // RainViewer free tiles top out at z7; upscale beyond
     maxZoom: 20,
@@ -118,7 +118,27 @@ window.createRadar = function (ctx) {
   }
 
   // ---- map / basemap ----
+  // Esri's dark grey canvas (free, no key): the base without labels under the radar, and its
+  // labels as a separate layer above it. If Esri won't load, fall back to Mapbox/OSM, whose
+  // labels are baked into the image (so they sit under the radar).
+  var ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/{svc}/MapServer/tile/{z}/{y}/{x}";
   function addBasemap() {
+    map.createPane("radar").style.zIndex = 380;
+    var lp = map.createPane("labels"); lp.style.zIndex = 420; lp.style.pointerEvents = "none";
+    var base = L.tileLayer(ESRI, { svc: "World_Dark_Gray_Base", maxNativeZoom: 16, maxZoom: RADAR.maxZoom,
+      attribution: "Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors" });
+    var labels = L.tileLayer(ESRI, { svc: "World_Dark_Gray_Reference", maxNativeZoom: 16, maxZoom: RADAR.maxZoom, pane: "labels" });
+    var fails = 0, loaded = false;
+    base.on("tileload", function () { loaded = true; });
+    base.on("tileerror", function () {
+      if (loaded || ++fails !== 3) return;
+      map.removeLayer(base); map.removeLayer(labels); addFallbackBasemap();
+    });
+    base.on("loading", onTilesLoading);
+    base.on("load", onTilesLoaded);
+    base.addTo(map); labels.addTo(map);
+  }
+  function addFallbackBasemap() {
     var layer = ctx.token
       ? L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
           id: "mapbox/dark-v11", tileSize: 512, zoomOffset: -1, maxZoom: RADAR.maxZoom,
@@ -203,9 +223,72 @@ window.createRadar = function (ctx) {
   function onTilesLoaded() { tileBusy = Math.max(0, tileBusy - 1); if (tileBusy === 0) hideBusy(); }
 
   // ---- rendering a frame ----
-  function frameUrl(fr) {
-    return rvHost + fr.path + "/256/{z}/{x}/{y}/" + RADAR.colorScheme + "/" + RADAR.snow + ".png";
+  function tileUrl(path, c, snow) {
+    return rvHost + path + "/256/" + c.z + "/" + c.x + "/" + c.y + "/" + RADAR.colorScheme + "/" + (snow ? "1_1" : "1_0") + ".png";
   }
+
+  // ---- repaint: rain and snow on scales of their own ----
+  // RainViewer serves each frame with its snow marking off (1_0) and on (1_1). A pixel that
+  // differs between the two is one RainViewer calls snow (estimated from temperatures). Its
+  // strength is read from the snow-off colour (Universal Blue: tan drizzle → light → dark blue →
+  // yellow → orange → red → pink), then painted rain green→red or snow pale blue→violet.
+  var RAMP = {
+    rain: [[143,212,122],[63,174,85],[31,138,62],[242,212,60],[240,138,44],[217,54,54],[194,63,176]],
+    snow: [[228,244,255],[168,214,247],[106,174,240],[63,116,227],[106,79,214]]
+  };
+  function strength(r, g, b) { // 0 (lightest) … 1 (heaviest)
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h, lt = (mx + mn) / 510;
+    if (d < 12) return lt > 0.8 ? 1 : 0.05;                   // white = extreme; greys = lightest
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    if (h >= 25 && h < 70 && d / mx < 0.5) return 0.04;        // tan: drizzle
+    // blues, darker = heavier; they stay in the greens, so yellow keeps meaning heavy
+    if (h >= 150 && h < 260) return 0.08 + 0.25 * Math.max(0, Math.min(1, (0.8 - lt) / 0.5));
+    if (h >= 40 && h < 150) return 0.5 + (70 - Math.min(70, h)) / 30 * 0.1;  // yellow
+    if (h < 40) return 0.6 + (40 - h) / 40 * 0.22;             // orange → red
+    return 0.85 + (360 - h) / 100 * 0.15;                      // red → pink → purple
+  }
+  function rampAt(ramp, t) {
+    t = Math.max(0, Math.min(1, t)) * (ramp.length - 1);
+    var i = Math.floor(t), f = t - i, a = ramp[i], b = ramp[Math.min(ramp.length - 1, i + 1)];
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  }
+  function loadImg(url, cors) {
+    return new Promise(function (res, rej) {
+      var im = new Image(); if (cors) im.crossOrigin = "anonymous";
+      im.onload = function () { res(im); }; im.onerror = rej; im.src = url;
+    });
+  }
+  function repaint(tile, off, on) {
+    var g = tile.getContext("2d"), cv = document.createElement("canvas"); cv.width = cv.height = 256;
+    var g2 = cv.getContext("2d"); g2.drawImage(on, 0, 0); g.drawImage(off, 0, 0);
+    var d = g.getImageData(0, 0, 256, 256), p = d.data, s = g2.getImageData(0, 0, 256, 256).data;
+    for (var i = 0; i < p.length; i += 4) {
+      var eo = p[i + 3] >= 16, es = s[i + 3] >= 16;
+      if (!eo && !es) { p[i + 3] = 0; continue; }
+      var snow = es && (!eo || Math.abs(p[i] - s[i]) + Math.abs(p[i + 1] - s[i + 1]) + Math.abs(p[i + 2] - s[i + 2]) > 24);
+      var c = rampAt(snow ? RAMP.snow : RAMP.rain, eo ? strength(p[i], p[i + 1], p[i + 2]) : 0.1);
+      p[i] = c[0]; p[i + 1] = c[1]; p[i + 2] = c[2]; p[i + 3] = 225;
+    }
+    g.putImageData(d, 0, 0);
+  }
+  var canRepaint = true; // false once the browser refuses to let us read RainViewer's pixels
+  var RepaintLayer = L ? L.GridLayer.extend({
+    setPath: function (path) { this.path = path; this.redraw(); },
+    createTile: function (c, done) {
+      var tile = document.createElement("canvas"); tile.width = tile.height = 256;
+      var path = this.path, plain = function () { // RainViewer's own colours, as before
+        loadImg(tileUrl(path, c, false), false).then(function (im) { tile.getContext("2d").drawImage(im, 0, 0); done(null, tile); },
+          function () { done(null, tile); });
+      };
+      if (!canRepaint) { plain(); return tile; }
+      Promise.all([loadImg(tileUrl(path, c, false), true), loadImg(tileUrl(path, c, true), true)]).then(function (im) {
+        try { repaint(tile, im[0], im[1]); done(null, tile); }
+        catch (e) { canRepaint = false; plain(); }
+      }, plain);
+      return tile;
+    }
+  }) : null;
 
   function frameLabel(i) {
     slider.value = i;
@@ -218,17 +301,18 @@ window.createRadar = function (ctx) {
   function loadFrame(i) {
     var fr = frames[i];
     if (!radarLayer) {
-      radarLayer = L.tileLayer(frameUrl(fr), {
-        opacity: RADAR.opacity, tileSize: RADAR.tileSize,
+      radarLayer = new RepaintLayer({
+        pane: "radar", opacity: RADAR.opacity, tileSize: RADAR.tileSize,
         maxNativeZoom: RADAR.maxNativeZoom, maxZoom: RADAR.maxZoom,
         updateWhenZooming: false, keepBuffer: 1,
         attribution: "Radar &copy; RainViewer"
       });
+      radarLayer.path = fr.path;
       radarLayer.on("loading", onTilesLoading);
       radarLayer.on("load", onTilesLoaded);
       radarLayer.addTo(map);
     } else {
-      radarLayer.setUrl(frameUrl(fr));
+      radarLayer.setPath(fr.path);
     }
   }
 
@@ -267,8 +351,11 @@ window.createRadar = function (ctx) {
     warmQueue = [];
     for (var oi = 0; oi < order.length; oi++) for (var ti = 0; ti < tiles.length; ti++) {
       var t = tiles[ti];
-      var url = rvHost + frames[order[oi]].path + "/256/" + t.z + "/" + t.x + "/" + t.y + "/" + RADAR.colorScheme + "/" + RADAR.snow + ".png";
-      if (!warmed[url]) warmQueue.push(url);
+      // both versions of each tile (snow marking off and on), which the repaint needs
+      for (var sn = 0; sn < 2; sn++) {
+        var url = tileUrl(frames[order[oi]].path, t, sn === 1);
+        if (!warmed[url]) warmQueue.push(url);
+      }
     }
     pumpWarm();
   }
@@ -280,7 +367,8 @@ window.createRadar = function (ctx) {
       if (warmed[url]) return;
       if (warmedCount > 3000) { warmed = {}; warmedCount = 0; } // bound the dedupe set
       warmed[url] = true; warmedCount++;
-      var img = new Image(); img.decoding = "async"; img.src = url; // browser caches it
+      // same CORS mode as the repaint's own requests, so the browser cache serves them
+      var img = new Image(); img.decoding = "async"; img.crossOrigin = "anonymous"; img.src = url;
     }, RADAR.warmGapMs);
   }
 

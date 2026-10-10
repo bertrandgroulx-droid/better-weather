@@ -802,8 +802,14 @@
     display: flex; flex-direction: column; gap: 3px;
   }
   .radar-legend .lg-title { font-size: 0.66rem; color: var(--muted); margin-bottom: 2px; }
-  .radar-legend .lg-grad { width: 116px; height: 9px; border-radius: 5px;
-    background: linear-gradient(90deg, #7ec8f5, #3f8fd8, #f2e400, #f59a0b, #e0140a); }
+  .radar-legend .lg-row { display: flex; align-items: center; gap: 6px; font-size: 0.66rem; color: var(--muted); }
+  .radar-legend .lg-row span { width: 26px; }
+  .radar-legend .lg-grad { width: 116px; height: 9px; border-radius: 5px; }
+  .radar-legend .lg-grad.rain { background: linear-gradient(90deg, #8fd47a, #3fae55, #1f8a3e, #f2d43c, #f08a2c, #d93636, #c23fb0); }
+  .radar-legend .lg-grad.snow { background: linear-gradient(90deg, #e4f4ff, #a8d6f7, #6aaef0, #3f74e3, #6a4fd6); }
+  .radar-legend .lg-ends { padding-left: 32px; }
+  /* the radar sits under the place names, softened a touch so its pixels don't read as blocks */
+  .leaflet-radar-pane { filter: blur(0.7px); }
   .radar-legend .lg-ends { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--muted); margin-top: 1px; }
 
   /* "Updating radar…" indicator while tiles load (top-left, under the zoom control) */
@@ -877,8 +883,8 @@
   <div id="radar" class="hidden">
     <div id="map"></div>
     <div class="radar-legend">
-      <div class="lg-title">Precipitation</div>
-      <div class="lg-grad"></div>
+      <div class="lg-row"><span>Rain</span><i class="lg-grad rain"></i></div>
+      <div class="lg-row"><span>Snow</span><i class="lg-grad snow"></i></div>
       <div class="lg-ends"><span>Light</span><span>Heavy</span></div>
     </div>
     <div class="radar-busy hidden" id="radarBusy" role="status" aria-live="polite">
@@ -933,7 +939,7 @@
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can scrub hour by hour across a month (15 days either side of today) — the strip under it is a band whose thickness is the Moon’s illumination — with a blue arrow to jump back to now. Under the date, an eye line says where to look — compass bearing and height above (or below) the horizon. Above the Moon, a perigee-to-apogee distance scale (surface to surface) moves as you scrub. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
         <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon”: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. The compass is corrected from magnetic to true north for your location automatically.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for the daylight band widening toward summer and pinching toward winter — a full year on screen, slidable a year back or ahead, with an arrow back to today. Dots mark the solstices, rings the equinoxes, dotted lines the clock changes, and a brighter band inside shows the vitamin D hours (Sun above 45°). The readout gives sunrise and sunset with their compass bearings, day length, the vitamin D window, and the change from the day before; a card beneath shows where the Sun is overhead and how high it climbs at noon here. Sun times are computed on-device, so it works offline for any place.</span></span></li>
-        <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time.</span></span></li>
+        <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can scrub back through time, with snow in its own colours.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
         <li><span class="i">📲</span><span><b>Add to your home screen.</b> <span class="d">Runs full-screen like an app, works offline from the last forecast, and quietly updates itself to the latest version.</span></span></li>
         <li class="about-sep">How the forecast works</li>
@@ -943,7 +949,7 @@
       <div class="about-foot">
         <div class="about-src"><b>Data sources</b><br>
           Weather &amp; air quality from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>, with ECMWF ERA5 reanalysis for older history.<br>
-          Radar imagery from <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> · Map &amp; address search from <a href="https://www.mapbox.com" target="_blank" rel="noopener">Mapbox</a>.<br>
+          Radar imagery from <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> · Map from <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a> · Backup map &amp; address search from <a href="https://www.mapbox.com" target="_blank" rel="noopener">Mapbox</a>.<br>
           Moon surface from NASA’s <a href="https://svs.gsfc.nasa.gov/4720" target="_blank" rel="noopener">CGI Moon Kit</a> (LRO data, public domain) · Sun and Moon positions from Meeus, <i>Astronomical Algorithms</i> · Compass correction from NOAA’s <a href="https://www.ncei.noaa.gov/products/world-magnetic-model" target="_blank" rel="noopener">World Magnetic Model</a> — all computed on-device.
         </div>
         <div>Better Weather</div>
