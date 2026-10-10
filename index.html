@@ -378,17 +378,22 @@
   /* hourly scrubber: ticks scroll under a fixed centre marker; a tall tick marks each midnight */
   .mo-scrub { position: relative; margin: 10px 0 12px; }
   .mo-cursor { position: absolute; left: 50%; top: 0; height: 100%; width: 0; z-index: 2; pointer-events: none; }
-  .mo-cursor i { position: absolute; left: 50%; top: -2px; transform: translateX(-50%); border: 6px solid transparent; border-top: 8px solid var(--accent); border-bottom: 0; }
+  .mo-cursor i { position: absolute; left: 50%; top: -9px; transform: translateX(-50%); border: 9px solid transparent; border-top: 11px solid var(--accent); border-bottom: 0; }
+  /* dipstick panels: sideways drags anywhere move the scrubber (see dragAnywhere); up/down still scrolls */
+  .modal.drag-any { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
   .mo-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; cursor: grab; -webkit-user-select: none; user-select: none; padding: 0 50%; }
   .mo-scroll::-webkit-scrollbar { display: none; }
   .mo-track { position: relative; height: 50px; }
+  /* a lane behind the band, so the slider reads even at new moon when the band is a hairline */
+  .mo-track::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 30px; background: rgba(255,255,255,0.06);
+    border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); }
   .mo-track .mo-band { position: absolute; left: 0; top: 0; display: block; }
-  .mo-band .mb-illum { fill: #e8ecf2; fill-opacity: 0.82; }
+  .mo-band .mb-illum { fill: #f1f4f8; fill-opacity: 0.92; }
   .mo-band .mb-day { stroke: rgba(255,255,255,0.22); stroke-width: 1; }
   /* fixed centre line through the band (the dipstick), under the yellow pointer */
-  .mo-cursor::after { content: ""; position: absolute; left: 50%; top: 4px; height: 34px; width: 1.4px; transform: translateX(-50%); background: var(--text); opacity: 0.85; }
+  .mo-cursor::after { content: ""; position: absolute; left: 50%; top: 2px; height: 30px; width: 3px; transform: translateX(-50%); background: var(--accent); border-radius: 2px; box-shadow: 0 0 0 1.5px rgba(14,36,64,0.9); }
   .mo-track .ml { position: absolute; top: 33px; transform: translateX(-50%); font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-  .mo-track .ml-today { color: var(--text); font-weight: 400; }
+  .mo-track .ml-now { color: var(--accent); font-weight: 400; }
   /* stat rows */
   .mo-stats, .mo-cal, .mo-about { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; }
   .mo-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 0.95rem; }
@@ -400,10 +405,11 @@
   .mo-dist { padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,0.07); }
   .mo-dist-top { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; margin: 0 0 10px; }
   .mo-dist .md-head { font-weight: 400; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; }
-  .mo-dist .md-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); margin: 30px 7px 8px; }
-  .mo-dist .md-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, rgba(255,214,102,0.35), var(--accent)); }
-  .mo-dist .md-mark { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0e2440; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(255,214,102,0.35); }
-  .mo-dist .md-val { position: absolute; top: -24px; transform: translateX(-50%); font-size: 0.86rem; font-weight: 400; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* muted on purpose: a dot on a line (the distance is context, not the thing you're scrubbing) */
+  .mo-dist .md-bar { position: relative; height: 2px; border-radius: 1px; background: rgba(255,255,255,0.22); margin: 30px 7px 10px; }
+  .mo-dist .md-fill { display: none; }
+  .mo-dist .md-mark { position: absolute; top: 50%; width: 10px; height: 10px; border-radius: 50%; background: #dfe6ef; transform: translate(-50%, -50%); }
+  .mo-dist .md-val { position: absolute; top: -24px; transform: translateX(-50%); font-size: 0.86rem; font-weight: 400; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .mo-dist .md-ends { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .mo-dist .md-ends span:last-child { text-align: right; }
   .mo-dist .md-ends small { display: block; font-size: 0.66rem; opacity: 0.75; letter-spacing: 0.02em; }
@@ -2208,6 +2214,7 @@
     var hold = function () { moTouching = true; moonUI.pinUntil = 0; clearTimeout(moSettle); moSettle = null; };
     var release = function () { moTouching = false; moonScheduleSettle(); };
     sc.addEventListener("touchstart", hold, { passive: true }); sc.addEventListener("touchend", release); sc.addEventListener("touchcancel", release);
+    dragAnywhere(els.moonBackdrop.querySelector(".modal"), sc, hold, release);
     // Desktop: click-drag to pan (touch pans natively via touch-action: pan-x).
     var down = false, sx = 0, sl = 0;
     sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; hold(); down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
@@ -2232,19 +2239,17 @@
     var top = "", bot = "";
     for (i = 0; i <= n; i += 2) { // every 2 h is plenty smooth at 2 px/h
       t = U.t0 + i * 3600000;
-      var hh = Math.max(0.6, moonInfo(new Date(t)).illum * MO_BAND_H) / 2, x = (i * MO_PX).toFixed(1);
+      var hh = Math.max(3, moonInfo(new Date(t)).illum * MO_BAND_H) / 2, x = (i * MO_PX).toFixed(1);
       top += (top ? " " : "") + x + "," + (MO_BAND_Y - hh).toFixed(1);
       bot = " " + x + "," + (MO_BAND_Y + hh).toFixed(1) + bot;
     }
-    var ticks = "", labs = "";
+    // "Now" sits under the current hour (in place of today's date); a date label too close to it gives way
+    var nowX = (Date.now() - U.t0) / 3600000 * MO_PX, ticks = "", labs = '<span class="ml ml-now" style="left:' + nowX.toFixed(1) + 'px">Now</span>';
     for (i = 0; i <= n; i++) {
       t = U.t0 + i * 3600000; p = tzParts(new Date(t), U.tz);
       if (p.h === 0) ticks += '<line class="mb-day" x1="' + i * MO_PX + '" y1="' + (MO_BAND_Y - MO_BAND_H / 2 - 3) + '" x2="' + i * MO_PX + '" y2="' + (MO_BAND_Y + MO_BAND_H / 2 + 3) + '"/>';
-      if (p.h === 12) {
-        var today = localMidnight(p.y, p.m, p.d, U.tz) === U.todayMid;
-        lab = today ? "Today" : String(p.d);
-        labs += '<span class="ml' + (today ? " ml-today" : "") + '" style="left:' + (i * MO_PX) + 'px">' + lab + '</span>';
-      }
+      if (p.h === 12 && localMidnight(p.y, p.m, p.d, U.tz) !== U.todayMid && Math.abs(i * MO_PX - nowX) >= 30)
+        labs += '<span class="ml" style="left:' + (i * MO_PX) + 'px">' + p.d + '</span>';
     }
     var tr = $("moTrack"); tr.style.width = W + "px";
     tr.innerHTML = '<svg class="mo-band" width="' + W + '" height="' + (MO_BAND_Y * 2) + '" viewBox="0 0 ' + W + ' ' + (MO_BAND_Y * 2) + '" aria-hidden="true">' +
@@ -2725,6 +2730,9 @@
     sc.addEventListener("pointerdown", function () { interacting = true; clearTimeout(settle); });
     sc.addEventListener("pointerup", function () { interacting = false; scheduleSettle(); });
     sc.addEventListener("pointercancel", function () { interacting = false; scheduleSettle(); });
+    dragAnywhere(els.dayBackdrop.querySelector(".modal"), sc,
+      function () { interacting = true; clearTimeout(settle); },
+      function () { interacting = false; scheduleSettle(); });
     // Desktop: click-drag to pan (touch pans natively via touch-action: pan-x).
     var down = false, sx = 0, sl = 0;
     sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
@@ -2871,6 +2879,9 @@
     sc.addEventListener("pointerdown", function () { interacting = true; clearTimeout(settleTimer); settleTimer = null; });
     sc.addEventListener("pointerup", function () { interacting = false; scheduleSettle(); });
     sc.addEventListener("pointercancel", function () { interacting = false; scheduleSettle(); });
+    dragAnywhere(els.windBackdrop.querySelector(".modal"), sc,
+      function () { interacting = true; clearTimeout(settleTimer); settleTimer = null; },
+      function () { interacting = false; scheduleSettle(); });
     var down = false, sx = 0, sl = 0; // desktop click-drag (touch pans natively)
     sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} sc.classList.add("grabbing"); e.preventDefault(); });
     sc.addEventListener("pointermove", function (e) { if (down) sc.scrollLeft = sl - (e.clientX - sx); });
@@ -3088,6 +3099,61 @@
     if (df) { if (S.tf[idx] != null) { df.style.top = (S.ICON_H + S.Y(S.tf[idx])).toFixed(1) + "px"; df.style.display = ""; } else df.style.display = "none"; }
     setCondReadout(idx);
   }
+  // Drag anywhere on a dipstick panel to move its scrubber: a sideways drag on the panel (the
+  // Moon picture, the readout, the empty space) pans the chart under the line as if the finger
+  // were on the chart itself, with a flick carrying on and easing out. An up/down drag still
+  // scrolls the panel (touch-action: pan-y), taps still work, and the chart keeps its own
+  // native swiping. hold()/release() keep the panel's settle-onto-the-hour waiting until done.
+  // Listeners go on the panel once; each open just points it at the new chart.
+  function dragAnywhere(panel, sc, hold, release) {
+    panel._drag = { sc: sc, hold: hold, release: release };
+    if (panel._dragWired) return;
+    panel._dragWired = true;
+    panel.classList.add("drag-any");
+    var st = null, glide = 0, killClick = false;
+    function stopGlide() { if (glide) { cancelAnimationFrame(glide); glide = 0; } }
+    panel.addEventListener("pointerdown", function (e) {
+      var d = panel._drag;
+      if (!d || !d.sc.isConnected || d.sc.contains(e.target) || e.button > 0) return;
+      if (e.target.closest("input, select, textarea, .modal-head")) return;
+      stopGlide();
+      st = { id: e.pointerId, x: e.clientX, y: e.clientY, sl: d.sc.scrollLeft, on: false, lx: e.clientX, lt: e.timeStamp, v: 0, d: d };
+    });
+    panel.addEventListener("pointermove", function (e) {
+      if (!st || e.pointerId !== st.id) return;
+      var dx = e.clientX - st.x, dy = e.clientY - st.y;
+      if (!st.on) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { st = null; return; } // a vertical scroll: leave it
+        if (Math.abs(dx) < 8) return;
+        st.on = true; st.x = e.clientX; dx = 0; st.d.hold();
+        try { panel.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      e.preventDefault();
+      st.d.sc.scrollLeft = st.sl - dx;
+      var dt = e.timeStamp - st.lt;
+      if (dt > 0) { st.v = 0.7 * st.v + 0.3 * ((e.clientX - st.lx) / dt); st.lx = e.clientX; st.lt = e.timeStamp; }
+    });
+    function end(e) {
+      if (!st || e.pointerId !== st.id) return;
+      var s0 = st; st = null;
+      if (!s0.on) return;
+      killClick = true; setTimeout(function () { killClick = false; }, 0); // a drag that ends on a button isn't a tap
+      var v = e.type === "pointercancel" || e.timeStamp - s0.lt > 80 ? 0 : s0.v, last = performance.now();
+      if (Math.abs(v) < 0.15) { s0.d.release(); return; }
+      (function step(now) { // flick: carry on, slowing down
+        var dt = Math.min(32, now - last); last = now;
+        var before = s0.d.sc.scrollLeft;
+        s0.d.sc.scrollLeft = before - v * dt;
+        v *= Math.pow(0.995, dt);
+        if (Math.abs(v) < 0.05 || s0.d.sc.scrollLeft === before) { glide = 0; s0.d.release(); return; }
+        glide = requestAnimationFrame(step);
+      })(last);
+    }
+    panel.addEventListener("pointerup", end);
+    panel.addEventListener("pointercancel", end);
+    panel.addEventListener("click", function (e) { if (killClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+
   function openCond(focusIso) {
     if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso)) return;
     els.condBackdrop.classList.remove("hidden");
@@ -3112,6 +3178,9 @@
     sc.addEventListener("pointerdown", function () { interacting = true; if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; } });
     sc.addEventListener("pointerup", function () { interacting = false; scheduleSettle(); });
     sc.addEventListener("pointercancel", function () { interacting = false; scheduleSettle(); });
+    dragAnywhere(els.condBackdrop.querySelector(".modal"), sc,
+      function () { interacting = true; if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; } },
+      function () { interacting = false; scheduleSettle(); });
     // Desktop: click-drag to pan the chart (touch pans natively via touch-action: pan-x).
     var down = false, sx = 0, sl = 0;
     sc.addEventListener("pointerdown", function (e) { if (e.pointerType === "touch") return; down = true; sx = e.clientX; sl = sc.scrollLeft; try { sc.setPointerCapture(e.pointerId); } catch (_) {} sc.classList.add("grabbing"); e.preventDefault(); });

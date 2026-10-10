@@ -261,6 +261,15 @@ async function run() {
   await page.$eval("#moScroll", (e) => { e.scrollLeft += 7 * 24 * 2; });
   await page.waitForTimeout(250);
   assert((await page.$eval("#moWhen", (e) => e.textContent)) !== when0, "scrubbing moves the selected time");
+  // the track marks the current hour "Now" (in place of today's date)
+  assert((await page.$$eval("#moTrack .ml-now", (e) => e.map((x) => x.textContent))).join() === "Now", "moon track labels the current hour Now");
+  // drag anywhere: a sideways drag across the Moon picture moves the scrubber; an up/down one doesn't
+  const drag = async (pg, sel, dx, dy) => { const b = await (await pg.$(sel)).boundingBox(); const x = b.x + b.width / 2, y = b.y + b.height / 2; await pg.mouse.move(x, y); await pg.mouse.down(); for (let k = 1; k <= 10; k++) await pg.mouse.move(x + dx * k / 10, y + dy * k / 10); await pg.mouse.up(); await pg.waitForTimeout(300); };
+  const sl0 = await page.$eval("#moScroll", (e) => e.scrollLeft), when1 = await page.$eval("#moWhen", (e) => e.textContent);
+  await drag(page, "#moDisc", 0, 40);
+  assert(Math.abs((await page.$eval("#moScroll", (e) => e.scrollLeft)) - sl0) < 2, "an up/down drag on the Moon panel leaves the scrubber");
+  await drag(page, "#moDisc", -120, 0);
+  assert((await page.$eval("#moScroll", (e) => e.scrollLeft)) > sl0 + 60 && (await page.$eval("#moWhen", (e) => e.textContent)) !== when1, "a sideways drag on the Moon picture moves the scrubber");
   const title0 = await page.$eval("#moCal .mc-title", (e) => e.textContent);
   await page.click('#moCal .mc-nav[data-nav="1"]');
   assert((await page.$eval("#moCal .mc-title", (e) => e.textContent)) !== title0, "calendar steps to the next month");
@@ -661,6 +670,10 @@ async function run() {
     assert(await wpage.$eval("#windNow", (b) => getComputedStyle(b).display !== "none" && !b.classList.contains("right")), "wind back-to-now arrow shows, pointing left");
     await wpage.click("#windNow"); await wpage.waitForTimeout(1000);
     assert(/now/.test(await wpage.$eval("#windRead", (e) => e.textContent)) && await wpage.$eval("#windNow", (b) => getComputedStyle(b).display === "none"), "wind arrow returns to now and hides");
+    // drag anywhere: a sideways drag on the readout card moves the chart off now
+    { const b = await (await wpage.$("#windRead")).boundingBox(); const x = b.x + b.width / 2, y = b.y + b.height / 2;
+      await wpage.mouse.move(x, y); await wpage.mouse.down(); for (let k = 1; k <= 10; k++) await wpage.mouse.move(x - 15 * k, y); await wpage.mouse.up(); await wpage.waitForTimeout(600); }
+    assert(!/now/.test(await wpage.$eval("#windRead", (e) => e.textContent)), "a sideways drag on the wind panel moves the chart");
     // the day picker jumps to a day
     const lastDay = await wpage.$$eval("#windDays .cd-day", (b) => b[b.length - 1].dataset.day);
     await wpage.click(`#windDays .cd-day[data-day="${lastDay}"]`); await wpage.waitForTimeout(300);
