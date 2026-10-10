@@ -477,7 +477,7 @@
   .day-yaxis { position: absolute; left: 0; top: 0; pointer-events: none; background: linear-gradient(90deg, #0e2440 0, #0e2440 22px, rgba(14,36,64,0) 28px); }
   .day-yaxis text { fill: var(--muted); font-size: 8px; font-family: inherit; }
   .day-cursor { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
-  .day-cursor .dc-line { position: absolute; left: 50%; width: 1.2px; transform: translateX(-50%); background: var(--text); }
+  .day-cursor .dc-line { position: absolute; left: 50%; width: 1.4px; transform: translateX(-50%); background: var(--text); opacity: 0.85; }
   .day-cursor .dc-dot { position: absolute; left: 50%; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); background: #fff; border: 1.4px solid #ffb733; }
   .day-chart text { fill: var(--muted); font-size: 8px; font-family: inherit; }
   .day-chart .ax-line { stroke: rgba(255,255,255,0.09); stroke-width: 1; }
@@ -485,7 +485,8 @@
   .day-chart .vd-band { fill: #ffeaa6; fill-opacity: 0.85; } /* Sun above 45°: vitamin D hours */
   .day-readout .rd-vd b { color: #ffeaa6; }
   .day-chart .edge { fill: none; stroke: #ffb733; stroke-width: 1.4; }
-  .day-chart .today-line { stroke: rgba(255,255,255,0.5); stroke-width: 1; stroke-dasharray: 2 2; }
+  .day-chart .today-line { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 3 2.4; opacity: 0.85; }
+  .day-chart .dc-nowlab { fill: var(--accent); font-size: 8px; letter-spacing: 0.04em; }
   .day-chart .cursor-line { stroke: var(--text); stroke-width: 1.2; }
   .day-chart .cursor-dot { fill: #fff; stroke: #ffb733; stroke-width: 1.4; }
   .day-chart .sol-dot { fill: var(--accent); }
@@ -2652,7 +2653,9 @@
       '<polyline class="edge" points="' + edgeS + '"/>' +
       solDots +
       dstHtml +
-      '<line class="today-line" x1="' + X(todayIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(todayIdx).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
+      // today: the same yellow dashed NOW line as Wind and Conditions, starting just below its label
+      '<line class="today-line" x1="' + X(todayIdx).toFixed(1) + '" y1="' + (PT + 11) + '" x2="' + X(todayIdx).toFixed(1) + '" y2="' + (H - PB) + '"/>' +
+      '<text class="dc-nowlab" x="' + X(todayIdx).toFixed(1) + '" y="' + (PT + 7.5) + '" text-anchor="middle">NOW</text>' +
       '</svg>';
     return svg;
     }
@@ -2669,7 +2672,7 @@
       '<div class="day-chart-wrap" id="dayWrap">' +
         '<div class="day-scroll" id="dayScroll"></div>' +
         '<svg class="day-yaxis" width="28" height="' + H + '" viewBox="0 0 28 ' + H + '" aria-hidden="true">' + yaxis + '</svg>' +
-        '<div class="day-cursor" aria-hidden="true"><i class="dc-line" style="top:' + PT + 'px;height:' + plotH + 'px"></i><i class="dc-dot" id="dayDotR"></i><i class="dc-dot" id="dayDotS"></i></div>' +
+        '<div class="day-cursor" aria-hidden="true"><i class="dc-line" style="top:' + (PT + 11) + 'px;height:' + (plotH - 11) + 'px"></i><i class="dc-dot" id="dayDotR"></i><i class="dc-dot" id="dayDotS"></i></div>' +
         '<button type="button" class="mo-now" id="dayNow" aria-label="Back to today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
       '</div>' +
       '<div class="day-sun" id="daySun"></div>' +
@@ -2806,7 +2809,8 @@
           '<path d="M0,-9 L5.4,6.4 L0,2.6 L-5.4,6.4 Z"/></g>';
       }
     }
-    var nowLine = '<line class="cc-now" x1="' + X(i0).toFixed(1) + '" y1="' + PT + '" x2="' + X(i0).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' +
+    // the NOW line (and the centre line) start just below the word, so neither runs through it
+    var nowLine = '<line class="cc-now" x1="' + X(i0).toFixed(1) + '" y1="' + (PT + 15) + '" x2="' + X(i0).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' +
       '<text class="cc-nowlab" x="' + X(i0).toFixed(1) + '" y="' + (PT + 11) + '" text-anchor="middle">NOW</text>';
     var svg = '<svg class="cond-svg wind-chart" width="' + totalW + '" height="' + H + '" viewBox="0 0 ' + totalW + ' ' + H + '">' +
       grid + dayLines + nowLine +
@@ -2832,7 +2836,7 @@
         '<div class="cond-scroll" id="windScroll"><div class="cond-track" style="width:' + totalW + 'px">' + svg + '</div></div>' +
         '<div class="cond-yaxis" style="height:' + H + 'px">' + ylabs + '</div>' +
         '<div class="cond-cursor">' +
-          '<div class="cc-cline" style="top:' + PT + 'px;height:' + (plotH + PB) + 'px"></div>' +
+          '<div class="cc-cline" style="top:' + (PT + 15) + 'px;height:' + (plotH + PB - 15) + 'px"></div>' +
           (haveG ? '<div class="cc-cdot gust" id="windDotG" style="display:none"></div>' : '') +
           '<div class="cc-cdot wind" id="windDotW" style="display:none"></div>' +
         '</div>' +
@@ -2972,7 +2976,7 @@
       if (tf[i] != null) pf += (pf ? " " : "") + X(i).toFixed(1) + "," + Y(tf[i]).toFixed(1);
     }
     var nowLine = (nowIdx >= 0 && nowIdx < N)
-      ? '<line class="cc-now" x1="' + X(nowIdx).toFixed(1) + '" y1="' + PT + '" x2="' + X(nowIdx).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' +
+      ? '<line class="cc-now" x1="' + X(nowIdx).toFixed(1) + '" y1="' + (PT + 15) + '" x2="' + X(nowIdx).toFixed(1) + '" y2="' + (PT + plotH) + '"/>' +
         '<text class="cc-nowlab" x="' + X(nowIdx).toFixed(1) + '" y="' + (PT + 11) + '" text-anchor="middle">NOW</text>' : "";
 
     var svg =
@@ -3025,7 +3029,7 @@
           '<div class="cc-plab" style="top:' + (ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Precip</div>' +
         '</div>' +
         '<div class="cond-cursor">' +
-          '<div class="cc-cline" style="top:' + (ICON_H + PT) + 'px;height:' + (plotH + PB + PRECIP_H) + 'px"></div>' +
+          '<div class="cc-cline" style="top:' + (ICON_H + PT + 15) + 'px;height:' + (plotH + PB + PRECIP_H - 15) + 'px"></div>' +
           '<div class="cc-cdot feels" id="condDotF" style="display:none"></div>' +
           '<div class="cc-cdot actual" id="condDotA" style="display:none"></div>' +
         '</div>' +

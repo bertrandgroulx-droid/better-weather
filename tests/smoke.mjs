@@ -584,6 +584,7 @@ async function run() {
     assert(/Daylight/.test(dpill) && /\d+m/.test(dpill), `summary shows a Daylight pill with a length, got "${dpill}"`);
     await ypage.click("#summary .day-line");
     await ypage.waitForSelector("#dayBackdrop:not(.hidden)", { timeout: 5000 });
+    assert((await ypage.$eval("#dayScroll .dc-nowlab", (e) => e.textContent)) === "NOW", "daylight marks today NOW");
     // the chart drew a daylight band and a full year of month labels
     assert(await ypage.$("#dayBody .day-chart .band"), "daylight band polygon is drawn");
     const months = await ypage.$$eval("#dayBody .day-chart text", (ts) => ts.map((t) => t.textContent));
