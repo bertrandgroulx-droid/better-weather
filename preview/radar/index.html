@@ -71,9 +71,21 @@
   // dark basemap without labels, radar above it, then the labels on top (own panes)
   map.createPane("radar").style.zIndex = 380;
   map.createPane("labels").style.zIndex = 420; map.getPane("labels").style.pointerEvents = "none";
-  var carto = "https://{s}.basemaps.cartocdn.com/{style}/{z}/{x}/{y}{r}.png", cAttr = '&copy; OpenStreetMap &copy; CARTO';
-  L.tileLayer(carto, { style: "dark_nolabels", subdomains: "abcd", maxZoom: 12, attribution: cAttr }).addTo(map);
-  L.tileLayer(carto, { style: "dark_only_labels", subdomains: "abcd", maxZoom: 12, pane: "labels" }).addTo(map);
+  // Esri's dark grey canvas: the base without labels, and its labels as a separate layer
+  // (free, no key). CARTO's equivalent now requires an API key.
+  var esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/{svc}/MapServer/tile/{z}/{y}/{x}";
+  var base = L.tileLayer(esri, { svc: "World_Dark_Gray_Base", maxZoom: 12, maxNativeZoom: 16, attribution: "Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors" }).addTo(map);
+  var labels = L.tileLayer(esri, { svc: "World_Dark_Gray_Reference", maxZoom: 12, maxNativeZoom: 16, pane: "labels" }).addTo(map);
+  // Safety net: if Esri's tiles won't load, fall back to the app's own Mapbox dark map
+  // (labels baked in, so they sit under the radar) and say so.
+  var baseFails = 0;
+  base.on("tileerror", function () {
+    if (++baseFails !== 3) return;
+    map.removeLayer(base); map.removeLayer(labels);
+    L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=" + atob("cGsuZXlKMUlqb2lZbVZ5ZEhKaGJtUm5jbTkxYkhnaUxDSmhJam9pWTIxMGJIcG1ZbkUyTURGd2NqTTBjSGwxYlhGaWIyWnROQ0o5LnJjamswWkNPQzh0ZFFVN1lOcDlUYnc="),
+      { tileSize: 512, zoomOffset: -1, maxZoom: 12, attribution: "&copy; Mapbox &copy; OpenStreetMap" }).addTo(map);
+    status("Esri's map didn't load, so this is the app's usual map (place names sit under the radar here).", true);
+  });
   L.circleMarker([start.lat, start.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#3b6cff", fillOpacity: 1, pane: "labels" }).addTo(map);
 
   // ---------- repaint: Environment Canada draws both layers on the same rainbow scale ----------
@@ -133,9 +145,11 @@
       // set: load it again without, and show it in Environment Canada's own colours.
       img.onerror = function () {
         if (!img.crossOrigin) return done(new Error("tile"), tile);
-        if (remapOK) { remapOK = false; status("Couldn't repaint Environment Canada's colours here (their server blocks it), so rain and snow show in their original shared colours.", true); }
         img = new Image();
-        img.onload = function () { tile.getContext("2d").drawImage(img, 0, 0); done(null, tile); };
+        img.onload = function () { // it loads without the pixel-read request: so it really is blocked
+          if (remapOK) { remapOK = false; status("Couldn't repaint Environment Canada's colours here (their server blocks it), so rain and snow show in their original shared colours.", true); }
+          tile.getContext("2d").drawImage(img, 0, 0); done(null, tile);
+        };
         img.onerror = function () { done(new Error("tile"), tile); };
         img.src = url;
       };
