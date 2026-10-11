@@ -645,7 +645,11 @@
     display: flex; flex-direction: column;
     justify-content: space-evenly;
   }
-  .section { display: flex; flex-direction: column; }
+  .section { display: flex; flex-direction: column; position: relative; }
+  /* back to now on the Hourly/Daily strips: once the Now/Today column is fully off-screen,
+     a NOW pill sits on the % row just above the scroll bar, on the side now lies */
+  .strip-now { bottom: 8px; left: 4px; z-index: 5; }
+  .strip-now.right { left: auto; right: 4px; }
   .section > h2 {
     margin: 0 0 6px; font-size: 1.4rem; font-weight: 400; letter-spacing: -0.01em;
   }
@@ -905,12 +909,14 @@
         <h2>Hourly</h2>
         <div class="scroller" id="hourly"></div>
         <div class="track"><div class="thumb" id="hThumb"></div><div class="marker" id="hMarker"></div></div>
+        <button type="button" class="mo-now strip-now" id="hNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>
       </section>
 
       <section class="section" id="dailySec">
         <h2>Daily</h2>
         <div class="scroller" id="daily"></div>
         <div class="track"><div class="thumb" id="dThumb"></div><div class="marker" id="dMarker"></div></div>
+        <button type="button" class="mo-now strip-now" id="dNow" aria-label="Back to today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>
       </section>
     </div>
   </div>
@@ -965,7 +971,7 @@
       <ul class="about-list">
         <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”.</span></span></li>
-        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop.</span></span></li>
+        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
@@ -3839,6 +3845,22 @@
   // Position both strips at Now/Today and size their thumbs + markers. Must run
   // while the strips are visible — a hidden element measures as zero width, which
   // breaks the thumb and hides the marker.
+  // NOW pill for a strip: shown only while the Now/Today column is entirely off-screen,
+  // pointing (and placed) toward it; a tap glides the strip back to it.
+  function stripNowUpdate(scroller, btn, cls) {
+    var el = scroller.querySelector("." + cls);
+    if (!el) { btn.classList.remove("show"); return; }
+    var l = el.offsetLeft - scroller.scrollLeft, r = l + el.offsetWidth;
+    btn.classList.toggle("show", r <= 0 || l >= scroller.clientWidth);
+    btn.classList.toggle("right", l >= scroller.clientWidth);
+  }
+  function bindStripNow(scroller, btn, cls) {
+    scroller.addEventListener("scroll", function () { stripNowUpdate(scroller, btn, cls); }, { passive: true });
+    btn.addEventListener("click", function () {
+      var el = scroller.querySelector("." + cls);
+      if (el) scroller.scrollTo({ left: el.offsetLeft - 4, behavior: "smooth" });
+    });
+  }
   function layoutStrips() {
     scrollToClass(els.hourly, "now");
     scrollToClass(els.daily, "today");
@@ -3846,6 +3868,8 @@
     updateThumb(els.daily, els.dThumb);
     positionMarker(els.hourly, els.hMarker, "now");
     positionMarker(els.daily, els.dMarker, "today");
+    stripNowUpdate(els.hourly, $("hNow"), "now");
+    stripNowUpdate(els.daily, $("dNow"), "today");
   }
 
   // ================= flow =================
@@ -4439,6 +4463,8 @@
   els.frameSlider.addEventListener("change", function () { radar.onCommit(+els.frameSlider.value); });
   bindThumb(els.hourly, els.hThumb);
   bindThumb(els.daily, els.dThumb);
+  bindStripNow(els.hourly, $("hNow"), "now");
+  bindStripNow(els.daily, $("dNow"), "today");
   [[els.hourly, els.hThumb], [els.daily, els.dThumb]].forEach(function (s) {
     enableDragScroll(s[0]);
     enableWheelScroll(s[0]);

@@ -285,6 +285,15 @@ async function run() {
   assert(await page.$$eval("#moonBackdrop .mo-find", (b) => b.length === 1 && !!b[0].closest(".modal-head")), "Find the Moon is in the header, once");
   await page.click("#moonClose");
 
+  // Back to now on the strips: no pill while Now is on screen; scrolled far ahead, "← NOW"
+  // shows on the left; tapping it brings Now back and hides the pill
+  {
+    assert(await page.$eval("#hNow", (b) => getComputedStyle(b).display === "none"), "strip NOW pill hidden while Now is on screen");
+    await page.$eval("#hourly", (e) => { e.scrollLeft += e.querySelector(".cell").offsetWidth * 12; }); await page.waitForTimeout(200);
+    assert(await page.$eval("#hNow", (b) => getComputedStyle(b).display !== "none" && !b.classList.contains("right")), "strip NOW pill shows (pointing back) once Now is off-screen");
+    await page.click("#hNow"); await page.waitForTimeout(900);
+    assert(await page.$eval("#hNow", (b) => getComputedStyle(b).display === "none"), "tapping the strip NOW pill brings Now back");
+  }
   // 2) Tabs switch
   await page.click("#tabRadar");
   assert(await page.$eval("#radar", (e) => !e.classList.contains("hidden")), "radar shown");
