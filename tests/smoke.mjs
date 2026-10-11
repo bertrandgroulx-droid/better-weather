@@ -182,7 +182,9 @@ async function run() {
   await page.click("#unitC"); // restore metric for the remaining assertions
   await page.waitForTimeout(30);
   assert((await page.$eval("#aboutBackdrop .u-cell", (e) => e.textContent)) === "1–3 km", "info grid size back to km");
-  assert(!(await page.$("#daily .cell.today .fog")), "overnight fog does not make today foggy");
+  assert(!(await page.$("#daily .cell.today > .ic .fog")), "overnight fog does not make today's (day) icon foggy");
+  // …but the night half shows that night's own weather: the fixture's nights are foggy
+  assert(await page.$("#daily .cell.today .night .fog"), "tonight's icon is the night's own weather (fog)");
   assert(await page.$("#daily .fog"), "custom fog glyph renders (out-of-window day via daily code)");
   // A day that mixes clear and overcast hours reads as partly cloudy (⛅), not as
   // its single cloudiest hour (☁️) — the daily icon averages the sky.

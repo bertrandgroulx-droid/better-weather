@@ -705,6 +705,8 @@
   .water { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 0; }
   .cell.deep-snow .big, .cell.deep-snow .ic, .cell.deep-snow .sub { text-shadow: 0 0 2px #0e2440, 0 0 3px #0e2440, 0 0 6px rgba(14,36,64,0.9); }
   .cell.deep-snow .ic { filter: drop-shadow(0 0 2px rgba(14,36,64,0.95)); }
+  #daily .cell .night { position: relative; z-index: 1; align-self: stretch; margin: 4px 5px 0; padding: 3px 0 4px; border-radius: 4px; background: rgba(3, 9, 20, 0.42); }
+  #daily .cell .night .ic { height: 1.1em; overflow: visible; } /* the same height whatever the glyph, so bands line up */
   #daily .water { left: 3px; right: 3px; } /* a small gap between days so neighbouring columns don't merge */
   #hourly .water { left: 1px; right: 1px; } /* a hairline gap between hours (days get a wider one) */
 
@@ -976,7 +978,7 @@
       <ul class="about-list">
         <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”.</span></span></li>
-        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low is the night that follows it, evening to the next morning, as in most weather apps.</span></span></li>
+        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low and the icon beside it, in the darker band, are the night that follows it, evening to the next morning.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
@@ -3752,6 +3754,16 @@
     if (lo == null && next) lo = dd.temperature_2m_min[i + 1];
     return lo == null ? dd.temperature_2m_min[i] : lo;
   }
+  // That night's own weather: the hourly codes from 6 PM to 9 AM (the same window as the low),
+  // summarised like a day's; where the hourly data doesn't cover the night, the day's code.
+  function nightCode(d, i, fallback) {
+    var dd = d.daily, h = d.hourly, next = dd.time[i + 1], codes = [];
+    if (h && h.time && next) {
+      var from = dd.time[i] + "T18:00", to = next + "T09:00";
+      for (var k = 0; k < h.time.length; k++) if (h.time[k] >= from && h.time[k] <= to && h.weather_code[k] != null) codes.push(h.weather_code[k]);
+    }
+    return codes.length ? summarizeDayCode(codes) : fallback;
+  }
   function renderDaily(d) {
     var dd = d.daily, ti = todayIndex(d), scale = eventScale(precipScaleD(), 0, dd.time.length, function (k) { return [dd.precipitation_sum[k], daySplit(dd, k)]; });
     var dayCode = daylightCodeByDate(d);
@@ -3770,8 +3782,10 @@
           '<div class="lbl">' + name + '</div>' +
           '<div class="ic">' + condIcon(code, 1, sp) + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
-          '<div class="ic sm">' + condIcon(code, 0, sp) + '</div>' +
-          '<div class="big" style="font-weight: 400">' + Math.round(nightLow(d, i)) + '°</div>' +
+          '<div class="night">' + // that night: its own weather and its low, in a darker band
+            '<div class="ic sm">' + condIcon(nightCode(d, i, code), 0, null) + '</div>' +
+            '<div class="big" style="font-weight: 400">' + Math.round(nightLow(d, i)) + '°</div>' +
+          '</div>' +
           (amt > 0 ? pamtHtml(sp, true) : '') +
           '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';
