@@ -259,12 +259,12 @@
      centred on it (it lives inside .sum-left, so top:50% is the column's midpoint). */
   .about-btn {
     position: absolute; top: 50%; right: 0; transform: translateY(-50%); z-index: 3;
-    width: 26px; height: 26px; border-radius: 50%;
-    border: 1px solid var(--border); background: var(--card-2); color: var(--muted);
-    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+    width: 26px; height: 26px; border-radius: 50%; border: 0; background: none; color: var(--muted);
+    -webkit-appearance: none; appearance: none; display: block; cursor: pointer; padding: 0; line-height: 0;
   }
   .about-btn:hover, .about-btn:focus-visible { color: var(--text); }
-  .about-btn svg { width: 17px; height: 17px; }
+  .about-btn svg { display: block; width: 26px; height: 26px; }
+  .about-btn .ab-bg { fill: var(--card-2); stroke: var(--border); stroke-width: 1; }
   /* about panel content (reuses .backdrop / .modal) */
   .about-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill the row so ✕ sits in the corner */
   .about-modal .sub { color: var(--muted); font-size: 0.82rem; margin: 6px 0 12px; line-height: 1.45; }
@@ -889,9 +889,13 @@
 
   <div class="result hidden" id="result">
     <button class="about-btn" id="aboutBtn" type="button" aria-label="About Better Weather">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-        <circle cx="12" cy="12" r="9.25"/><circle cx="12" cy="7.75" r="0.95" fill="currentColor" stroke="none"/>
-        <path d="M12 11.2 v5.2" stroke-linecap="round"/>
+      <!-- the button's disc and the ⓘ in one drawing, so they always share a centre -->
+      <svg viewBox="0 0 26 26" aria-hidden="true">
+        <circle class="ab-bg" cx="13" cy="13" r="12.5"/>
+        <g transform="translate(4.5 4.5) scale(0.7083)" fill="none" stroke="currentColor" stroke-width="1.7">
+          <circle cx="12" cy="12" r="9.25"/><circle cx="12" cy="7.75" r="0.95" fill="currentColor" stroke="none"/>
+          <path d="M12 11.2 v5.2" stroke-linecap="round"/>
+        </g>
       </svg>
     </button>
     <section class="summary" id="summary"></section>
