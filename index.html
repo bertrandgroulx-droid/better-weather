@@ -705,7 +705,8 @@
   .water { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 0; }
   .cell.deep-snow .big, .cell.deep-snow .ic, .cell.deep-snow .sub { text-shadow: 0 0 2px #0e2440, 0 0 3px #0e2440, 0 0 6px rgba(14,36,64,0.9); }
   .cell.deep-snow .ic { filter: drop-shadow(0 0 2px rgba(14,36,64,0.95)); }
-  #daily .cell .night { position: relative; z-index: 1; align-self: stretch; margin: 4px 5px 0; padding: 3px 0 4px; border-radius: 4px; background: rgba(3, 9, 20, 0.42); }
+  #daily .cell .night { position: relative; z-index: 1; align-self: stretch; margin: 4px 5px 0; padding: 3px 0 4px; border-radius: 4px; background: rgba(3, 9, 20, 0.26); }
+  #daily .cell .night > * { opacity: 0.8; } /* night is secondary to the day: a quieter band and contents */
   #daily .cell .night .ic { height: 1.1em; overflow: visible; } /* the same height whatever the glyph, so bands line up */
   #daily .water { left: 3px; right: 3px; } /* a small gap between days so neighbouring columns don't merge */
   #hourly .water { left: 1px; right: 1px; } /* a hairline gap between hours (days get a wider one) */
