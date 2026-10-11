@@ -701,6 +701,8 @@
 
   /* precip water fill — height = amount, tone (flat per cell) = POP bucket */
   .water { position: absolute; left: 0; right: 0; bottom: 14px; z-index: 0; }
+  .cell.deep-snow .big, .cell.deep-snow .ic, .cell.deep-snow .sub { text-shadow: 0 0 2px #0e2440, 0 0 3px #0e2440, 0 0 6px rgba(14,36,64,0.9); }
+  .cell.deep-snow .ic { filter: drop-shadow(0 0 2px rgba(14,36,64,0.95)); }
   #daily .water { left: 3px; right: 3px; } /* a small gap between days so neighbouring columns don't merge */
   .water svg { position: absolute; top: -6px; left: 0; width: 100%; height: 8px; display: block; }
 
@@ -3616,6 +3618,12 @@
   var SNOW_TONE = ["rgba(250,252,255,0.92)", "rgba(252,253,255,0.95)", "rgba(255,255,255,0.97)"];
   // The fill: height from the total (rain + snow as water); on a mixed day it stacks,
   // rain (blue) at the bottom and snow (white) on top. The wavy top takes the top layer's tone.
+  // A heavy, mostly-snow fill rises past the safe line behind the temperatures, and white on
+  // white would hide them; the fill keeps its true height (so big days still look big and
+  // compare properly), and the cell's text and icons get a dark outline instead.
+  function deepSnowCls(amount, scale, sp) {
+    return waterFrac(amount, scale[0], scale[1]) > CONFIG.precip.safeTop && sp && sp.total > 0 && sp.snowW / sp.total >= 0.5 ? " deep-snow" : "";
+  }
   function waterHtml(amount, scale, pop, sp) {
     var frac = waterFrac(amount, scale[0], scale[1]);
     if (frac <= 0) return "";
@@ -3658,7 +3666,7 @@
       var ht = new Date(h.time[i] + ":00"), midnight = ht.getHours() === 0;
       var label = isNow ? "Now" : (midnight ? ht.toLocaleDateString(undefined, { weekday: "short" }) : fmtHour(h.time[i]));
       html +=
-        '<div class="cell tapcell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + '" data-iso="' + h.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this hour">' +
+        '<div class="cell tapcell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + deepSnowCls(amt, scale, sp) + '" data-iso="' + h.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this hour">' +
           waterHtml(amt, scale, pop, sp) +
           '<div class="lbl' + (midnight && !isNow ? " day" : "") + '">' + label + '</div>' +
           '<div class="ic">' + condIcon(h.weather_code[i], h.is_day[i], sp) + '</div>' +
@@ -3740,7 +3748,7 @@
       var code = dayCode[dd.time[i]] != null ? dayCode[dd.time[i]] : dd.weather_code[i];
       var pop = dd.precipitation_probability_max[i] == null ? 0 : dd.precipitation_probability_max[i];
       html +=
-        '<div class="cell tapcell' + (isToday ? " today" : "") + '" data-day="' + dd.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this day">' +
+        '<div class="cell tapcell' + (isToday ? " today" : "") + deepSnowCls(amt, scale, sp) + '" data-day="' + dd.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this day">' +
           waterHtml(amt, scale, pop, sp) +
           '<div class="lbl">' + name + '</div>' +
           '<div class="ic">' + condIcon(code, 1, sp) + '</div>' +
