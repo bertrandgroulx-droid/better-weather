@@ -794,4 +794,9 @@ async function run() {
   console.log(`PASS — hourly=${hourly} daily=${daily} recents+tabs+search OK`);
 }
 
-run().catch((err) => { console.error("FAIL —", err.message); process.exit(1); });
+run().catch((err) => {
+  console.error("FAIL —", err.message);
+  // on GitHub Actions, also surface it as an annotation so the reason shows without the log
+  if (process.env.GITHUB_ACTIONS) console.log("::error title=Smoke test failed::" + String(err.message).replace(/\r?\n/g, " "));
+  process.exit(1);
+});
