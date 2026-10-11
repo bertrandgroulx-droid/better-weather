@@ -334,7 +334,7 @@
   .mo-now.show { display: flex; }
   .mo-now.right { left: auto; right: 14px; flex-direction: row-reverse; padding: 0 7px 0 10px; }
   .mo-now.right svg { transform: scaleX(-1); }
-  .mo-hero .mo-moon { display: block; margin: 0 auto 12px; filter: drop-shadow(0 0 22px rgba(255,236,190,0.18)); }
+  .mo-hero .mo-moon { display: block; margin: 14px auto 2px; filter: drop-shadow(0 0 22px rgba(255,236,190,0.18)); }
   .mo-phase { font-size: 1.25rem; font-weight: 400; }
   .mo-when { font-size: 0.9rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
   /* third line of the hero: where the Moon is in the sky at that hour, or not visible */
@@ -346,8 +346,8 @@
     border: 1.6px solid #5fb6ff; color: #5fb6ff; background: rgba(95,182,255,0.08); cursor: pointer; align-items: center; gap: 7px; }
   .mo-find.show { display: inline-flex; }
   .modal-head .mo-find { position: absolute; left: 50%; top: calc(50% + 7px); transform: translate(-50%, -50%); margin: 0; padding: 6px 13px; font-size: 0.82rem; } /* +7px: the head's top padding */
-  /* in the Moon picture, the NOW pill sits in the top corner beside the Moon */
-  .mo-hero .mo-now { bottom: auto; top: 12px; left: 12px; }
+  /* in the Moon picture, the NOW pill sits in the bottom corner, next to the scroll bar */
+  .mo-hero .mo-now { bottom: 12px; left: 12px; }
   .mo-hero .mo-now.right { left: auto; right: 12px; }
   .mo-find svg { width: 16px; height: 16px; }
 
@@ -2116,10 +2116,12 @@
       '<defs><radialGradient id="moLit" cx="40%" cy="36%" r="72%"><stop offset="0" stop-color="#eef0f3"/><stop offset="1" stop-color="#aeb6c2"/></radialGradient>' +
       '<radialGradient id="moDark" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#23272f"/><stop offset="1" stop-color="#13161c"/></radialGradient>' +
       '<clipPath id="moClip"><circle cx="50" cy="50" r="46"/></clipPath>' +
+      '<clipPath id="moLitClip"><path d="' + lit + '"/></clipPath>' + // the bright craters only show where it's lit
       '<filter id="moBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.1"/></filter></defs>' +
       '<circle cx="50" cy="50" r="46" fill="url(#moDark)"/>' +
       (illum > 0.002 ? '<path d="' + lit + '" fill="url(#moLit)"/>' : '') +
-      '<g clip-path="url(#moClip)"><g fill="rgba(28,36,52,0.36)" filter="url(#moBlur)">' + maria + '</g>' + bright + '</g>' +
+      '<g clip-path="url(#moClip)"><g fill="rgba(28,36,52,0.36)" filter="url(#moBlur)">' + maria + '</g>' +
+        (illum > 0.002 ? '<g clip-path="url(#moLitClip)">' + bright + '</g>' : '') + '</g>' +
       '<circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1"/></svg>';
   }
   function fmtKm(km) { return units === "imperial" ? Math.round(km * 0.621371).toLocaleString() + " mi" : Math.round(km).toLocaleString() + " km"; }
@@ -2251,7 +2253,8 @@
     moonUI = { loc: loc, tz: tz, todayMid: todayMid, t0: todayMid - MO_BACK * 86400000, sel: now.getTime(), calY: p0.y, calM: p0.m, rs: {} };
     els.moonBody.innerHTML =
       '<div class="mo-dist mo-dist-top" id="moDist"></div>' + // above the moon, so it stays in view while you scrub
-      '<div class="mo-hero"><div id="moDisc"></div><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div><div class="mo-sky" id="moSky"></div>' +
+      // phase, date and where to look above the Moon; the Moon sits right over the scroll bar
+      '<div class="mo-hero"><div class="mo-phase" id="moPhase"></div><div class="mo-when" id="moWhen"></div><div class="mo-sky" id="moSky"></div><div id="moDisc"></div>' +
         '<button type="button" class="mo-find' + (canFindMoon() ? ' show' : '') + '" id="moFind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>Find the Moon</button>' +
         '<button type="button" class="mo-now" id="moNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button></div>' +
       '<div class="mo-scrub"><div class="mo-cursor"><i></i></div><div class="mo-scroll" id="moScroll"><div class="mo-track" id="moTrack"></div></div></div>' +
