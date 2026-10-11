@@ -276,6 +276,10 @@ async function run() {
   assert((await page.$eval("#moCal .mc-title", (e) => e.textContent)) !== title0, "calendar steps to the next month");
   await page.click("#moonClose");
   assert(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden")), "moon panel closes");
+  // Find the Moon sits in the header row, once, however often the panel is opened
+  await page.click("#summary .moon-line"); await page.waitForTimeout(300);
+  assert(await page.$$eval("#moonBackdrop .mo-find", (b) => b.length === 1 && !!b[0].closest(".modal-head")), "Find the Moon is in the header, once");
+  await page.click("#moonClose");
 
   // 2) Tabs switch
   await page.click("#tabRadar");
