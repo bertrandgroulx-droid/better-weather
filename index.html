@@ -704,7 +704,7 @@
   .cell.deep-snow .big, .cell.deep-snow .ic, .cell.deep-snow .sub { text-shadow: 0 0 2px #0e2440, 0 0 3px #0e2440, 0 0 6px rgba(14,36,64,0.9); }
   .cell.deep-snow .ic { filter: drop-shadow(0 0 2px rgba(14,36,64,0.95)); }
   #daily .water { left: 3px; right: 3px; } /* a small gap between days so neighbouring columns don't merge */
-  .water svg { position: absolute; top: -6px; left: 0; width: 100%; height: 8px; display: block; }
+  #hourly .water { left: 1px; right: 1px; } /* a hairline gap between hours (days get a wider one) */
 
   /* scroll-position indicator (also a click/drag control on desktop) */
   .track { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.12); margin-top: 8px; position: relative; cursor: pointer; }
@@ -3617,7 +3617,7 @@
   // even at a low chance (the chance shows under the column); its cm label is dark navy.
   var SNOW_TONE = ["rgba(250,252,255,0.92)", "rgba(252,253,255,0.95)", "rgba(255,255,255,0.97)"];
   // The fill: height from the total (rain + snow as water); on a mixed day it stacks,
-  // rain (blue) at the bottom and snow (white) on top. The wavy top takes the top layer's tone.
+  // rain (blue) at the bottom and snow (white) on top.
   // A heavy, mostly-snow fill rises past the safe line behind the temperatures, and white on
   // white would hide them; the fill keeps its true height (so big days still look big and
   // compare properly), and the cell's text and icons get a dark outline instead.
@@ -3630,12 +3630,10 @@
     var b = pop == null ? 1 : (pop < 33 ? 0 : (pop <= 67 ? 1 : 2));
     var rainCol = WATER_TONE[b], snowCol = SNOW_TONE[b];
     var snowShare = sp && sp.total > 0 ? Math.min(1, sp.snowW / sp.total) : 0;
-    var top = snowShare > 0 ? snowCol : rainCol;
     var bg = snowShare <= 0 ? rainCol : snowShare >= 1 ? snowCol
       : "linear-gradient(to top, " + rainCol + " 0 " + ((1 - snowShare) * 100).toFixed(1) + "%, " + snowCol + " " + ((1 - snowShare) * 100).toFixed(1) + "% 100%)";
-    return '<div class="water" style="height:' + (frac * 100).toFixed(1) + '%;background:' + bg + '">' +
-      '<svg viewBox="0 0 100 8" preserveAspectRatio="none">' +
-      '<path d="M0,4 Q25,2.5 50,4 T100,4 V8 H0 Z" fill="' + top + '"/></svg></div>';
+    // a plain, flat-topped bar: its height is the information, so nothing decorative on top
+    return '<div class="water" style="height:' + (frac * 100).toFixed(1) + '%;background:' + bg + '"></div>';
   }
 
   // Index of the hourly slot that contains the instant `iso`: "…T09:38" → the 09:00 slot.
