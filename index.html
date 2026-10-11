@@ -689,6 +689,8 @@
   .cell .pamt .pa-rain, .cell .pamt .pa-snow { display: block; line-height: 1.15; }
   .cell .pamt .pa-snow { color: #16304f; text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.6); } /* white halo: readable even where a tiny fill sits below the label */
   .cell .pamt.two { bottom: 14px; }
+  .cell .pamt.above .pa-snow { color: #ffffff; text-shadow: none; } /* label above a short bar */
+  .cell .pamt.above .pa-rain, .cell .pamt.two.above .pa-rain { color: #9fdcff; text-shadow: none; }
   /* rain and snow: the mm label can sit on the white snow, so it turns dark blue there */
   .cell .pamt.two .pa-rain { color: #0d4f9e; text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.6); }
   .cell .big { font-size: 1.4rem; font-weight: 400; line-height: 1.1; }
@@ -3601,7 +3603,7 @@
   function waterFrac(amount, safe, full) {
     if (amount == null || amount <= 0) return 0;
     var top = CONFIG.precip.safeTop; // fraction of the cell the fill reaches before touching text
-    if (amount <= safe) return Math.sqrt(amount / safe) * top; // spread the low end
+    if (amount <= safe) return amount / safe * top; // a straight scale: twice the amount, twice the height
     var t = Math.min(1, (amount - safe) / (full - safe));
     return top + t * (0.9 - top);
   }
@@ -3895,7 +3897,22 @@
       if (el) scroller.scrollTo({ left: el.offsetLeft - 4, behavior: "smooth" });
     });
   }
+  // On a straight scale light amounts make short bars; a label that doesn't fit inside its bar
+  // sits just above it instead (in light text, on the dark background). Measured, so it must
+  // run while the strips are visible (layoutStrips).
+  function placeAmountLabels(scroller) {
+    var cells = scroller.querySelectorAll(".cell");
+    for (var i = 0; i < cells.length; i++) {
+      var w = cells[i].querySelector(".water"), l = cells[i].querySelector(".pamt");
+      if (!l) continue;
+      var wh = w ? w.offsetHeight : 0, above = wh < l.offsetHeight + 4;
+      l.classList.toggle("above", above);
+      l.style.bottom = above ? (14 + wh + 2) + "px" : "";
+    }
+  }
   function layoutStrips() {
+    placeAmountLabels(els.hourly);
+    placeAmountLabels(els.daily);
     scrollToClass(els.hourly, "now");
     scrollToClass(els.daily, "today");
     updateThumb(els.hourly, els.hThumb);
