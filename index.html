@@ -958,7 +958,7 @@
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
-        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Fill bars scaled to amount. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow. A day with both stacks them, rain under snow, with both amounts. Freezing rain and rain-and-snow get their own icons.</span></span></li>
+        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Fill bars scaled to amount. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow. A day with both stacks them, rain under snow, with both amounts. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
         <li><span class="i">👉</span><span><b>Slide from anywhere.</b> <span class="d">On the Moon, Daylight, Wind and Conditions panels, drag sideways anywhere on the panel to move through time — a flick keeps it going. Yellow marks now on each one.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
@@ -1142,7 +1142,7 @@
   }
   // Custom glyphs for the two conditions that have no emoji of their own: freezing rain
   // (ice-blue drops over an ice line) and rain and snow together (a drop and a flake).
-  // Snow and rain keep their emoji (🌨️ ❄️ / 🌧️ 🌦️), which already read differently.
+  // Light/moderate snow gets its own glyph (snowSVG); heavy snow and rain keep their emoji (❄️ / 🌧️ 🌦️).
   // A full-width cloud (fills the icon box like the emoji do), with a subtle underside.
   var WX_CLOUD = '<path d="M6.2 17.6 h18.6 a5.6 5.6 0 0 0 0.9 -11.1 a7.8 7.8 0 0 0 -14.8 -1.6 A6.1 6.1 0 0 0 6.2 17.6 Z" fill="#dde6f2"/>' +
     '<path d="M6.2 17.6 h18.6 a5.6 5.6 0 0 0 4.6 -2.9 c-1.4 .9-3 1.3-4.6 1.3 H6.2 a6 6 0 0 1-5-2.6 a6.1 6.1 0 0 0 5 4.2 Z" fill="#b9c7da"/>';
@@ -1159,22 +1159,42 @@
   }
   function wxDrop(x, y, col) { return '<path d="M' + x + ' ' + (y - 4.8) + 'c2.2 3.1 3.3 5 3.3 6.3a3.3 3.3 0 0 1-6.6 0c0-1.3 1.1-3.2 3.3-6.3Z" fill="' + col + '"/>'; }
   function freezingSVG() {
-    return '<svg class="wx" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD +
+    return '<svg class="wx freeze" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD +
       wxDrop(10.5, 23.4, "#bfe9ff") + wxDrop(21.5, 23.4, "#bfe9ff") +
       '<path d="M4.5 29.8H27.5" stroke="#e6f6ff" stroke-width="1.8" stroke-linecap="round"/>' +
       '<path d="M8 29.8l-1.4 1.8M13 29.8l-1.4 1.8M18 29.8l-1.4 1.8M23 29.8l-1.4 1.8" stroke="#e6f6ff" stroke-width="1.2" stroke-linecap="round"/></svg>';
   }
   function mixSVG() {
-    return '<svg class="wx" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD + wxDrop(10, 24.4, "#4cc9f0") + wxFlake(22, 24.6, 4.8) + '</svg>';
+    return '<svg class="wx mix" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD + wxDrop(10, 24.4, "#4cc9f0") + wxFlake(22, 24.6, 4.8) + '</svg>';
+  }
+  // Light and moderate snow: the same cloud with three large white dots (heavy snow keeps ❄️).
+  function snowSVG() {
+    return '<svg class="wx snow" viewBox="0 0 32 32" aria-hidden="true">' + WX_CLOUD +
+      '<circle cx="8.8" cy="24.6" r="3.1" fill="#ffffff"/><circle cx="16" cy="29" r="3.1" fill="#ffffff"/><circle cx="23.2" cy="24.6" r="3.1" fill="#ffffff"/></svg>';
   }
   var SNOW_CODES = { 71: 1, 73: 1, 75: 2, 77: 1, 85: 1, 86: 2 }, FREEZE_CODES = { 56: 1, 57: 1, 66: 1, 67: 1 };
   // Icon for a condition: custom glyphs for fog (45, 48), freezing rain, and — when the
   // amounts say both fell (sp from precipSplit) — rain and snow together; emoji otherwise.
+  // The icon's intensity follows the amount shown rather than the model's label for the period,
+  // which can disagree (a "heavy snow" hour with the same 0.8 cm as its neighbours). Snow is
+  // heavy (❄️) from 1 cm in an hour / 10 cm in a day; rain is light (🌦️) under 0.5 mm an hour /
+  // 2 mm a day. Thunder, fog, drizzle, snow grains and freezing codes keep their own icon.
+  function amountCode(code, sp) {
+    if (!sp || !(sp.total > 0)) return code;
+    var cm = units === "imperial" ? sp.snowDepth * 2.54 : sp.snowDepth, mm = units === "imperial" ? sp.rainW * 25.4 : sp.rainW;
+    var heavyCm = sp.daily ? 10 : 1, lightMm = sp.daily ? 2 : 0.5;
+    if (SNOW_CODES[code] && code !== 77) return cm >= heavyCm ? 75 : 73;
+    if (code === 61 || code === 63 || code === 65) return mm < lightMm ? 61 : 63;
+    if (code === 80 || code === 81) return mm < lightMm ? 80 : 81;
+    return code;
+  }
   function condIcon(code, isDay, sp) {
+    code = amountCode(code, sp);
     if (code === 45 || code === 48) return fogSVG();
     // mixed only when each is a real share (≥15% of the water); a trace of one doesn't count
     if (sp && sp.total > 0 && sp.rainW / sp.total >= 0.15 && sp.snowW / sp.total >= 0.15 && (code >= 51 || SNOW_CODES[code])) return mixSVG();
     if (FREEZE_CODES[code]) return freezingSVG();
+    if (code === 71 || code === 73 || code === 85) return snowSVG();
     return icon(code, isDay);
   }
 
@@ -1220,7 +1240,10 @@
     return { total: Math.max(total, rainW + snowW), rainW: rainW, snowW: snowW, snowDepth: depth };
   }
   function hourSplit(h, i) { return precipSplit(h.precipitation[i], h.rain ? h.rain[i] : null, h.showers ? h.showers[i] : null, h.snowfall ? h.snowfall[i] : null); }
-  function daySplit(dd, i) { return precipSplit(dd.precipitation_sum[i], dd.rain_sum ? dd.rain_sum[i] : null, dd.showers_sum ? dd.showers_sum[i] : null, dd.snowfall_sum ? dd.snowfall_sum[i] : null); }
+  function daySplit(dd, i) {
+    var sp = precipSplit(dd.precipitation_sum[i], dd.rain_sum ? dd.rain_sum[i] : null, dd.showers_sum ? dd.showers_sum[i] : null, dd.snowfall_sum ? dd.snowfall_sum[i] : null);
+    sp.daily = true; return sp; // a day's totals (the icon thresholds differ from an hour's)
+  }
   // Fresh snow depth: "3 cm" / "<1 cm" (daily), "0.4 cm" (hourly); inches in imperial.
   function snowLabel(v, daily) {
     if (v == null || v <= 0) return "";

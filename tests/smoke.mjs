@@ -722,6 +722,9 @@ async function run() {
         if (i >= 4 && i <= 8) { snowW = 0.8; code = 73; pop = 85; }
         if (i >= 60 && i <= 62) { rain = 0.4; code = 67; pop = 70; }
         if (rainNow && i >= 0 && i <= 1) { rain = 0.6; code = 61; pop = 80; }
+        // the day after tomorrow (a rain-and-snow day in the daily data) has rain and snow at midday
+        const d2 = new Date(now); d2.setHours(0, 0, 0, 0); d2.setDate(d2.getDate() + 2);
+        if (t.toDateString() === d2.toDateString() && t.getHours() >= 12 && t.getHours() <= 13) { rain = 0.3; snowW = 0.4; code = 71; pop = 80; }
         H.time.push(fmt(t)); H.temperature_2m.push(0); H.apparent_temperature.push(-5); H.precipitation_probability.push(pop);
         H.precipitation.push(+(rain + snowW).toFixed(2)); H.rain.push(rain); H.showers.push(0); H.snowfall.push(+(snowW * 0.7).toFixed(2));
         H.weather_code.push(code); H.wind_speed_10m.push(12); H.wind_gusts_10m.push(20); H.wind_direction_10m.push(300); H.is_day.push(1);
@@ -751,15 +754,15 @@ async function run() {
     const sOut = await spage.$eval("#summary .fcast", (e) => e.textContent);
     assert(/^Rain and snow/.test(sOut), `outlook names rain and snow, got "${sOut}"`);
     // daily: tomorrow is snow in cm (no mm), the day after shows both; the snow layer is drawn
-    const dcells = await spage.$$eval("#daily .cell", (cs) => { const t = cs.findIndex((c) => c.classList.contains("today")); return [cs[t + 1], cs[t + 2]].map((c) => ({ amt: (c.querySelector(".pamt") || {}).textContent || "", snow: !!c.querySelector(".pa-snow"), rain: !!c.querySelector(".pa-rain"), mixIcon: !!c.querySelector(".ic .wx"), fill: (c.querySelector(".water") || {}).getAttribute ? c.querySelector(".water").getAttribute("style") : "" })); });
+    const dcells = await spage.$$eval("#daily .cell", (cs) => { const t = cs.findIndex((c) => c.classList.contains("today")); return [cs[t + 1], cs[t + 2]].map((c) => ({ amt: (c.querySelector(".pamt") || {}).textContent || "", snow: !!c.querySelector(".pa-snow"), rain: !!c.querySelector(".pa-rain"), mixIcon: !!c.querySelector(".ic .wx.mix"), snowIcon: !!c.querySelector(".ic .wx.snow"), freezeIcon: !!c.querySelector(".ic .wx.freeze"), fill: (c.querySelector(".water") || {}).getAttribute ? c.querySelector(".water").getAttribute("style") : "" })); });
     assert(/^6 cm$/.test(dcells[0].amt) && dcells[0].snow && !dcells[0].rain, `snow day labelled in cm only, got ${JSON.stringify(dcells[0])}`);
-    assert(!dcells[0].mixIcon, "a snow day keeps the snow emoji (no custom glyph)");
+    assert(!dcells[0].mixIcon && dcells[0].snowIcon, "a (not heavy) snow day gets the cloud-and-dots snow glyph");
     assert(dcells[1].snow && dcells[1].rain && /1 cm/.test(dcells[1].amt) && /3 mm/.test(dcells[1].amt), `mixed day shows cm and mm, got ${JSON.stringify(dcells[1])}`);
     assert(/linear-gradient/.test(dcells[1].fill), "mixed day's fill stacks rain under snow");
     assert(dcells[1].mixIcon, "mixed day gets the rain-and-snow glyph");
     // hourly: the mixed hour has the glyph; the freezing-rain hour has its own
-    const hglyphs = await spage.$$eval("#hourly .cell", (cs) => { const n = cs.findIndex((c) => c.classList.contains("now")); return { mix: !!cs[n + 2].querySelector(".ic .wx"), snow: !!cs[n + 5].querySelector(".ic .wx"), freeze: !!cs[n + 61].querySelector(".ic .wx") }; });
-    assert(hglyphs.mix && !hglyphs.snow && hglyphs.freeze, `glyphs: mixed and freezing custom, snow emoji, got ${JSON.stringify(hglyphs)}`);
+    const hglyphs = await spage.$$eval("#hourly .cell", (cs) => { const n = cs.findIndex((c) => c.classList.contains("now")); return { mix: !!cs[n + 2].querySelector(".ic .wx.mix"), snow: !!cs[n + 5].querySelector(".ic .wx.snow"), freeze: !!cs[n + 61].querySelector(".ic .wx.freeze") }; });
+    assert(hglyphs.mix && hglyphs.snow && hglyphs.freeze, `glyphs: mixed, snow and freezing custom, got ${JSON.stringify(hglyphs)}`);
     // Conditions on the mixed hour: Precip row label, Rain and Snow read out separately
     const n = await spage.$$eval("#hourly .cell", (cs) => cs.findIndex((c) => c.classList.contains("now")));
     await (await spage.$$("#hourly .cell"))[n + 2].click();
