@@ -586,6 +586,12 @@ async function run() {
     await ypage.click("#summary .day-line");
     await ypage.waitForSelector("#dayBackdrop:not(.hidden)", { timeout: 5000 });
     assert((await ypage.$eval("#dayScroll .dc-nowlab", (e) => e.textContent)) === "NOW", "daylight marks today NOW");
+    // the intro is one line; More opens the details; the key sits under the chart
+    assert(await ypage.$eval("#dayNote .dn-full", (e) => getComputedStyle(e).display === "none"), "daylight details start folded");
+    await ypage.click("#dayNote .dn-more");
+    assert(await ypage.$eval("#dayNote .dn-full", (e) => getComputedStyle(e).display !== "none" && /Longest/.test(e.textContent)), "More opens the daylight details");
+    await ypage.click("#dayNote .dn-more");
+    assert(await ypage.$eval(".dn-keys", (k) => k.previousElementSibling.id === "dayWrap" && /solstice/.test(k.textContent)), "daylight key sits under the chart");
     // the chart drew a daylight band and a full year of month labels
     assert(await ypage.$("#dayBody .day-chart .band"), "daylight band polygon is drawn");
     const months = await ypage.$$eval("#dayBody .day-chart text", (ts) => ts.map((t) => t.textContent));
