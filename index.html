@@ -2370,7 +2370,8 @@
     var sky = moonSky(U.sel, U.loc.lat, U.loc.lon);
     var eye = '<svg class="mo-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Where to look"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
     // same form above or below: "ENE 65°, 12° below the horizon" (the finder can point at it either way)
-    $("moSky").innerHTML = eye + "<b>" + compassName(sky.az) + "</b> " + Math.round(mnorm(sky.az)) + "°, <b>" + Math.abs(Math.round(sky.alt)) + "°</b> " + (sky.rel >= 0 ? "above" : "below") + " the horizon";
+    // plain weight throughout, and "above/below the horizon" before the angle, so it reads as a height
+    $("moSky").innerHTML = eye + compassName(sky.az) + " " + Math.round(mnorm(sky.az)) + "°, " + (sky.rel >= 0 ? "above" : "below") + " the horizon " + Math.abs(Math.round(sky.alt)) + "°";
     // rise/set for the selected local day (cached per day)
     var p = tzParts(d, U.tz), key = dayKey(p), dayStart = localMidnight(p.y, p.m, p.d, U.tz);
     if (!U.rs[key]) U.rs[key] = moonRiseSet(dayStart, U.loc.lat, U.loc.lon);
@@ -4247,7 +4248,7 @@
     U.az = sky.az; U.alt = sky.alt; U.up = sky.rel >= 0;
     var t = $("findTarget");
     // same line above or below the horizon — pointing works the same either way; below, add when it rises
-    var line = mi.name + " · now <b>" + compassName(sky.az) + " " + Math.round(sky.az) + "°</b>, <b>" + Math.abs(Math.round(sky.alt)) + "°</b> " + (U.up ? "above" : "below") + " the horizon";
+    var line = mi.name + " · now " + compassName(sky.az) + " " + Math.round(sky.az) + "°, " + (U.up ? "above" : "below") + " the horizon " + Math.abs(Math.round(sky.alt)) + "°";
     if (!U.up) {
       var p = tzParts(new Date(now), lastTz), mid = localMidnight(p.y, p.m, p.d, lastTz);
       var rs = moonRiseSet(mid, U.loc.lat, U.loc.lon), rs2 = moonRiseSet(mid + 86400000, U.loc.lat, U.loc.lon);
