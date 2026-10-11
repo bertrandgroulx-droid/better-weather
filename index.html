@@ -602,6 +602,7 @@
   .cond-read { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; margin-bottom: 10px; min-height: 6.4rem; text-align: center; } /* centred: the default readout style;
        tall enough for three lines (rain + snow + chance) so it never jumps while scrolling */
+  #windRead { min-height: 0; } /* Wind only ever has two lines (time, then wind + gust): no spare room */
   .cond-read .cr-time { font-weight: 400; font-size: 0.95rem; margin-bottom: 6px; }
   .cond-read .cr-time .cr-ic { vertical-align: -0.26em; margin-right: 5px; font-size: 1.15em; }
   .cond-read .cr-time .cr-now { color: var(--accent); }
