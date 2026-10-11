@@ -3602,10 +3602,7 @@
 
   function waterFrac(amount, safe, full) {
     if (amount == null || amount <= 0) return 0;
-    var top = CONFIG.precip.safeTop; // fraction of the cell the fill reaches before touching text
-    if (amount <= safe) return amount / safe * top; // a straight scale: twice the amount, twice the height
-    var t = Math.min(1, (amount - safe) / (full - safe));
-    return top + t * (0.9 - top);
+    return Math.min(1, amount / full) * 0.9; // one straight line: twice the amount, twice the height
   }
 
   // Flat tone per POP bucket (<33% / 33–67% / >67%) so the shade reflects
@@ -3637,6 +3634,15 @@
     var rainShown = rain > 0.0001 ? (imp ? rs(rain, 0.01, 0.05) : (d ? rs(rain, 1, 1) : rs(rain, 0.1, 0.1))) : 0;
     return rainShown + (imp ? snowShown / 7 : snowShown * 10 / 7); // snow back to water at the 7:1 ratio
   }
+  // A fixed scale that suits most days, so a bar's height means the same amount every day and
+  // everywhere. When something on a strip goes past its top (an extreme event), that strip's
+  // scale stretches so the event's top reaches the top; every bar shrinks alike, so they still
+  // compare. Taken over the whole strip, so the scale doesn't change as you swipe.
+  function eventScale(base, from, to, get) {
+    var top = base[1];
+    for (var k = from; k < to; k++) { var a = get(k); if (a[0] > 0) top = Math.max(top, shownWater(a[1], a[0])); }
+    return top > base[1] ? [base[0], top] : base;
+  }
   function waterHtml(amount, scale, pop, sp) {
     var frac = waterFrac(shownWater(sp, amount), scale[0], scale[1]);
     if (frac <= 0) return "";
@@ -3664,7 +3670,7 @@
     if (nowIdx < 0) nowIdx = 0;
     var start = Math.max(0, nowIdx - CONFIG.hourlyPast);
     var end = Math.min(h.time.length, nowIdx + CONFIG.hourlyFuture + 1);
-    var scale = precipScaleH();
+    var scale = eventScale(precipScaleH(), start, end, function (k) { return [h.precipitation[k], hourSplit(h, k)]; });
     var html = "", prevDay = null;
     for (var i = start; i < end; i++) {
       var isNow = i === nowIdx;
@@ -3747,7 +3753,7 @@
     return lo == null ? dd.temperature_2m_min[i] : lo;
   }
   function renderDaily(d) {
-    var dd = d.daily, ti = todayIndex(d), scale = precipScaleD();
+    var dd = d.daily, ti = todayIndex(d), scale = eventScale(precipScaleD(), 0, dd.time.length, function (k) { return [dd.precipitation_sum[k], daySplit(dd, k)]; });
     var dayCode = daylightCodeByDate(d);
     var html = "";
     for (var i = 0; i < dd.time.length; i++) {
