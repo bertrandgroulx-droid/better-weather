@@ -3622,10 +3622,21 @@
   // white would hide them; the fill keeps its true height (so big days still look big and
   // compare properly), and the cell's text and icons get a dark outline instead.
   function deepSnowCls(amount, scale, sp) {
-    return waterFrac(amount, scale[0], scale[1]) > CONFIG.precip.safeTop && sp && sp.total > 0 && sp.snowW / sp.total >= 0.5 ? " deep-snow" : "";
+    return waterFrac(shownWater(sp, amount), scale[0], scale[1]) > CONFIG.precip.safeTop && sp && sp.total > 0 && sp.snowW / sp.total >= 0.5 ? " deep-snow" : "";
+  }
+  // The amounts as their labels show them (rounded the same way), back as water: the bar's
+  // height comes from this, so two columns with the same label are always the same height.
+  function shownWater(sp, amount) {
+    if (!sp || !(sp.total > 0)) return amount;
+    var imp = units === "imperial", d = sp.daily, snow = sp.snowDepth, rain = sp.rainW;
+    if (!(snow > 0) && !(rain > 0.0001)) return amount;
+    var rs = function (v, step, min) { return v < min ? v : Math.round(v / step) * step; }; // "<1"-style labels keep the real value
+    var snowShown = snow > 0 ? (d && !imp ? rs(snow, 1, 1) : rs(snow, 0.1, 0.1)) : 0;
+    var rainShown = rain > 0.0001 ? (imp ? rs(rain, 0.01, 0.05) : (d ? rs(rain, 1, 1) : rs(rain, 0.1, 0.1))) : 0;
+    return rainShown + (imp ? snowShown / 7 : snowShown * 10 / 7); // snow back to water at the 7:1 ratio
   }
   function waterHtml(amount, scale, pop, sp) {
-    var frac = waterFrac(amount, scale[0], scale[1]);
+    var frac = waterFrac(shownWater(sp, amount), scale[0], scale[1]);
     if (frac <= 0) return "";
     var b = pop == null ? 1 : (pop < 33 ? 0 : (pop <= 67 ? 1 : 2));
     var rainCol = WATER_TONE[b], snowCol = SNOW_TONE[b];

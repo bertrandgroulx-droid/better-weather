@@ -796,6 +796,9 @@ async function run() {
     assert(/Rain 0\.3mm/.test(sRead) && /Snow 0\.3cm/.test(sRead), `conditions reads out rain and snow, got "${sRead}"`);
     assert((await spage.$eval("#condBody .cc-plab", (e) => e.textContent)) === "Precip", "precip row is labelled Precip");
     assert(await spage.$("#condBody .cp-bar.snow"), "snow bars drawn in the precip row");
+    // bars with the same label are the same height (the height comes from the number shown)
+    const byLabel = await spage.$$eval("#hourly .cell", (cs) => { const m = {}; cs.forEach((c) => { const l = c.querySelector(".pamt"), w = c.querySelector(".water"); if (l && w) (m[l.textContent] = m[l.textContent] || new Set()).add(w.style.height); }); return Object.entries(m).filter(([, v]) => v.size > 1).map(([k]) => k); });
+    assert(byLabel.length === 0, `same label, same bar height; differing: ${JSON.stringify(byLabel)}`);
     // raining now, turning to snow before it stops: the outlook says so
     const tpage = await sctx.newPage();
     await tpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
