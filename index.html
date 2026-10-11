@@ -971,7 +971,7 @@
       <ul class="about-list">
         <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”.</span></span></li>
-        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back.</span></span></li>
+        <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low is the night that follows it, evening to the next morning, as in most weather apps.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
@@ -3710,6 +3710,22 @@
     return Math.max.apply(null, codes); // fog persists, or there's nothing but fog
   }
 
+  // The low under each day is that night's: the coldest hour from 6 PM that day to 9 AM the
+  // next, like most weather apps. Open-Meteo's daily minimum runs midnight to midnight, so its
+  // coldest moment is usually the early morning, i.e. the night *before* (a cold clear night
+  // showed up under the following day). Taken from the hourly data where it covers the night;
+  // otherwise the next day's minimum, which is that same morning.
+  function nightLow(d, i) {
+    var dd = d.daily, h = d.hourly, next = dd.time[i + 1], lo = null;
+    if (h && h.time && next) {
+      var from = dd.time[i] + "T18:00", to = next + "T09:00";
+      for (var k = 0; k < h.time.length; k++) {
+        if (h.time[k] >= from && h.time[k] <= to && h.temperature_2m[k] != null) lo = lo == null ? h.temperature_2m[k] : Math.min(lo, h.temperature_2m[k]);
+      }
+    }
+    if (lo == null && next) lo = dd.temperature_2m_min[i + 1];
+    return lo == null ? dd.temperature_2m_min[i] : lo;
+  }
   function renderDaily(d) {
     var dd = d.daily, ti = todayIndex(d), scale = precipScaleD();
     var dayCode = daylightCodeByDate(d);
@@ -3729,7 +3745,7 @@
           '<div class="ic">' + condIcon(code, 1, sp) + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
           '<div class="ic sm">' + condIcon(code, 0, sp) + '</div>' +
-          '<div class="big" style="font-weight: 400">' + Math.round(dd.temperature_2m_min[i]) + '°</div>' +
+          '<div class="big" style="font-weight: 400">' + Math.round(nightLow(d, i)) + '°</div>' +
           (amt > 0 ? pamtHtml(sp, true) : '') +
           '<div class="popbot">(' + pop + '%)</div>' +
         '</div>';

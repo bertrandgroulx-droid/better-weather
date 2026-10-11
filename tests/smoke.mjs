@@ -285,6 +285,13 @@ async function run() {
   assert(await page.$$eval("#moonBackdrop .mo-find", (b) => b.length === 1 && !!b[0].closest(".modal-head")), "Find the Moon is in the header, once");
   await page.click("#moonClose");
 
+  // The low under a day is that night's (6 PM → 9 AM, from the hourly data), not the daily
+  // midnight-to-midnight minimum: the fixture's hourly temps bottom out at 15° every night,
+  // while its daily minima are 7–10°
+  {
+    const lows = await page.$$eval("#daily .cell", (cs) => { const t = cs.findIndex((c) => c.classList.contains("today")); return [t, t + 1].map((i) => cs[i].querySelectorAll(".big")[1].textContent); });
+    assert(lows[0] === "15°" && lows[1] === "15°", `daily lows are the following night's, got ${JSON.stringify(lows)}`);
+  }
   // Back to now on the strips: no pill while Now is on screen; scrolled far ahead, "← NOW"
   // shows on the left; tapping it brings Now back and hides the pill
   {
