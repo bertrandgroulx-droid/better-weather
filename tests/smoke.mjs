@@ -709,11 +709,12 @@ async function run() {
       const H = { time: [], temperature_2m: [], apparent_temperature: [], precipitation_probability: [], precipitation: [], rain: [], showers: [], snowfall: [], weather_code: [], wind_speed_10m: [], wind_gusts_10m: [], wind_direction_10m: [], is_day: [] };
       for (let i = -48; i <= 200; i++) {
         const t = new Date(now.getTime() + i * 3600e3);
-        // 2–3 h ahead: rain and snow; 4–8 h: snow; 30–32 h: freezing rain
+        // 2–3 h ahead: rain and snow; 4–8 h: snow; 60–62 h: freezing rain (never tomorrow,
+        // whatever the time of day, so tomorrow stays a plain snow day)
         let rain = 0, snowW = 0, code = 3, pop = 10;
         if (i >= 2 && i <= 3) { rain = 0.3; snowW = 0.4; code = 71; pop = 80; }
         if (i >= 4 && i <= 8) { snowW = 0.8; code = 73; pop = 85; }
-        if (i >= 30 && i <= 32) { rain = 0.4; code = 67; pop = 70; }
+        if (i >= 60 && i <= 62) { rain = 0.4; code = 67; pop = 70; }
         if (rainNow && i >= 0 && i <= 1) { rain = 0.6; code = 61; pop = 80; }
         H.time.push(fmt(t)); H.temperature_2m.push(0); H.apparent_temperature.push(-5); H.precipitation_probability.push(pop);
         H.precipitation.push(+(rain + snowW).toFixed(2)); H.rain.push(rain); H.showers.push(0); H.snowfall.push(+(snowW * 0.7).toFixed(2));
@@ -751,7 +752,7 @@ async function run() {
     assert(/linear-gradient/.test(dcells[1].fill), "mixed day's fill stacks rain under snow");
     assert(dcells[1].mixIcon, "mixed day gets the rain-and-snow glyph");
     // hourly: the mixed hour has the glyph; the freezing-rain hour has its own
-    const hglyphs = await spage.$$eval("#hourly .cell", (cs) => { const n = cs.findIndex((c) => c.classList.contains("now")); return { mix: !!cs[n + 2].querySelector(".ic .wx"), snow: !!cs[n + 5].querySelector(".ic .wx"), freeze: !!cs[n + 31].querySelector(".ic .wx") }; });
+    const hglyphs = await spage.$$eval("#hourly .cell", (cs) => { const n = cs.findIndex((c) => c.classList.contains("now")); return { mix: !!cs[n + 2].querySelector(".ic .wx"), snow: !!cs[n + 5].querySelector(".ic .wx"), freeze: !!cs[n + 61].querySelector(".ic .wx") }; });
     assert(hglyphs.mix && !hglyphs.snow && hglyphs.freeze, `glyphs: mixed and freezing custom, snow emoji, got ${JSON.stringify(hglyphs)}`);
     // Conditions on the mixed hour: Precip row label, Rain and Snow read out separately
     const n = await spage.$$eval("#hourly .cell", (cs) => cs.findIndex((c) => c.classList.contains("now")));
