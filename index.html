@@ -645,6 +645,10 @@
     display: flex; flex-direction: column;
     justify-content: space-evenly;
   }
+  /* even out the three gaps (card → Hourly, Hourly → Daily, Daily → tabs): the headings and
+     scroll bars sit unevenly inside the sections, so space-evenly alone left 34 / 18 / 30 px */
+  #hourlySec { margin-top: -2px; }
+  #dailySec { margin-top: 14px; }
   .section { display: flex; flex-direction: column; position: relative; }
   /* back to now on the Hourly/Daily strips: once the Now/Today column is fully off-screen,
      a NOW pill sits on the % row just above the scroll bar, on the side now lies */

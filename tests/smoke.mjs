@@ -748,6 +748,9 @@ async function run() {
         if (i >= 4 && i <= 8) { snowW = 0.8; code = 73; pop = 85; }
         if (i >= 60 && i <= 62) { rain = 0.4; code = 67; pop = 70; }
         if (rainNow && i >= 0 && i <= 1) { rain = 0.6; code = 61; pop = 80; }
+        // tomorrow (a snow day in the daily data) has snow at midday, whatever the time now
+        const d1 = new Date(now); d1.setHours(0, 0, 0, 0); d1.setDate(d1.getDate() + 1);
+        if (t.toDateString() === d1.toDateString() && t.getHours() >= 11 && t.getHours() <= 12) { rain = 0; snowW = 0.6; code = 73; pop = 85; }
         // the day after tomorrow (a rain-and-snow day in the daily data) has rain and snow at midday
         const d2 = new Date(now); d2.setHours(0, 0, 0, 0); d2.setDate(d2.getDate() + 2);
         if (t.toDateString() === d2.toDateString() && t.getHours() >= 12 && t.getHours() <= 13) { rain = 0.3; snowW = 0.4; code = 71; pop = 80; }
