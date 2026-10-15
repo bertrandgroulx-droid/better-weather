@@ -261,6 +261,8 @@ async function run() {
   const evs = await page.$$eval("#moCal .mo-ev", (e) => e.map((x) => x.textContent));
   assert(evs.some((t) => /New Moon/.test(t)) || evs.some((t) => /Full Moon/.test(t)), "month lists its new/full moons");
   // scrubbing by scroll changes the selected hour; the calendar's next-month arrow works
+  // on now, the panel uses the exact time (minutes shown), matching Find the Moon
+  assert(/at \d{1,2}:\d{2}\s?(AM|PM)/i.test(await page.$eval("#moWhen", (e) => e.textContent)), "Moon panel on now shows the exact time");
   const when0 = await page.$eval("#moWhen", (e) => e.textContent);
   await page.$eval("#moScroll", (e) => { e.scrollLeft += 7 * 24 * 2; });
   await page.waitForTimeout(250);

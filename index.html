@@ -2395,11 +2395,14 @@
   // Select an instant (whole hours): update the disc, headline, stats; optionally scroll to it.
   function setMoonSel(ms, scroll) {
     var U = moonUI; if (!U) return;
-    U.sel = Math.round(ms / 3600000) * 3600000;
+    // whole hours, except the hour slot that holds now, which is the exact current time (so this
+    // panel and Find the Moon agree: at 9:49 it reads 9:49, not a rounded 10 PM)
+    var nowMs = Date.now(), slot = Math.round(ms / 3600000), atNow = slot === Math.round(nowMs / 3600000);
+    U.sel = atNow ? nowMs : slot * 3600000;
     var d = new Date(U.sel), mi = moonInfo(d), tz = U.tz || undefined;
     renderMoonDisc(d, mi.illum, mi.waxing, 150);
     $("moPhase").textContent = mi.name;
-    $("moWhen").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz }) + " at " + d.toLocaleTimeString([], { hour: "numeric", timeZone: tz });
+    $("moWhen").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz }) + " at " + d.toLocaleTimeString([], atNow ? { hour: "numeric", minute: "2-digit", timeZone: tz } : { hour: "numeric", timeZone: tz });
     // third line: where the Moon is in the sky at that hour — bearing and height — or not visible
     var sky = moonSky(U.sel, U.loc.lat, U.loc.lon);
     var eye = '<svg class="mo-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Where to look"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -2435,8 +2438,8 @@
       '<div class="md-ends"><span>' + fmtKm(PERI) + '<small>closest · perigee</small></span><span>' + fmtKm(APO) + '<small>farthest · apogee</small></span></div>';
     $("moStats").innerHTML = rows.map(function (r) { return '<div class="mo-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join("");
     // back-to-now arrow: shown when scrubbed off the present hour, pointing the way back
-    var nowH = Math.round(Date.now() / 3600000) * 3600000, nb = $("moNow");
-    if (nb) { nb.classList.toggle("show", U.sel !== nowH); nb.classList.toggle("right", nowH > U.sel); }
+    var nb = $("moNow");
+    if (nb) { nb.classList.toggle("show", !atNow); nb.classList.toggle("right", nowMs > U.sel); }
     if (scroll) moonPinScroll(U.sel);
     // keep the calendar's selected-day ring in step
     var cal = $("moCal"); if (cal) { cal.querySelectorAll(".mc-d.sel").forEach(function (x) { x.classList.remove("sel"); }); var c = cal.querySelector('.mc-d[data-day="' + key + '"]'); if (c) c.classList.add("sel"); }
