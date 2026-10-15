@@ -296,6 +296,8 @@ async function run() {
     const lows = await page.$$eval("#daily .cell", (cs) => { const t = cs.findIndex((c) => c.classList.contains("today")); return [t, t + 1].map((i) => cs[i].querySelectorAll(".big")[1].textContent); });
     assert(lows[0] === "15°" && lows[1] === "15°", `daily lows are the following night's, got ${JSON.stringify(lows)}`);
   }
+  // the Now column shows the same icon as the summary card (both from the current conditions)
+  assert((await page.$eval("#hourly .cell.now .ic", (e) => e.innerHTML)) === (await page.$eval("#summary .sum-hero .ico", (e) => e.innerHTML)), "Now column icon matches the summary card");
   // Back to now on the strips: no pill while Now is on screen; scrolled far ahead, "← NOW"
   // shows on the left; tapping it brings Now back and hides the pill
   {

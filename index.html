@@ -3583,7 +3583,7 @@
 
     els.summary.innerHTML =
       '<div class="sum-head">' +
-        '<div class="sum-hero"><span class="ico">' + condIcon(c.weather_code, 1) + '</span>' +
+        '<div class="sum-hero"><span class="ico">' + condIcon(c.weather_code, c.is_day == null ? 1 : c.is_day) + '</span>' +
           '<span class="temp">' + Math.round(c.temperature_2m) + tU() + '</span></div>' +
         '<div class="sum-head-r">' +
           '<div class="cond">' + w[1] + '</div>' +
@@ -3696,7 +3696,9 @@
         '<div class="cell tapcell' + (isNow ? " now" : "") + (boundary && !isNow ? " daystart" : "") + deepSnowCls(amt, scale, sp) + '" data-iso="' + h.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this hour">' +
           waterHtml(amt, scale, pop, sp) +
           '<div class="lbl' + (midnight && !isNow ? " day" : "") + '">' + label + '</div>' +
-          '<div class="ic">' + condIcon(h.weather_code[i], h.is_day[i], sp) + '</div>' +
+          // Now shows the current conditions, the same as the summary card (the hourly value is for
+          // the top of the hour: at 8:55 after an 8:00 sunrise it would still say night)
+          '<div class="ic">' + (isNow && d.current.weather_code != null ? condIcon(d.current.weather_code, d.current.is_day == null ? h.is_day[i] : d.current.is_day, sp) : condIcon(h.weather_code[i], h.is_day[i], sp)) + '</div>' +
           '<div class="big">' + Math.round(h.temperature_2m[i]) + '°</div>' +
           '<div class="sub">Feels ' + Math.round(h.apparent_temperature[i]) + '°</div>' +
           (amt > 0 ? pamtHtml(sp, false) : '') +
