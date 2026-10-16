@@ -404,6 +404,21 @@ async function run() {
     await page.waitForFunction(() => window.__copied, null, { timeout: 3000 });
     assert(/^https:\/\/shozbot\.com\/better-weather\/index\.html\?lat=-?\d+\.\d{4}&lon=-?\d+\.\d{4}&name=/.test(await page.evaluate(() => window.__copied)), "share copies a deep link to this place");
     assert(await page.$(".share-toast"), "a brief 'Link copied' note shows");
+    // a panel's share icon links to that panel at the moment on screen, and the link reopens it there
+    await page.waitForTimeout(1900); // let the note fade
+    await page.click("#summary .wind-line"); await page.waitForSelector("#windBackdrop:not(.hidden)"); await page.waitForTimeout(400);
+    await page.$eval("#windScroll", (e) => { e.scrollLeft += 15 * 30; }); await page.waitForTimeout(600);
+    const windAt = await page.$eval("#windRead", (e) => e.textContent.replace(/\s+/g, " ").trim());
+    await page.evaluate(() => { window.__copied = null; });
+    await page.click('#windBackdrop .panel-share');
+    await page.waitForFunction(() => window.__copied, null, { timeout: 3000 });
+    const windLink = await page.evaluate(() => window.__copied);
+    assert(/#wind=\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(windLink), `wind share links to the hour on screen, got ${windLink}`);
+    await page.click("#windClose");
+    await page.goto(URL + windLink.slice(windLink.indexOf("?")));
+    await page.waitForSelector("#windBackdrop:not(.hidden)", { timeout: 10000 }); await page.waitForTimeout(600);
+    assert((await page.$eval("#windRead", (e) => e.textContent.replace(/\s+/g, " ").trim())) === windAt, `the link reopens Wind at the same hour ("${windAt}")`);
+    await page.click("#windClose");
     await page.evaluate(() => localStorage.setItem("bw-recents", "[]"));
     await page.goto(URL + "?lat=38.72&lon=-9.13&name=Cabin#moon");
     await page.waitForSelector("#moonBackdrop:not(.hidden)", { timeout: 10000 });

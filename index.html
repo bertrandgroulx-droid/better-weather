@@ -154,6 +154,7 @@
   .share-btn { position: absolute; top: 6px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%;
     border: 0; background: none; color: var(--muted); padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
   .share-btn svg { width: 18px; height: 18px; }
+  .modal-head .share-btn { position: static; margin-left: auto; width: 34px; height: 34px; flex: none; } /* just left of ✕ */
   .share-btn:hover, .share-btn:focus-visible { color: var(--text); }
   .share-toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 3000; background: rgba(14,36,64,0.96);
     border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 8px 16px; font-size: 0.85rem; pointer-events: none; }
@@ -995,7 +996,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low and the icon beside it, in the darker band, are the night that follows it, evening to the next morning.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast; the one in a panel (Moon, Daylight, Wind, Air Quality, Conditions) opens that panel at the moment you’re looking at. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
@@ -1030,6 +1031,7 @@
     <div class="modal air-modal" role="dialog" aria-modal="true" aria-label="Air quality">
       <div class="modal-head">
         <h2>Air quality</h2>
+        <button class="share-btn panel-share" type="button" data-panel="air" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="airClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="airBody"></div>
@@ -1041,6 +1043,7 @@
     <div class="modal moon-modal" role="dialog" aria-modal="true" aria-label="Moon phases">
       <div class="modal-head">
         <h2>Moon</h2>
+        <button class="share-btn panel-share" type="button" data-panel="moon" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="moonClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="moonBody"></div>
@@ -1063,6 +1066,7 @@
     <div class="modal day-modal" role="dialog" aria-modal="true" aria-label="Daylight over the year">
       <div class="modal-head">
         <h2>Daylight hours</h2>
+        <button class="share-btn panel-share" type="button" data-panel="daylight" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="dayClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="dayBody"></div>
@@ -1074,6 +1078,7 @@
     <div class="modal wind-modal" role="dialog" aria-modal="true" aria-label="Hourly wind">
       <div class="modal-head">
         <h2>Wind &amp; gusts</h2>
+        <button class="share-btn panel-share" type="button" data-panel="wind" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="windClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="windBody"></div>
@@ -1085,6 +1090,7 @@
     <div class="modal cond-modal" role="dialog" aria-modal="true" aria-label="Day conditions">
       <div class="modal-head">
         <h2 id="condTitle">Conditions</h2>
+        <button class="share-btn panel-share" type="button" data-panel="conditions" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="condClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="condBody"></div>
@@ -2319,7 +2325,7 @@
     // Find the Moon lives in the header row (centred), away from the scroll bar; the panel's body
     // is rebuilt on each open, so drop last time's button before moving the new one up.
     var mh = els.moonBackdrop.querySelector(".modal-head"), hf = mh.querySelector(".mo-find"); if (hf) hf.remove();
-    mh.insertBefore($("moFind"), mh.querySelector(".close"));
+    mh.insertBefore($("moFind"), mh.querySelector(".panel-share"));
     $("moFind").addEventListener("click", openFind);
   }
   function moonGoNow() {
@@ -2616,6 +2622,7 @@
 
   // Build the whole-year daylight panel: a gold "daylight band" between the
   // sunrise and sunset curves, with a draggable scrubber that reads out any day.
+  var dayLink = null;
   function buildDaylightChart(loc, tz) {
     if (!loc || loc.lat == null || loc.lon == null) return false;
     // Data for a year each way from today. The screen always shows a full 12 months —
@@ -2793,6 +2800,11 @@
       var open = note.classList.toggle("open"); this.setAttribute("aria-expanded", open ? "true" : "false");
     });
     var curI = todayIdx;
+    // for share links: the day under the line, and a way to open on a given day
+    dayLink = {
+      get: function () { return curI === todayIdx ? "" : dayMid(curI).toISOString().slice(0, 10); },
+      go: function (ds) { var i = Math.round((Date.parse(ds + "T00:00:00Z") - startUTC) / 86400000); if (i >= 0 && i < days) { curI = i; setScrub(i); } }
+    };
     function setScrub(i) {
       i = Math.max(0, Math.min(days - 1, i)); curI = i;
       // the centre line is fixed; only the dots move, up and down the sunrise/sunset edges
@@ -4572,7 +4584,7 @@
 
   // ---- deep links ----
   function readDeepLink() {
-    var q = new URLSearchParams(location.search), out = { panel: (location.hash || "").replace(/^#/, "").toLowerCase() };
+    var q = new URLSearchParams(location.search), out = { panel: decodeURIComponent((location.hash || "").replace(/^#/, "")) };
     var lat = parseFloat(q.get("lat")), lon = parseFloat(q.get("lon"));
     if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) { out.lat = lat; out.lon = lon; out.name = q.get("name") || ""; }
     else if (q.get("place")) out.place = q.get("place").trim();
@@ -4587,11 +4599,24 @@
     }
     return forwardGeocode(link.place, 1).then(function (r) { return r && r[0] ? r[0] : null; }, function () { return null; });
   }
-  function openDeepPanel(panel) {
-    if (!panel || !lastData) return;
-    if (panel === "moon") openMoon();
-    else if (panel === "daylight") openDay();
-    else if (panel === "wind") openWind();
+  // "#moon" or "#moon=2026-10-26T16:00" (the place's local time; a day for Daylight). A moment the
+  // panel can't show any more (long past, or beyond its range) opens it at now instead.
+  function openDeepPanel(hash) {
+    if (!hash || !lastData) return;
+    var parts = hash.split("="), panel = parts[0].toLowerCase(), at = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(parts[1] || "") ? parts[1] : "";
+    if (panel === "moon") {
+      openMoon();
+      if (at && at.length > 10 && moonUI) {
+        var ms = localMidnight(+at.slice(0, 4), +at.slice(5, 7), +at.slice(8, 10), moonUI.tz) + (+at.slice(11, 13)) * 3600000;
+        if (ms >= moonUI.t0 && ms <= moonUI.t0 + MO_DAYS * 86400000) setMoonSel(ms, true);
+      }
+    } else if (panel === "daylight") { openDay(); if (at && dayLink) dayLink.go(at.slice(0, 10)); }
+    else if (panel === "wind") {
+      openWind();
+      var wi = at && windState ? windState.t.indexOf(at) : -1;
+      if (wi >= 0) requestAnimationFrame(function () { requestAnimationFrame(function () { var sc = $("windScroll"); sc.scrollLeft = Math.max(0, windState.X(wi) - sc.clientWidth / 2); windUpdateCenter(); }); });
+    }
+    else if (panel === "conditions") openCond(at && lastData.hourly.time.indexOf(at) >= 0 ? at : null);
     else if (panel === "air" && lastAir) openAir();
     else if (panel === "radar" || panel === "map") selectTab("radar");
   }
@@ -4607,6 +4632,25 @@
     var t = document.createElement("div"); t.className = "share-toast"; t.textContent = msg; document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 1800);
   }
+  // The moment a panel is showing, as the place's local time ("" = now): the hash part of its link.
+  function localIso(ms, tz) { var p = tzParts(new Date(ms), tz), z = function (n) { return (n < 10 ? "0" : "") + n; }; return p.y + "-" + z(p.m) + "-" + z(p.d) + "T" + z(p.h) + ":00"; }
+  function panelMoment(panel) {
+    if (panel === "moon" && moonUI) return Math.round(moonUI.sel / 3600000) === Math.round(Date.now() / 3600000) ? "" : localIso(moonUI.sel, moonUI.tz);
+    if (panel === "daylight" && dayLink) return dayLink.get();
+    if (panel === "wind" && windState) return windState.idx === windState.nowIdx ? "" : windState.t[windState.idx];
+    if (panel === "conditions" && condState) return condState.idx === condState.nowIdx ? "" : condState.t[condState.idx];
+    return "";
+  }
+  function sharePanel(hash) {
+    if (!lastLoc) return;
+    var url = shareLink(lastLoc) + (hash ? "#" + hash : ""), title = "Better Weather · " + lastLoc.name;
+    if (navigator.share) { navigator.share({ title: title, url: url }).catch(function () {}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { shareToast("Link copied"); }, function () { shareToast(url); });
+    else shareToast(url);
+  }
+  document.querySelectorAll(".panel-share").forEach(function (b) {
+    b.addEventListener("click", function () { var p = b.dataset.panel, at = panelMoment(p); sharePanel(p + (at ? "=" + at : "")); });
+  });
   els.shareBtn.addEventListener("click", function () {
     if (!lastLoc) return;
     var url = shareLink(lastLoc), title = "Better Weather · " + lastLoc.name;
