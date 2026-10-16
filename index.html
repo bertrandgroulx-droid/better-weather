@@ -569,8 +569,8 @@
   .cr-hop b { color: var(--text); font-weight: 400; }
   .cr-hop i { font-style: normal; color: var(--accent); }
   /* Both: each chart titled, with its own legend, a divider between */
-  .cc-title { position: absolute; left: 2px; height: 22px; line-height: 22px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); pointer-events: none; z-index: 3; }
-  .cc-title em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: 0.8; margin-left: 4px; }
+  .cc-title { position: absolute; left: 2px; height: 22px; line-height: 22px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text); pointer-events: none; z-index: 3; }
+  .cc-title em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 4px; }
   .cond-legend.in { position: absolute; left: 0; right: 0; margin: 0; align-items: center; font-size: 0.85rem; pointer-events: none; z-index: 3; }
   .cc-sep { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); pointer-events: none; z-index: 3; }
   .wind-chart .wind-line { fill: none; stroke: #7fd4ff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
@@ -1014,7 +1014,7 @@
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
-        <li><span class="i">🔀</span><span><b>Temp, Wind or Both.</b> <span class="d">The switch at the top of the Conditions and Wind panels moves between them at the same hour, and the Wind or Temp line in each readout jumps across too. Both shows temperature and wind as two charts, one above the other, each with its own title, scale and key, read by the same centre line. The panel opens the way you last used it.</span></span></li>
+        <li><span class="i">🔀</span><span><b>Temp, Wind or Both.</b> <span class="d">The switch at the top of the Conditions and Wind panels moves between them at the same hour, and the Wind or Temp line in each readout jumps across too. Both shows temperature and wind as two equal charts, one above the other, sized to fit your screen, each with its own title, scale and key, read by the same centre line. The panel opens the way you last used it.</span></span></li>
         <li><span class="i">👉</span><span><b>Slide from anywhere.</b> <span class="d">On the Moon, Daylight, Wind and Conditions panels, drag sideways anywhere on the panel to move through time — a flick keeps it going. Yellow marks now on each one.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can move hour by hour across a month (15 days either side of today) with the scroll bar under it. The scroll bar is a band whose thickness is the Moon’s illumination, with a yellow bar marking now, a dot at each new and full moon to aim for, and a yellow ← NOW button to jump back. Above the Moon: its phase, the date, and where to look — compass bearing, then above (or below) the horizon and by how much. At the top, a perigee-to-apogee distance scale (surface to surface) moves as you scroll. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
@@ -3067,7 +3067,8 @@
   var condState = null;
   function shortHour(hr) { var ap = hr < 12 ? "AM" : "PM", h12 = hr % 12 || 12; return h12 + ap; }
 
-  function buildConditionsChart(d, tz, focusIso, both) {
+  // sz (Both only): the two plot heights, { t: temperature, w: wind }
+  function buildConditionsChart(d, tz, focusIso, both, sz) {
     var h = d && d.hourly;
     if (!h || !h.time || !h.temperature_2m || h.time.length < 2) return false;
     var t = h.time, ta = h.temperature_2m, tf = h.apparent_temperature || [];
@@ -3078,7 +3079,7 @@
 
     // geometry (pixel space; the track scrolls under a fixed centre cursor, so
     // PADX also reserves lead/trail room to bring the first/last hour to centre)
-    var HR = 15, PADX = 180, PT = 14, PB = 24, plotH = 188, H = PT + plotH + PB;
+    var HR = 15, PADX = 180, PT = 14, PB = 24, plotH = both ? sz.t : 188, H = PT + plotH + PB;
     var ICON_H = 26, PRECIP_H = 40, TT = both ? 22 : 0; // TT: the chart's title row (Both)
     var totalW = PADX * 2 + (N - 1) * HR;
     function X(i) { return PADX + i * HR; }
@@ -3147,7 +3148,7 @@
 
     // Both: a wind chart of its own under the precip strip, on the Wind panel's scale and
     // levels, same hours, sharing the centre line (broken across the labels between them)
-    var tEnd = TT + ICON_H + H + PRECIP_H, LEG_H = 30, SEP = 18, WPT = 8, WPH = 96, WPB = 22, WIND_H = WPT + WPH + WPB;
+    var tEnd = TT + ICON_H + H + PRECIP_H, LEG_H = 30, SEP = 18, WPT = 8, WPH = both ? sz.w : 0, WPB = 22, WIND_H = WPT + WPH + WPB;
     var wTop = tEnd + LEG_H + SEP + TT, windSvg = "", wLabs = "", wOver = "", YW = null;
     var ws = h.wind_speed_10m || [], wg = h.wind_gusts_10m || [], wd = h.wind_direction_10m || [];
     if (both) {
@@ -3370,11 +3371,25 @@
   }
 
   // Temp or Both, whichever was used last (a shared "both" link opens Both without changing that)
+  var COND_BOTH_H = 140, COND_BOTH_MIN = 100, COND_BOTH_MAX = 190; // Both: plot heights, px
   var condMode = (function () { try { return localStorage.getItem("bw-cond-mode") === "both" ? "both" : "temp"; } catch (e) { return "temp"; } })();
   function setCondMode(m) { condMode = m; try { localStorage.setItem("bw-cond-mode", m); } catch (e) { /* ignore */ } }
   function openCond(focusIso, mode) {
-    var both = (mode || condMode) === "both";
-    if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso, both)) return;
+    var both = (mode || condMode) === "both", sz = { t: COND_BOTH_H, w: COND_BOTH_H };
+    if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso, both, sz)) return;
+    if (both) {
+      // Both: the two charts share the panel's height equally, grown or shrunk together so the
+      // panel fits the screen (within limits; a very short screen scrolls instead)
+      els.condBackdrop.classList.remove("hidden");
+      var m = els.condBackdrop.querySelector(".modal"), each = COND_BOTH_H;
+      for (var pass = 0; pass < 2; pass++) { // a second pass catches any text that rewraps
+        setCondReadout(condState.focusIdx); // measure with the readout filled in
+        var spare = parseFloat(getComputedStyle(m).maxHeight) - m.scrollHeight;
+        var next = Math.floor(Math.max(COND_BOTH_MIN, Math.min(COND_BOTH_MAX, each + spare / 2)));
+        if (!isFinite(next) || next === each) break;
+        each = next; buildConditionsChart(lastData, lastTz, focusIso, true, { t: each, w: each });
+      }
+    }
     els.condBackdrop.querySelectorAll(".mode-seg button").forEach(function (b) {
       var on = b.dataset.mode === (both ? "both" : "temp"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
     });

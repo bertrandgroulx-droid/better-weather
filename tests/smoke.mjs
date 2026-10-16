@@ -788,6 +788,10 @@ async function run() {
     const titles = await wpage.$$eval("#condBody .cc-title", (e) => e.map((t) => t.textContent));
     assert(titles.length === 2 && /Temperature/.test(titles[0]) && /°C/.test(titles[0]) && titles[1] === "Wind", `each chart is titled, got ${JSON.stringify(titles)}`);
     assert(await wpage.$("#condBody .wind-chart .wind-line") && await wpage.$("#condBody .wind-chart .wind-gustline"), "Both draws wind and gust");
+    // the two charts share the height equally, sized so the panel fits the screen
+    const hs = await wpage.$$eval("#condBody .cond-svg", (e) => e.map((s) => +s.getAttribute("height")));
+    assert(hs.length === 2 && hs[0] - 38 === hs[1] - 30 && hs[1] - 30 >= 100 && hs[1] - 30 <= 190, `charts are balanced, got ${JSON.stringify(hs)}`);
+    assert(await wpage.$eval("#condBackdrop .modal", (m) => m.scrollHeight <= m.clientHeight + 1), "Both fits the screen (844 px tall)");
     const bl = await wpage.$$eval("#condBody .cc-ylab", (e) => e.map((t) => t.textContent));
     assert(["Light", "Mod", "Strong", "Severe"].every((b) => bl.includes(b)) && bl.some((b) => /°$/.test(b)), "each chart keeps its own axis");
     assert(await wpage.$("#condBody .cond-legend.in") && /Wind Gust/.test(await wpage.$eval("#condBody .wind-legend", (e) => e.textContent)), "each chart has its own legend");
