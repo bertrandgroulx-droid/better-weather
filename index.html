@@ -4559,14 +4559,47 @@
     if (currentTab === "radar") radar.onResize();
   });
 
+  // ---- deep links ----
+  function readDeepLink() {
+    var q = new URLSearchParams(location.search), out = { panel: (location.hash || "").replace(/^#/, "").toLowerCase() };
+    var lat = parseFloat(q.get("lat")), lon = parseFloat(q.get("lon"));
+    if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) { out.lat = lat; out.lon = lon; out.name = q.get("name") || ""; }
+    else if (q.get("place")) out.place = q.get("place").trim();
+    return out;
+  }
+  function resolveDeepLink(link) {
+    if (link.lat != null) {
+      var loc = { lat: link.lat, lon: link.lon, sub: "", name: link.name || (link.lat.toFixed(3) + "°, " + link.lon.toFixed(3) + "°") };
+      if (link.name) return Promise.resolve(loc);
+      return fetchJson("https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + link.lat + "&longitude=" + link.lon + "&language=en&format=json")
+        .then(function (d) { return d.results && d.results[0] ? omToLoc(d.results[0]) : loc; }, function () { return loc; });
+    }
+    return forwardGeocode(link.place, 1).then(function (r) { return r && r[0] ? r[0] : null; }, function () { return null; });
+  }
+  function openDeepPanel(panel) {
+    if (!panel || !lastData) return;
+    if (panel === "moon") openMoon();
+    else if (panel === "daylight") openDay();
+    else if (panel === "wind") openWind();
+    else if (panel === "air" && lastAir) openAir();
+    else if (panel === "radar" || panel === "map") selectTab("radar");
+  }
+
   // ---- init ----
   els.unitC.classList.toggle("active", units === "metric");
   els.unitF.classList.toggle("active", units === "imperial");
   updateInfoUnits();
   // Reopen the last place viewed (no prompt); only ask for location on a true first
   // run. "Use my location" in search always re-triggers geolocation on demand.
-  var startLoc = loadLoc();
-  if (startLoc) { show(startLoc); refreshGeoQuietly(); }
+  // Deep links: ?place=Edmonton, or ?lat=53.55&lon=-113.49 (&name=Cabin), open that place's
+  // forecast (shown, not added to saved places); #moon, #daylight, #wind, #air or #radar then
+  // opens that panel. Without them, the app opens as usual.
+  var link = readDeepLink(), startLoc = loadLoc();
+  if (link.lat != null || link.place) {
+    resolveDeepLink(link).then(function (loc) {
+      return loc ? show(loc) : (startLoc ? show(startLoc) : useLocation());
+    }).then(function () { openDeepPanel(link.panel); });
+  } else if (startLoc) { show(startLoc).then(function () { openDeepPanel(link.panel); }); refreshGeoQuietly(); }
   else useLocation();
 })();
 </script>

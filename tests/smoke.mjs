@@ -68,6 +68,10 @@ async function run() {
   // CHROMIUM_PATH lets a pre-installed browser be used; CI uses the default.
   const exe = process.env.CHROMIUM_PATH;
   const browser = await chromium.launch(exe ? { executablePath: exe } : {});
+  // The shozbot studio kit (the "by shozbot" credit and visit counter) isn't part of the app;
+  // block it in every context so tests don't depend on (or stall on) shozbot.com and its counter.
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = async (opts) => { const c = await newContext(opts); await c.route(/shozbot\.com\/(kit|assets)|gc\.zgo\.at/, (r) => r.abort()); return c; };
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, // a phone: Find the Moon is offered on touch devices
     permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 }
@@ -390,6 +394,21 @@ async function run() {
   // Clear all: removes the rest.
   await page.click("#results .rc-clear");
   assert((await page.$$eval("#results li[data-i]", (e) => e.length)) === 0, "recents cleared");
+
+  // Deep links: ?lat=&lon=&name= opens that place without saving it; #moon opens the Moon panel
+  {
+    await page.evaluate(() => localStorage.setItem("bw-recents", "[]"));
+    await page.goto(URL + "?lat=38.72&lon=-9.13&name=Cabin#moon");
+    await page.waitForSelector("#moonBackdrop:not(.hidden)", { timeout: 10000 });
+    assert(/Cabin/.test(await page.$eval("#summary .sum-loc", (e) => e.textContent)), "deep link opens the named place");
+    assert((await page.evaluate(() => localStorage.getItem("bw-recents"))) === "[]", "a deep-linked place isn't added to saved places");
+    await page.click("#moonClose");
+    // ?place= looks the place up (Mapbox mock answers Lisbon)
+    await page.goto(URL + "?place=Lisbon");
+    await page.waitForFunction(() => /Lisbon/.test(document.querySelector("#summary .sum-loc")?.textContent || ""), null, { timeout: 10000 });
+    await page.goto(URL); await page.waitForSelector("#result:not(.hidden)");
+    await page.click("#cityPill"); // leave the search panel open, as the next section expects
+  }
 
   // 4) Desktop pointer affordances (mouse drag + draggable thumb). page.mouse
   // dispatches mouse-type pointer events, so this exercises the non-touch paths
@@ -827,7 +846,7 @@ async function run() {
 }
 
 run().catch((err) => {
-  console.error("FAIL —", err.message);
+  console.error("FAIL —", err.message, (err.stack || "").split("\n").filter((l) => /smoke\.mjs/.test(l)).join(" ")); 
   // on GitHub Actions, also surface it as an annotation so the reason shows without the log
   if (process.env.GITHUB_ACTIONS) console.log("::error title=Smoke test failed::" + String(err.message).replace(/\r?\n/g, " "));
   process.exit(1);
