@@ -772,6 +772,34 @@ async function run() {
     assert(await wpage.$eval("#condNow", (b) => getComputedStyle(b).display !== "none"), "conditions back-to-now arrow shows off now");
     await wpage.click("#condNow"); await wpage.waitForTimeout(1000);
     assert(/now/.test(await wpage.$eval("#condRead", (e) => e.textContent)), "conditions arrow returns to now");
+    // Temp | Wind | Both: the switch and the readout chips move between the charts at the same hour
+    const hourOf = (sel) => wpage.$eval(sel, (e) => (e.textContent.match(/\w{3}, \w{3} \d+ · \d+ [AP]M|\d+ · \d+ [AP]M/) || [""])[0]);
+    await wpage.$eval("#condScroll", (e) => { e.scrollLeft += 15 * 5; }); await wpage.waitForTimeout(700);
+    const condAt = await hourOf("#crTime");
+    assert(await wpage.$("#condRead .cr-hop[data-go=wind]"), "Temp readout has a Wind chip");
+    await wpage.click("#condRead .cr-hop[data-go=wind]"); await wpage.waitForTimeout(500);
+    assert(await wpage.$eval("#condBackdrop", (e) => e.classList.contains("hidden")) && !(await wpage.$eval("#windBackdrop", (e) => e.classList.contains("hidden"))), "Wind chip opens the Wind panel");
+    assert(condAt && (await hourOf("#wrTime")) === condAt, `Wind panel opens at the same hour (${condAt})`);
+    assert(await wpage.$eval("#windBackdrop .mode-seg button.on", (b) => b.dataset.mode === "wind"), "switch shows Wind on the Wind panel");
+    assert(await wpage.$("#windRead .cr-hop[data-go=temp]"), "Wind readout has a Temp chip");
+    await wpage.click('#windBackdrop .mode-seg button[data-mode="both"]'); await wpage.waitForTimeout(500);
+    assert(!(await wpage.$eval("#condBackdrop", (e) => e.classList.contains("hidden"))) && await wpage.$("#condBody .cond-plot.both"), "Both opens the stacked charts");
+    assert((await hourOf("#crTime")) === condAt, "Both keeps the hour");
+    const titles = await wpage.$$eval("#condBody .cc-title", (e) => e.map((t) => t.textContent));
+    assert(titles.length === 2 && /Temperature/.test(titles[0]) && /°C/.test(titles[0]) && titles[1] === "Wind", `each chart is titled, got ${JSON.stringify(titles)}`);
+    assert(await wpage.$("#condBody .wind-chart .wind-line") && await wpage.$("#condBody .wind-chart .wind-gustline"), "Both draws wind and gust");
+    const bl = await wpage.$$eval("#condBody .cc-ylab", (e) => e.map((t) => t.textContent));
+    assert(["Light", "Mod", "Strong", "Severe"].every((b) => bl.includes(b)) && bl.some((b) => /°$/.test(b)), "each chart keeps its own axis");
+    assert(await wpage.$("#condBody .cond-legend.in") && /Wind Gust/.test(await wpage.$eval("#condBody .wind-legend", (e) => e.textContent)), "each chart has its own legend");
+    const bRead = await wpage.$eval("#condRead", (e) => e.textContent);
+    assert(/Wind\s*\d+ km\/h/.test(bRead) && /Gust\s*\d+ km\/h/.test(bRead) && !(await wpage.$("#condRead .cr-hop")), `Both reads out wind and gust, got "${bRead}"`);
+    assert(await wpage.$eval("#condDotW", (d) => d.style.display !== "none"), "the centre line marks the wind too");
+    assert(await wpage.evaluate(() => localStorage.getItem("bw-cond-mode")) === "both", "Both is remembered");
+    await wpage.click("#condClose");
+    await (await wpage.$$("#hourly .cell"))[nowI + 1].click(); await wpage.waitForTimeout(400);
+    assert(await wpage.$("#condBody .cond-plot.both"), "Conditions reopens in Both");
+    await wpage.click('#condBackdrop .mode-seg button[data-mode="temp"]'); await wpage.waitForTimeout(400);
+    assert(!(await wpage.$("#condBody .cond-plot.both")) && !(await wpage.$("#condBody .wind-chart")), "Temp shows the temperature chart alone");
     await wctx.close();
   }
 

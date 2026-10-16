@@ -481,6 +481,7 @@
   .cond-plot .mo-now, .day-chart-wrap .mo-now { bottom: auto; top: 4px; left: 46px; z-index: 4; }
   .cond-plot .mo-now.right, .day-chart-wrap .mo-now.right { left: auto; right: 6px; }
   .cond-plot.has-icons .mo-now { top: 30px; } /* Conditions: below its row of weather icons */
+  .cond-plot.both .mo-now { top: 52px; }       /* ...and its title, when Both */
   .day-chart-wrap .mo-now { left: 32px; }
   /* the three label | value pairs share one small two-column grid, centred as a block with
      a fixed gap: labels end on one line, values start on another, and as the screen widens
@@ -559,6 +560,19 @@
      bright sky-blue wind line, a quiet recessive gust line */
   .wind-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; }
   .cond-modal h2 { margin: 0; font-size: 1.15rem; flex: 1; } /* fill row so ✕ sits in the corner */
+  /* Temp | Wind | Both: one switch heading the Conditions and Wind panels */
+  .mode-seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--border); }
+  .mode-seg button { appearance: none; border: 0; background: none; font: inherit; font-size: 0.95rem; font-weight: 400; padding: 6px 15px; border-radius: 999px; color: var(--muted); cursor: pointer; }
+  .mode-seg button.on { background: var(--accent); color: #14181f; }
+  /* a tappable line in a readout that jumps to the same hour on the other chart */
+  .cr-hop { appearance: none; font: inherit; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; }
+  .cr-hop b { color: var(--text); font-weight: 400; }
+  .cr-hop i { font-style: normal; color: var(--accent); }
+  /* Both: each chart titled, with its own legend, a divider between */
+  .cc-title { position: absolute; left: 2px; height: 22px; line-height: 22px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); pointer-events: none; z-index: 3; }
+  .cc-title em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: 0.8; margin-left: 4px; }
+  .cond-legend.in { position: absolute; left: 0; right: 0; margin: 0; align-items: center; font-size: 0.85rem; pointer-events: none; z-index: 3; }
+  .cc-sep { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); pointer-events: none; z-index: 3; }
   .wind-chart .wind-line { fill: none; stroke: #7fd4ff; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
   .wind-chart .wind-gustline { fill: none; stroke: #8093ad; stroke-width: 1.6; stroke-dasharray: 1.5 2.6; stroke-linecap: round; }
   .wind-chart .wind-arrow path { fill: #7fd4ff; stroke: #0e2440; stroke-width: 0.6; }
@@ -1000,6 +1014,7 @@
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
+        <li><span class="i">🔀</span><span><b>Temp, Wind or Both.</b> <span class="d">The switch at the top of the Conditions and Wind panels moves between them at the same hour, and the Wind or Temp line in each readout jumps across too. Both shows temperature and wind as two charts, one above the other, each with its own title, scale and key, read by the same centre line. The panel opens the way you last used it.</span></span></li>
         <li><span class="i">👉</span><span><b>Slide from anywhere.</b> <span class="d">On the Moon, Daylight, Wind and Conditions panels, drag sideways anywhere on the panel to move through time — a flick keeps it going. Yellow marks now on each one.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can move hour by hour across a month (15 days either side of today) with the scroll bar under it. The scroll bar is a band whose thickness is the Moon’s illumination, with a yellow bar marking now, a dot at each new and full moon to aim for, and a yellow ← NOW button to jump back. Above the Moon: its phase, the date, and where to look — compass bearing, then above (or below) the horizon and by how much. At the top, a perigee-to-apogee distance scale (surface to surface) moves as you scroll. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
@@ -1077,7 +1092,7 @@
   <div class="backdrop hidden" id="windBackdrop">
     <div class="modal wind-modal" role="dialog" aria-modal="true" aria-label="Hourly wind">
       <div class="modal-head">
-        <h2>Wind &amp; gusts</h2>
+        <h2 class="mode-h"><span class="mode-seg" role="group" aria-label="Chart"><button type="button" data-mode="temp" aria-pressed="false">Temp</button><button type="button" data-mode="wind" class="on" aria-pressed="true">Wind</button><button type="button" data-mode="both" aria-pressed="false">Both</button></span></h2>
         <button class="share-btn panel-share" type="button" data-panel="wind" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="windClose" type="button" aria-label="Close">✕</button>
       </div>
@@ -1089,7 +1104,7 @@
   <div class="backdrop hidden" id="condBackdrop">
     <div class="modal cond-modal" role="dialog" aria-modal="true" aria-label="Day conditions">
       <div class="modal-head">
-        <h2 id="condTitle">Conditions</h2>
+        <h2 class="mode-h" id="condTitle"><span class="mode-seg" role="group" aria-label="Chart"><button type="button" data-mode="temp" class="on" aria-pressed="true">Temp</button><button type="button" data-mode="wind" aria-pressed="false">Wind</button><button type="button" data-mode="both" aria-pressed="false">Both</button></span></h2>
         <button class="share-btn panel-share" type="button" data-panel="conditions" aria-label="Share this"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></button>
         <button class="close" id="condClose" type="button" aria-label="Close">✕</button>
       </div>
@@ -2993,6 +3008,9 @@
       '<span class="cr-item"><i class="cr-sw wind"></i>Wind <b>' + (S.ws[idx] == null ? "–" : Math.round(S.ws[idx]) + " " + wU() + (dir ? " " + dir : "")) + '</b></span>' +
       (dg ? '<span class="cr-item"><i class="cr-sw gust"></i>Gust <b>' + (S.wg[idx] == null ? "–" : Math.round(S.wg[idx]) + " " + wU()) + '</b></span>' : '') +
       '</div>';
+    var hh = lastData && lastData.hourly, ti = hh ? hh.time.indexOf(iso) : -1;
+    if (ti >= 0 && hh.temperature_2m[ti] != null) $("wrItems").innerHTML += '<div class="cr-line"><button type="button" class="cr-hop" data-go="temp">Temp <b>' +
+      Math.round(hh.temperature_2m[ti]) + tU() + '</b> · Feels <b>' + (hh.apparent_temperature && hh.apparent_temperature[ti] != null ? Math.round(hh.apparent_temperature[ti]) + tU() : "–") + '</b> <i>›</i></button></div>';
     var wn = $("windNow");
     if (wn) { wn.classList.toggle("show", idx !== S.nowIdx); wn.classList.toggle("right", S.nowIdx > idx); }
     var days = $("windDays");
@@ -3003,7 +3021,7 @@
     });
   }
   // Wire the scroller once the panel is visible: same settle rules as Conditions.
-  function windInit() {
+  function windInit(at) {
     var sc = $("windScroll"), days = $("windDays"), raf = null, settleTimer = null, interacting = false;
     function doSettle() {
       settleTimer = null; if (interacting) return;
@@ -3037,7 +3055,8 @@
       if (idx < 0) idx = windState.t.findIndex(function (x) { return x.slice(0, 10) === b.dataset.day; });
       if (idx >= 0) { sc.scrollLeft = Math.max(0, windState.X(idx) - sc.clientWidth / 2); windUpdateCenter(); }
     });
-    requestAnimationFrame(function () { sc.scrollLeft = Math.max(0, windState.X(windState.nowIdx) - sc.clientWidth / 2); windUpdateCenter(); });
+    var fi = at ? windState.t.indexOf(at) : -1;
+    requestAnimationFrame(function () { sc.scrollLeft = Math.max(0, windState.X(fi >= 0 ? fi : windState.nowIdx) - sc.clientWidth / 2); windUpdateCenter(); });
   }
 
   // ===== Day-conditions chart =====
@@ -3048,7 +3067,7 @@
   var condState = null;
   function shortHour(hr) { var ap = hr < 12 ? "AM" : "PM", h12 = hr % 12 || 12; return h12 + ap; }
 
-  function buildConditionsChart(d, tz, focusIso) {
+  function buildConditionsChart(d, tz, focusIso, both) {
     var h = d && d.hourly;
     if (!h || !h.time || !h.temperature_2m || h.time.length < 2) return false;
     var t = h.time, ta = h.temperature_2m, tf = h.apparent_temperature || [];
@@ -3060,7 +3079,7 @@
     // geometry (pixel space; the track scrolls under a fixed centre cursor, so
     // PADX also reserves lead/trail room to bring the first/last hour to centre)
     var HR = 15, PADX = 180, PT = 14, PB = 24, plotH = 188, H = PT + plotH + PB;
-    var ICON_H = 26, PRECIP_H = 40;
+    var ICON_H = 26, PRECIP_H = 40, TT = both ? 22 : 0; // TT: the chart's title row (Both)
     var totalW = PADX * 2 + (N - 1) * HR;
     function X(i) { return PADX + i * HR; }
 
@@ -3080,7 +3099,7 @@
     var grid = "", ylabs = "";
     for (var g = gMin; g <= gMax + 0.001; g += step) {
       grid += '<line class="cc-grid" x1="0" y1="' + Y(g).toFixed(1) + '" x2="' + totalW + '" y2="' + Y(g).toFixed(1) + '"/>';
-      ylabs += '<div class="cc-ylab" style="top:' + (ICON_H + Y(g)).toFixed(1) + 'px">' + Math.round(g) + '°</div>';
+      ylabs += '<div class="cc-ylab" style="top:' + (TT + ICON_H + Y(g)).toFixed(1) + 'px">' + Math.round(g) + '°</div>';
     }
 
     var dayLines = "", xlabs = "", icons = "", prevDay = null;
@@ -3126,6 +3145,41 @@
       if (share > 0) precip += '<div class="cp-bar snow" style="left:' + bx + 'px;width:' + bw + 'px;bottom:' + rh.toFixed(1) + 'px;height:' + (bh - rh).toFixed(1) + 'px;background:' + SNOW_TONE[bk] + '"></div>';
     }
 
+    // Both: a wind chart of its own under the precip strip, on the Wind panel's scale and
+    // levels, same hours, sharing the centre line (broken across the labels between them)
+    var tEnd = TT + ICON_H + H + PRECIP_H, LEG_H = 30, SEP = 18, WPT = 8, WPH = 96, WPB = 22, WIND_H = WPT + WPH + WPB;
+    var wTop = tEnd + LEG_H + SEP + TT, windSvg = "", wLabs = "", wOver = "", YW = null;
+    var ws = h.wind_speed_10m || [], wg = h.wind_gusts_10m || [], wd = h.wind_direction_10m || [];
+    if (both) {
+      var wf = units === "imperial" ? 0.621371 : 1, wl = [10, 28, 46, 64].map(function (x) { return x * wf; });
+      var wn = ["Light", "Mod", "Strong", "Severe"], wObs = 0;
+      for (i = 0; i < N; i++) { if (ws[i] != null) wObs = Math.max(wObs, ws[i]); if (wg[i] != null) wObs = Math.max(wObs, wg[i]); }
+      var wMax = Math.max(74 * wf, wObs * 1.08);
+      YW = function (v) { return WPT + (1 - Math.max(0, Math.min(wMax, v)) / wMax) * WPH; };
+      var wGrid = "", wPts = "", gPts = "", wArr = "", wDays = "", wPrev = null;
+      for (i = 0; i < wl.length; i++) {
+        wGrid += '<line class="cc-grid" x1="0" y1="' + YW(wl[i]).toFixed(1) + '" x2="' + totalW + '" y2="' + YW(wl[i]).toFixed(1) + '"/>';
+        wLabs += '<div class="cc-ylab" style="top:' + (wTop + YW(wl[i])).toFixed(1) + 'px">' + wn[i] + '</div>';
+      }
+      for (i = 0; i < N; i++) {
+        var whr = +t[i].slice(11, 13), wday = t[i].slice(0, 10);
+        if (wday !== wPrev) { if (wPrev !== null) wDays += '<line class="cc-day" x1="' + X(i).toFixed(1) + '" y1="' + WPT + '" x2="' + X(i).toFixed(1) + '" y2="' + (WPT + WPH) + '"/>'; wPrev = wday; }
+        if (whr % 6 === 0) wDays += '<text class="cc-xlab" x="' + X(i).toFixed(1) + '" y="' + (WIND_H - 8) + '" text-anchor="middle">' + shortHour(whr) + '</text>';
+        if (ws[i] != null) wPts += (wPts ? " " : "") + X(i).toFixed(1) + "," + YW(ws[i]).toFixed(1);
+        if (wg[i] != null) gPts += (gPts ? " " : "") + X(i).toFixed(1) + "," + YW(wg[i]).toFixed(1);
+        if (whr % 3 === 0 && wd[i] != null && ws[i] != null)
+          wArr += '<g class="wind-arrow" transform="translate(' + X(i).toFixed(1) + ',' + YW(ws[i]).toFixed(1) + ') rotate(' + ((Math.round(wd[i]) + 180) % 360) + ') scale(0.8)"><path d="M0,-9 L5.4,6.4 L0,2.6 L-5.4,6.4 Z"/></g>';
+      }
+      var wNow = (nowIdx >= 0 && nowIdx < N) ? '<line class="cc-now" x1="' + X(nowIdx).toFixed(1) + '" y1="' + WPT + '" x2="' + X(nowIdx).toFixed(1) + '" y2="' + (WPT + WPH) + '"/>' : "";
+      windSvg = '<div style="height:' + (LEG_H + SEP + TT) + 'px"></div>' +
+        '<svg class="cond-svg wind-chart" width="' + totalW + '" height="' + WIND_H + '" viewBox="0 0 ' + totalW + ' ' + WIND_H + '">' +
+          wGrid + wDays + wNow + (gPts ? '<polyline class="wind-gustline" points="' + gPts + '"/>' : '') + '<polyline class="wind-line" points="' + wPts + '"/>' + wArr + '</svg>';
+      wOver = '<div class="cc-title" style="top:0">Temperature <em>' + tU() + '</em></div>' +
+        '<div class="cond-legend in" style="top:' + tEnd + 'px;height:' + LEG_H + 'px"><span><i class="lg-actual"></i> Actual</span><span><i class="lg-feels"></i> Feels Like</span></div>' +
+        '<div class="cc-sep" style="top:' + (tEnd + LEG_H + SEP / 2) + 'px"></div>' +
+        '<div class="cc-title" style="top:' + (tEnd + LEG_H + SEP) + 'px">Wind</div>';
+    }
+
     // day tabulator
     var days = [], seen = null;
     for (i = 0; i < N; i++) { var dy = t[i].slice(0, 10); if (dy !== seen) { days.push(dy); seen = dy; } }
@@ -3141,25 +3195,32 @@
       '<div class="cond-days" id="condDays">' + dayBtns + '</div>' +
       '<div class="cond-read" id="condRead"><div class="cr-time" id="crTime"></div><div class="cr-items" id="crItems"></div>' +
         '</div>' +
-      '<div class="cond-plot has-icons">' +
+      '<div class="cond-plot has-icons' + (both ? ' both' : '') + '">' +
         '<button type="button" class="mo-now" id="condNow" aria-label="Back to now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg></button>' +
         '<div class="cond-scroll" id="condScroll">' +
           '<div class="cond-track" style="width:' + totalW + 'px">' +
+            (both ? '<div style="height:' + TT + 'px"></div>' : '') +
             '<div class="cond-icons" style="height:' + ICON_H + 'px;width:' + totalW + 'px">' + icons + '</div>' +
             svg +
             '<div class="cond-precip" style="height:' + PRECIP_H + 'px;width:' + totalW + 'px">' + precip + '</div>' +
+            windSvg +
           '</div>' +
         '</div>' +
-        '<div class="cond-yaxis" style="height:' + (ICON_H + H + PRECIP_H) + 'px">' + ylabs +
-          '<div class="cc-plab" style="top:' + (ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Precip</div>' +
+        '<div class="cond-yaxis" style="height:' + (both ? wTop + WIND_H : tEnd) + 'px">' + ylabs + wLabs +
+          '<div class="cc-plab" style="top:' + (TT + ICON_H + H + PRECIP_H / 2).toFixed(1) + 'px">Precip</div>' +
         '</div>' +
+        wOver +
         '<div class="cond-cursor">' +
-          '<div class="cc-cline" style="top:' + (ICON_H + PT + 15) + 'px;height:' + (plotH + PB + PRECIP_H - 15) + 'px"></div>' +
+          '<div class="cc-cline" style="top:' + (TT + ICON_H + PT + 15) + 'px;height:' + (plotH + PB + PRECIP_H - 15) + 'px"></div>' +
+          (both ? '<div class="cc-cline" style="top:' + (wTop + WPT) + 'px;height:' + (WPH + WPB) + 'px"></div>' +
+            '<div class="cc-cdot gust" id="condDotG" style="display:none"></div>' +
+            '<div class="cc-cdot wind" id="condDotW" style="display:none"></div>' : '') +
           '<div class="cc-cdot feels" id="condDotF" style="display:none"></div>' +
           '<div class="cc-cdot actual" id="condDotA" style="display:none"></div>' +
         '</div>' +
       '</div>' +
-      '<div class="cond-legend"><span><i class="lg-actual"></i> Actual</span><span><i class="lg-feels"></i> Feels Like</span></div>';
+      (both ? '<div class="wind-legend"><span><i class="lg-wind"></i> Wind</span><span><i class="lg-gust"></i> Wind Gust</span></div>'
+        : '<div class="cond-legend"><span><i class="lg-actual"></i> Actual</span><span><i class="lg-feels"></i> Feels Like</span></div>');
 
     // focus index (exact hour, or noon of a tapped day, clamped to range)
     var fIdx = focusIso ? t.indexOf(focusIso) : -1;
@@ -3171,7 +3232,8 @@
     }
     if (fIdx < 0) fIdx = nowIdx >= 0 ? nowIdx : 0;
 
-    condState = { d: d, t: t, N: N, HR: HR, PADX: PADX, PT: PT, ICON_H: ICON_H, X: X, Y: Y,
+    condState = { d: d, t: t, N: N, HR: HR, PADX: PADX, PT: PT, ICON_H: TT + ICON_H, X: X, Y: Y,
+      both: !!both, ws: ws, wg: wg, wd: wd, YW: YW, wTop: wTop,
       ta: ta, tf: tf, precip: h.precipitation || [], pop: h.precipitation_probability || [],
       code: h.weather_code || [], isday: h.is_day || [], h: h,
       nowIdx: nowIdx, focusIdx: fIdx, idx: fIdx, panDir: 0, vx: 0, vw: 0 };
@@ -3190,6 +3252,16 @@
   }
   function condCenterIdx(sc) {
     return Math.max(0, Math.min(condState.N - 1, Math.round((sc.scrollLeft + sc.clientWidth / 2 - condState.PADX) / condState.HR)));
+  }
+  // The readout's wind line: Wind and Gust beside the wind chart (Both), otherwise a chip
+  // that opens the Wind panel at this hour.
+  function condWindLine(S, idx) {
+    var w = S.ws[idx], g = S.wg[idx], dir = S.wd[idx] != null ? degToCompass(S.wd[idx]) : null;
+    if (w == null) return "";
+    var ws = Math.round(w) + " " + wU() + (dir ? " " + dir : "");
+    if (S.both) return '<div class="cr-line"><span class="cr-item"><i class="cr-sw wind"></i>Wind <b>' + ws + '</b></span>' +
+      (g != null ? '<span class="cr-item"><i class="cr-sw gust"></i>Gust <b>' + Math.round(g) + " " + wU() + '</b></span>' : '') + '</div>';
+    return '<div class="cr-line"><button type="button" class="cr-hop" data-go="wind">Wind <b>' + ws + '</b> <i>›</i></button></div>';
   }
   // Fill the fixed readout above the chart for hour `idx` (date/time, Actual,
   // Feels, Rain, Chance) and highlight that day in the tabulator.
@@ -3222,7 +3294,7 @@
         '<div class="cr-line">' +
           pItems.join("") +
           '<span class="cr-item">Chance <b>' + (pop != null ? pop + "%" : "–") + '</b></span>' +
-        '</div>';
+        '</div>' + condWindLine(S, idx);
     }
     condSyncPicker(day);
     // back-to-now arrow: shown off the current hour, on the side now lies
@@ -3237,6 +3309,9 @@
     var da = $("condDotA"), df = $("condDotF");
     if (da) { if (S.ta[idx] != null) { da.style.top = (S.ICON_H + S.Y(S.ta[idx])).toFixed(1) + "px"; da.style.display = ""; } else da.style.display = "none"; }
     if (df) { if (S.tf[idx] != null) { df.style.top = (S.ICON_H + S.Y(S.tf[idx])).toFixed(1) + "px"; df.style.display = ""; } else df.style.display = "none"; }
+    var dw = $("condDotW"), dg = $("condDotG");
+    if (dw) { if (S.ws[idx] != null) { dw.style.top = (S.wTop + S.YW(S.ws[idx])).toFixed(1) + "px"; dw.style.display = ""; } else dw.style.display = "none"; }
+    if (dg) { if (S.wg[idx] != null) { dg.style.top = (S.wTop + S.YW(S.wg[idx])).toFixed(1) + "px"; dg.style.display = ""; } else dg.style.display = "none"; }
     setCondReadout(idx);
   }
   // Drag anywhere on a dipstick panel to move its scrubber: a sideways drag on the panel (the
@@ -3294,8 +3369,15 @@
     panel.addEventListener("click", function (e) { if (killClick) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
-  function openCond(focusIso) {
-    if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso)) return;
+  // Temp or Both, whichever was used last (a shared "both" link opens Both without changing that)
+  var condMode = (function () { try { return localStorage.getItem("bw-cond-mode") === "both" ? "both" : "temp"; } catch (e) { return "temp"; } })();
+  function setCondMode(m) { condMode = m; try { localStorage.setItem("bw-cond-mode", m); } catch (e) { /* ignore */ } }
+  function openCond(focusIso, mode) {
+    var both = (mode || condMode) === "both";
+    if (!lastData || !buildConditionsChart(lastData, lastTz, focusIso, both)) return;
+    els.condBackdrop.querySelectorAll(".mode-seg button").forEach(function (b) {
+      var on = b.dataset.mode === (both ? "both" : "temp"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
+    });
     els.condBackdrop.classList.remove("hidden");
     var sc = $("condScroll"), days = $("condDays"), raf = null;
     // When scrolling stops (and no finger is down), ease to centre the nearest hour
@@ -4445,7 +4527,22 @@
   }
   function openDay() { if (buildDaylightChart(lastLoc, lastTz)) els.dayBackdrop.classList.remove("hidden"); }
   function closeDay() { els.dayBackdrop.classList.add("hidden"); }
-  function openWind() { if (buildWindChart(lastData, lastTz)) { els.windBackdrop.classList.remove("hidden"); windInit(); } }
+  function openWind(at) { if (buildWindChart(lastData, lastTz)) { els.windBackdrop.classList.remove("hidden"); windInit(at); } }
+  // The switch and the readout chips move between the charts, keeping the hour on screen.
+  function switchChart(from, to) {
+    var at = from === "wind" ? (windState && windState.t[windState.idx]) : (condState && condState.t[condState.idx]);
+    if (to === "wind") { closeCond(); openWind(at); return; }
+    setCondMode(to);
+    if (from === "wind") closeWind();
+    openCond(at);
+  }
+  [[els.condBackdrop, "cond"], [els.windBackdrop, "wind"]].forEach(function (x) {
+    x[0].addEventListener("click", function (e) {
+      var b = e.target.closest(".mode-seg button, .cr-hop"); if (!b) return;
+      var to = b.dataset.mode || b.dataset.go, from = x[1] === "wind" ? "wind" : (condState && condState.both ? "both" : "temp");
+      if (to !== from) switchChart(from, to);
+    });
+  });
   function closeWind() { els.windBackdrop.classList.add("hidden"); }
   // Swipe between places: the whole view pages (see pagerStart). Starts on the summary
   // card and section headings (touch-action: pan-y there); the strips keep their own scroll.
@@ -4612,11 +4709,9 @@
       }
     } else if (panel === "daylight") { openDay(); if (at && dayLink) dayLink.go(at.slice(0, 10)); }
     else if (panel === "wind") {
-      openWind();
-      var wi = at && windState ? windState.t.indexOf(at) : -1;
-      if (wi >= 0) requestAnimationFrame(function () { requestAnimationFrame(function () { var sc = $("windScroll"); sc.scrollLeft = Math.max(0, windState.X(wi) - sc.clientWidth / 2); windUpdateCenter(); }); });
+      openWind(at);
     }
-    else if (panel === "conditions") openCond(at && lastData.hourly.time.indexOf(at) >= 0 ? at : null);
+    else if (panel === "conditions" || panel === "both") openCond(at && lastData.hourly.time.indexOf(at) >= 0 ? at : null, panel === "both" ? "both" : "temp");
     else if (panel === "air" && lastAir) openAir();
     else if (panel === "radar" || panel === "map") selectTab("radar");
   }
@@ -4649,7 +4744,10 @@
     else shareToast(url);
   }
   document.querySelectorAll(".panel-share").forEach(function (b) {
-    b.addEventListener("click", function () { var p = b.dataset.panel, at = panelMoment(p); sharePanel(p + (at ? "=" + at : "")); });
+    b.addEventListener("click", function () {
+      var p = b.dataset.panel, at = panelMoment(p);
+      sharePanel((p === "conditions" && condState && condState.both ? "both" : p) + (at ? "=" + at : ""));
+    });
   });
   els.shareBtn.addEventListener("click", function () {
     if (!lastLoc) return;
