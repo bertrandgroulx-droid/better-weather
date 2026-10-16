@@ -397,6 +397,13 @@ async function run() {
 
   // Deep links: ?lat=&lon=&name= opens that place without saving it; #moon opens the Moon panel
   {
+    // the share button (no share sheet here) copies a deep link to the place on screen
+    await page.click("#closeModal");
+    await page.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, "share", { value: undefined, configurable: true }); navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
+    await page.click("#shareBtn");
+    await page.waitForFunction(() => window.__copied, null, { timeout: 3000 });
+    assert(/^https:\/\/shozbot\.com\/better-weather\/index\.html\?lat=-?\d+\.\d{4}&lon=-?\d+\.\d{4}&name=/.test(await page.evaluate(() => window.__copied)), "share copies a deep link to this place");
+    assert(await page.$(".share-toast"), "a brief 'Link copied' note shows");
     await page.evaluate(() => localStorage.setItem("bw-recents", "[]"));
     await page.goto(URL + "?lat=38.72&lon=-9.13&name=Cabin#moon");
     await page.waitForSelector("#moonBackdrop:not(.hidden)", { timeout: 10000 });

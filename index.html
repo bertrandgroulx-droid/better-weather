@@ -150,6 +150,13 @@
   .units button.active { background: var(--accent); color: #0b1f3a; }
 
   /* ---------------- summary ---------------- */
+  /* share: a deep link to this place's forecast (iPhone share sheet, or copy where there isn't one) */
+  .share-btn { position: absolute; top: 6px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%;
+    border: 0; background: none; color: var(--muted); padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .share-btn svg { width: 18px; height: 18px; }
+  .share-btn:hover, .share-btn:focus-visible { color: var(--text); }
+  .share-toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 3000; background: rgba(14,36,64,0.96);
+    border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 8px 16px; font-size: 0.85rem; pointer-events: none; }
   .summary {
     position: relative;
     background: var(--card); border: 1px solid var(--border);
@@ -169,7 +176,7 @@
   /* Card rows: 1 the place's name · 2 page dots · 3 hero + condition · 4 outlook ·
      5 the metrics column (Daylight, Wind, Air Quality, Moon). */
   /* the place: a quiet header line, context only — the weather below is what matters */
-  .sum-loc { grid-column: 1 / -1; grid-row: 1; margin: -6px 0 6px; text-align: center;
+  .sum-loc { grid-column: 1 / -1; grid-row: 1; margin: -6px 0 6px; padding: 0 24px; text-align: center; /* clear of the share icon, still centred */
     font-size: 0.7rem; font-weight: 400; color: var(--muted); opacity: 0.85; letter-spacing: 0.01em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     /* width:0 + min-width:100% keeps this long nowrap line out of the max-content column
@@ -904,6 +911,9 @@
   <div class="status" id="status">Loading your weather…</div>
 
   <div class="result hidden" id="result">
+    <button class="share-btn" id="shareBtn" type="button" aria-label="Share this forecast">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg>
+    </button>
     <button class="about-btn" id="aboutBtn" type="button" aria-label="About Better Weather">
       <!-- the button's disc and the ⓘ in one drawing, so they always share a centre -->
       <svg viewBox="0 0 26 26" aria-hidden="true">
@@ -985,7 +995,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low and the icon beside it, in the darker band, are the night that follows it, evening to the next morning.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
@@ -1095,7 +1105,7 @@
     unitC: $("unitC"), unitF: $("unitF"),
     backdrop: $("backdrop"), searchInput: $("searchInput"),
     closeModal: $("closeModal"), results: $("results"),
-    aboutBtn: $("aboutBtn"), aboutBackdrop: $("aboutBackdrop"), aboutClose: $("aboutClose"),
+    aboutBtn: $("aboutBtn"), shareBtn: $("shareBtn"), aboutBackdrop: $("aboutBackdrop"), aboutClose: $("aboutClose"),
     airBackdrop: $("airBackdrop"), airClose: $("airClose"), airBody: $("airBody"),
     moonBackdrop: $("moonBackdrop"), moonClose: $("moonClose"), moonBody: $("moonBody"),
     findBackdrop: $("findBackdrop"), findClose: $("findClose"),
@@ -3608,6 +3618,7 @@
       sumLocHtml(loc);     // grid row 1 (top)
     // seat the ⓘ at the right edge of the metrics column (survives re-renders)
     (els.summary.querySelector(".sum-left") || els.summary).appendChild(els.aboutBtn);
+    els.summary.appendChild(els.shareBtn); // top-right corner of the card (re-seated after each redraw)
   }
 
   function waterFrac(amount, safe, full) {
@@ -4432,7 +4443,7 @@
   els.result.addEventListener("pointercancel", pagerEnd);
   els.summary.addEventListener("click", function (e) {
     if (pagerSwiped) return; // the click trailing a page swipe
-    if (e.target.closest("#aboutBtn")) return; // ⓘ has its own handler
+    if (e.target.closest("#aboutBtn, #shareBtn")) return; // ⓘ and share have their own handlers
     if (e.target.closest(".air-line")) openAir();
     else if (e.target.closest(".moon-line")) openMoon();
     else if (e.target.closest(".day-line")) openDay();
@@ -4584,6 +4595,25 @@
     else if (panel === "air" && lastAir) openAir();
     else if (panel === "radar" || panel === "map") selectTab("radar");
   }
+
+  // ---- share ----
+  // A deep link to the place on screen: its coordinates and name, so it opens exactly here
+  // (a name alone could match somewhere else). Always the app's public address.
+  function shareLink(loc) {
+    return "https://shozbot.com/better-weather/index.html?lat=" + (+loc.lat).toFixed(4) + "&lon=" + (+loc.lon).toFixed(4) +
+      "&name=" + encodeURIComponent(loc.name || "");
+  }
+  function shareToast(msg) {
+    var t = document.createElement("div"); t.className = "share-toast"; t.textContent = msg; document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 1800);
+  }
+  els.shareBtn.addEventListener("click", function () {
+    if (!lastLoc) return;
+    var url = shareLink(lastLoc), title = "Better Weather · " + lastLoc.name;
+    if (navigator.share) { navigator.share({ title: title, url: url }).catch(function () {}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { shareToast("Link copied"); }, function () { shareToast(url); });
+    else shareToast(url);
+  });
 
   // ---- init ----
   els.unitC.classList.toggle("active", units === "metric");
