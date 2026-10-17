@@ -223,6 +223,7 @@ async function run() {
   assert(await page.$eval("#moFind", (b) => getComputedStyle(b).display !== "none"), "Find the Moon button offered on a touch device");
   await page.click("#moFind");
   await page.waitForSelector("#findBackdrop:not(.hidden)", { timeout: 3000 });
+  await page.waitForFunction(() => /horizon \d+°/.test(document.getElementById("findTarget").textContent), null, { timeout: 5000 }); // once it knows where you are
   const tgt = await page.$eval("#findTarget", (e) => { const m = e.textContent.match(/(\d+)°,\s*(above|below) the horizon (\d+)°/); return m ? { az: +m[1], alt: (m[2] === "below" ? -1 : 1) * +m[3] } : null; });
   const aim = async (heading, tiltUp) => { for (let i = 0; i < 14; i++) { await page.evaluate(([h, t]) => { const ev = new Event(("ondeviceorientationabsolute" in window) ? "deviceorientationabsolute" : "deviceorientation"); Object.defineProperty(ev, "webkitCompassHeading", { value: h }); Object.defineProperty(ev, "alpha", { value: null }); Object.defineProperty(ev, "beta", { value: t }); /* pointer model: tilt = beta */ Object.defineProperty(ev, "gamma", { value: 0 }); window.dispatchEvent(ev); }, [heading, tiltUp]); await page.waitForTimeout(25); } };
   assert(tgt, `find header gives the Moon's bearing and height, got "${await page.$eval("#findTarget", (e) => e.textContent)}"`);
@@ -245,6 +246,23 @@ async function run() {
   assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the raw heading is the magnetic bearing of the Moon");
   await page.click("#findClose");
   assert(await page.$eval("#findBackdrop", (e) => e.classList.contains("hidden")) && !(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "closing Find returns to the Moon panel");
+  // it aims from the phone's own location, not the forecast place: standing in Toronto with
+  // Calgary on screen, the compass correction is Toronto's (~10° W)
+  await page.evaluate(() => { window.__gcp = navigator.geolocation.getCurrentPosition; navigator.geolocation.getCurrentPosition = (ok) => setTimeout(() => ok({ coords: { latitude: 43.65, longitude: -79.38 } }), 50); });
+  await page.click("#moFind"); await page.waitForFunction(() => /−\d+°/.test(document.getElementById("findDecl").textContent), null, { timeout: 5000 });
+  const torDecl = await page.$eval("#findDecl", (e) => e.textContent);
+  assert(/−(9|10|11)°/.test(torDecl), `Find uses where the phone is, got "${torDecl}"`);
+  await page.click("#findClose");
+  // without location it offers no target, only how to allow it (incl. Safari's per-site setting)
+  await page.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok, err) => setTimeout(() => err({ code: 1 }), 50); });
+  await page.click("#moFind"); await page.waitForTimeout(400);
+  const noLoc = await page.$eval("#findBody", (e) => e.textContent);
+  assert(/needs your location/.test(noLoc) && /Website Settings → Location → Allow/.test(noLoc), `Find without location explains, got "${noLoc.slice(0, 160)}"`);
+  assert(await page.$eval(".find-guide", (g) => getComputedStyle(g).display === "none") && await page.$eval("#findView", (v) => v.classList.contains("wait")), "no turn/tilt guidance without a location");
+  await page.waitForTimeout(2700);
+  { const m = await page.$eval("#findMsg", (e) => e.textContent); assert(/needs to know where/.test(m), `the no-compass notice doesn't replace the location one, got "${m.slice(0, 80)}"`); }
+  await page.evaluate(() => { navigator.geolocation.getCurrentPosition = window.__gcp; });
+  await page.click("#findClose");
   // hero's third line: the Moon's place in the sky at the scrubbed hour, or not visible
   const sky = await page.$eval("#moSky", (e) => e.textContent.replace(/\s+/g, " ").trim());
   assert(/^[NESW]{1,3} \d{1,3}°, (above|below) the horizon \d{1,2}°$/.test(sky), `hero sky line, got "${sky}"`);

@@ -364,6 +364,9 @@
   .find-target b { color: var(--text); }
   .find-view { position: relative; width: 260px; height: 260px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, #0a1a30 0, #040a16 70%);
     border: 1.6px solid rgba(255,255,255,0.14); overflow: hidden; transition: box-shadow .3s, border-color .3s; }
+  .find-view.wait { opacity: 0.35; }
+  #findBody.noloc .find-guide, #findBody.noloc .find-live, #findBody.noloc .find-decl { display: none; }
+  .find-view.wait .fv-moon { display: none; }
   .find-view.on { border-color: #ffd166; box-shadow: 0 0 0 4px rgba(255,209,102,0.18), 0 0 40px rgba(255,209,102,0.25); }
   .find-view .fv-ring { position: absolute; inset: 0; pointer-events: none; }
   .find-view .fv-ring line { stroke: rgba(255,255,255,0.14); stroke-width: 1; }
@@ -1015,10 +1018,11 @@
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
         <li><span class="i">🔀</span><span><b>Temp, Wind or Both.</b> <span class="d">The switch at the top of the Conditions and Wind panels moves between them at the same hour, and the Wind or Temp line in each readout jumps across too. Both shows temperature and wind as two equal charts, one above the other, sized to fit your screen, each with its own title, scale and key, read by the same centre line. The panel opens the way you last used it.</span></span></li>
+        <li><span class="i">📍</span><span><b>Your location.</b> <span class="d">Used for the weather where you are and to aim Find the Moon from where you’re standing (it works only with location on). Safari’s prompt names the website, shozbot.com. To stop it asking each time, tap the page menu (aA) beside the address → Website Settings → Location → Allow.</span></span></li>
         <li><span class="i">👉</span><span><b>Slide from anywhere.</b> <span class="d">On the Moon, Daylight, Wind and Conditions panels, drag sideways anywhere on the panel to move through time — a flick keeps it going. Yellow marks now on each one.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can move hour by hour across a month (15 days either side of today) with the scroll bar under it. The scroll bar is a band whose thickness is the Moon’s illumination, with a yellow bar marking now, a dot at each new and full moon to aim for, and a yellow ← NOW button to jump back. Above the Moon: its phase, the date, and where to look — compass bearing, then above (or below) the horizon and by how much. At the top, a perigee-to-apogee distance scale (surface to surface) moves as you scroll. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
-        <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon” at the top: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. The compass is corrected from magnetic to true north for your location automatically.</span></span></li>
+        <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon” at the top: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. It aims from your phone’s own location, whatever place the forecast shows, and the compass is corrected from magnetic to true north for where you’re standing.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for the daylight band widening toward summer and pinching toward winter — a full year on screen, slidable a year back or ahead, with a yellow ← NOW button to jump back. Dots mark the solstices, rings the equinoxes, dotted lines the clock changes, and a brighter band inside shows the vitamin D hours (Sun above 45°) — a one-line key sits under the chart, and “More” opens the details. The readout gives sunrise and sunset with their compass bearings, day length, the vitamin D window, and the change from the day before; a card beneath shows where the Sun is overhead and how high it climbs at noon here. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can slide back through time. Rain runs green to red and snow pale blue to violet, using RainViewer’s snow estimate; place names sit above the radar.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
@@ -4291,7 +4295,8 @@
 
   function useLocation() {
     if (!navigator.geolocation) { fallbackCity(); return; }
-    setStatus("Finding your location…");
+    // the browser's prompt can only name the website, so say why in the app's words behind it
+    setStatus("Better Weather uses your location\nto show the weather where you are.\n\nYou can search for any place instead.");
     locateMe(function (loc) { show(loc); }, function () { fallbackCity(); });
   }
 
@@ -4442,8 +4447,8 @@
     return { az: az, alt: alt };
   }
   function openFind() {
-    var loc = lastLoc || { lat: 51.05, lon: -114.07 };
     var body = $("findBody");
+    body.classList.remove("noloc");
     body.innerHTML =
       '<div class="find-target" id="findTarget"></div>' +
       '<div class="find-view" id="findView">' +
@@ -4456,12 +4461,11 @@
       '<div class="find-live" id="findLive">Waiting for the compass…</div>' +
       '<div class="find-decl" id="findDecl"></div>' +
       '<div class="find-msg" id="findMsg">Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it. A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight.</div>';
-    // phones report magnetic headings; correct to true north with the World Magnetic Model
-    var decl = magDecl(loc.lat, loc.lon, new Date());
-    findUI = { loc: loc, got: false, onTarget: false, rawAz: null, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0, off: decl };
-    $("findDecl").textContent = "Compass corrected for magnetic north " + (decl >= 0 ? "+" : "−") + Math.abs(Math.round(decl)) + "° here";
+    // It aims from where the phone is (not the place the forecast shows), so it needs a location
+    // fix first: the Moon's bearing and height, and the compass correction, depend on it.
+    findUI = { loc: null, got: false, onTarget: false, rawAz: null, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0, off: 0 };
     try { localStorage.removeItem("bw-compass"); } catch (_) {} // the earlier manual calibration, superseded
-    findRefreshTarget();
+    findLocate();
     els.findBackdrop.classList.remove("hidden");
     // iOS 13+: sensors need a permission granted from a user gesture (this tap)
     var start = function () {
@@ -4470,7 +4474,7 @@
       findUI.handler = function (e) { findUI.pend = e; if (!findUI.raf) findUI.raf = requestAnimationFrame(findFrame); };
       window.addEventListener(evName, findUI.handler);
       findUI.timer = setTimeout(function () {
-        if (findUI && !findUI.got) findMessage("No compass data is coming through. On iPhone, allow Motion & Orientation for Safari (Settings → Safari → Motion & Orientation Access) and try again; some browsers don’t share orientation with web pages.", true);
+        if (findUI && !findUI.got && !findUI.failed) findMessage("No compass data is coming through. On iPhone, allow Motion & Orientation for Safari (Settings → Safari → Motion & Orientation Access) and try again; some browsers don’t share orientation with web pages.", true);
       }, 2500);
     };
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
@@ -4479,7 +4483,29 @@
         else findMessage("Motion access was declined, so the phone can’t say where it’s pointing. Close this and tap Find the Moon again to be asked once more.", true);
       }).catch(function () { findMessage("Motion access couldn’t be requested here. Open the app in Safari and try again.", true); });
     } else start();
-    findUI.tick = setInterval(findRefreshTarget, 10000); // the Moon moves ~¼° a minute
+    findUI.tick = setInterval(function () { if (findUI && findUI.loc) findRefreshTarget(); }, 10000); // the Moon moves ~¼° a minute
+  }
+  function findLocate() {
+    var U = findUI, view = $("findView");
+    view.classList.add("wait");
+    $("findTarget").textContent = "Finding where you are…";
+    var fail = function () {
+      if (findUI !== U) return;
+      U.failed = true; $("findBody").classList.add("noloc"); // no target, so no cards or readings either
+      $("findTarget").innerHTML = "<b>Find the Moon needs your location</b>";
+      $("findDecl").textContent = "";
+      findMessage("It aims from where you’re standing, so it needs to know where that is. In Safari, tap the page menu (aA) beside the address → Website Settings → Location → Allow; if that’s already on, check Settings → Privacy & Security → Location Services → Safari Websites. Then close this and tap Find the Moon again.", true);
+    };
+    if (!navigator.geolocation) { fail(); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      if (findUI !== U) return;
+      U.loc = { lat: p.coords.latitude, lon: p.coords.longitude };
+      // phones report magnetic headings; correct to true north with the World Magnetic Model
+      U.off = magDecl(U.loc.lat, U.loc.lon, new Date());
+      $("findDecl").textContent = "Compass corrected for magnetic north " + (U.off >= 0 ? "+" : "−") + Math.abs(Math.round(U.off)) + "° here";
+      view.classList.remove("wait");
+      findRefreshTarget();
+    }, fail, { maximumAge: 600000, timeout: 15000 });
   }
   function findMessage(text, warn) { var m = $("findMsg"); if (m) { m.textContent = text; m.classList.toggle("warn", !!warn); } }
   // Where the Moon is right now (not the scrubbed hour — you're pointing a phone in real time)
@@ -4491,10 +4517,10 @@
     // same line above or below the horizon — pointing works the same either way; below, add when it rises
     var line = mi.name + " · now " + compassName(sky.az) + " " + Math.round(sky.az) + "°, " + (U.up ? "above" : "below") + " the horizon " + Math.abs(Math.round(sky.alt)) + "°";
     if (!U.up) {
-      var p = tzParts(new Date(now), lastTz), mid = localMidnight(p.y, p.m, p.d, lastTz);
+      var p = tzParts(new Date(now)), mid = localMidnight(p.y, p.m, p.d);
       var rs = moonRiseSet(mid, U.loc.lat, U.loc.lon), rs2 = moonRiseSet(mid + 86400000, U.loc.lat, U.loc.lon);
       var rise = rs.rise != null && rs.rise > now ? rs.rise : (rs2.rise != null ? rs2.rise : null);
-      if (rise) line += "<br><small>rises " + clockInTz(new Date(rise), lastTz) + (rise > mid + 86400000 ? " tomorrow" : "") + " in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) + "</small>";
+      if (rise) line += "<br><small>rises " + clockInTz(new Date(rise)) + (rise > mid + 86400000 ? " tomorrow" : "") + " in the " + compassName(moonAzimuth(rise, U.loc.lat, U.loc.lon)) + "</small>";
     }
     t.innerHTML = line;
   }
@@ -4503,6 +4529,7 @@
     var p = pointingFrom(U.pend); U.pend = null;
     if (!p) return;
     if (!U.got) { U.got = true; clearTimeout(U.timer); }
+    if (!U.loc) return; // no target until we know where you are
     // smooth a little (circular for the heading) so the Moon marker doesn't jitter
     if (U.rawAz == null) { U.rawAz = p.az; U.lastAlt = p.alt; }
     else {
