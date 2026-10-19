@@ -225,6 +225,10 @@ async function run() {
   await page.waitForSelector("#findBackdrop:not(.hidden)", { timeout: 3000 });
   await page.waitForFunction(() => /horizon \d+°/.test(document.getElementById("findTarget").textContent), null, { timeout: 5000 }); // once it knows where you are
   const tgt = await page.$eval("#findTarget", (e) => { const m = e.textContent.match(/(\d+)°,\s*(above|below) the horizon (\d+)°/); return m ? { az: +m[1], alt: (m[2] === "below" ? -1 : 1) * +m[3] } : null; });
+  // Camera is the default way to aim; these checks use the top-edge pointer model, then Camera
+  assert(await page.$eval(".find-aim button.on", (b) => b.dataset.aim === "camera"), "Find aims with the camera by default");
+  await page.click('.find-aim button[data-aim="top"]');
+  assert(/flat/.test(await page.$eval("#findMsg", (e) => e.textContent)), "Top edge instructions say hold it flat");
   const aim = async (heading, tiltUp) => { for (let i = 0; i < 14; i++) { await page.evaluate(([h, t]) => { const ev = new Event(("ondeviceorientationabsolute" in window) ? "deviceorientationabsolute" : "deviceorientation"); Object.defineProperty(ev, "webkitCompassHeading", { value: h }); Object.defineProperty(ev, "alpha", { value: null }); Object.defineProperty(ev, "beta", { value: t }); /* pointer model: tilt = beta */ Object.defineProperty(ev, "gamma", { value: 0 }); window.dispatchEvent(ev); }, [heading, tiltUp]); await page.waitForTimeout(25); } };
   assert(tgt, `find header gives the Moon's bearing and height, got "${await page.$eval("#findTarget", (e) => e.textContent)}"`);
   // magnetic declination is applied automatically (World Magnetic Model): Calgary is ~13° east in
@@ -244,6 +248,13 @@ async function run() {
   assert(!(await page.$eval("#findView", (v) => v.classList.contains("on"))), "ring is dark when the raw heading equals the true bearing (declination applied)");
   await aim(mag(tgt.az), tgt.alt);
   assert(await page.$eval("#findView", (v) => v.classList.contains("on")), "ring lights when the raw heading is the magnetic bearing of the Moon");
+  // Camera: the back camera's direction — held upright (beta 90) it looks at the horizon, leaned back it looks up
+  await page.click('.find-aim button[data-aim="camera"]');
+  assert(/camera on the back/.test(await page.$eval("#findMsg", (e) => e.textContent)), "Camera instructions say point the back camera");
+  await aim(mag(tgt.az), 90 + tgt.alt);
+  assert(await page.$eval("#findView", (v) => v.classList.contains("on")) && /^Camera facing/.test(await page.$eval("#findLive", (e) => e.textContent)), "Camera mode: held up at the Moon's height, the ring lights");
+  await aim(mag(tgt.az), tgt.alt); // flat-ish: the camera points at the ground
+  assert(!(await page.$eval("#findView", (v) => v.classList.contains("on"))), "Camera mode: the top-edge pose doesn't count");
   await page.click("#findClose");
   assert(await page.$eval("#findBackdrop", (e) => e.classList.contains("hidden")) && !(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "closing Find returns to the Moon panel");
   // it aims from the phone's own location, not the forecast place: standing in Toronto with

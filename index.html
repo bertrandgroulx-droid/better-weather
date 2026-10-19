@@ -365,6 +365,9 @@
   .find-view { position: relative; width: 260px; height: 260px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, #0a1a30 0, #040a16 70%);
     border: 1.6px solid rgba(255,255,255,0.14); overflow: hidden; transition: box-shadow .3s, border-color .3s; }
   .find-view.wait { opacity: 0.35; }
+  .find-aim { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
+  .find-aim .mode-seg button { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; padding: 6px 13px; }
+  .find-aim svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   #findBody.noloc .find-guide, #findBody.noloc .find-live, #findBody.noloc .find-decl { display: none; }
   .find-view.wait .fv-moon { display: none; }
   .find-view.on { border-color: #ffd166; box-shadow: 0 0 0 4px rgba(255,209,102,0.18), 0 0 40px rgba(255,209,102,0.25); }
@@ -1022,7 +1025,7 @@
         <li><span class="i">👉</span><span><b>Slide from anywhere.</b> <span class="d">On the Moon, Daylight, Wind and Conditions panels, drag sideways anywhere on the panel to move through time — a flick keeps it going. Yellow marks now on each one.</span></span></li>
         <li><span class="i">🫁</span><span><b>Air quality.</b> <span class="d">A colour-coded air-quality index — Canada’s AQHI (1–10) for Canadian locations, the US AQI everywhere else. Tap the “Air Quality” line on the summary for the details — a scale showing where your reading sits among all the categories, what the category means, and a breakdown of pollutants like PM2.5 and ozone.</span></span></li>
         <li><span class="i">🌙</span><span><b>The Moon.</b> <span class="d">Live phase on the summary — tap it for the Moon panel: the real lunar surface (NASA’s Lunar Reconnaissance Orbiter map) lit and tilted as it appears tonight, which you can move hour by hour across a month (15 days either side of today) with the scroll bar under it. The scroll bar is a band whose thickness is the Moon’s illumination, with a yellow bar marking now, a dot at each new and full moon to aim for, and a yellow ← NOW button to jump back. Above the Moon: its phase, the date, and where to look — compass bearing, then above (or below) the horizon and by how much. At the top, a perigee-to-apogee distance scale (surface to surface) moves as you scroll. Below: moonrise and moonset with the compass point they happen at, days to the next full and new moon, and a month calendar of phases. All computed on-device for this place.</span></span></li>
-        <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon” at the top: hold the phone flat and aim its top edge like a pointer. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. It aims from your phone’s own location, whatever place the forecast shows, and the compass is corrected from magnetic to true north for where you’re standing.</span></span></li>
+        <li><span class="i">🧭</span><span><b>Find the Moon.</b> <span class="d">On a phone, the Moon panel offers “Find the Moon” at the top. Aim with the camera — hold the phone up as if taking a photo and point the back camera at the sky — or switch to Top edge and aim the top of the phone, held flat, like a pointer; it remembers your choice. Two cards say how far to turn and tilt, a viewfinder shows the Moon against the horizon, and the ring lights up when you’re on it — above or below the horizon. It aims from your phone’s own location, whatever place the forecast shows, and the compass is corrected from magnetic to true north for where you’re standing.</span></span></li>
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for the daylight band widening toward summer and pinching toward winter — a full year on screen, slidable a year back or ahead, with a yellow ← NOW button to jump back. Dots mark the solstices, rings the equinoxes, dotted lines the clock changes, and a brighter band inside shows the vitamin D hours (Sun above 45°) — a one-line key sits under the chart, and “More” opens the details. The readout gives sunrise and sunset with their compass bearings, day length, the vitamin D window, and the change from the day before; a card beneath shows where the Sun is overhead and how high it climbs at noon here. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can slide back through time. Rain runs green to red and snow pale blue to violet, using RainViewer’s snow estimate; place names sit above the radar.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
@@ -4434,9 +4437,17 @@
   //        north where location services allow); the tilt is beta (front-back).
   //   Android: alpha from the *absolute* event is north-referenced; rotate the device's +Y
   //        axis into the earth frame (W3C Z-X'-Y'' order) and read off its bearing and tilt.
-  function pointingFrom(e) {
+  function pointingFrom(e, cam) {
     if (e.alpha == null && e.webkitCompassHeading == null) return null;
-    var a = (e.alpha || 0) * RAD, b = (e.beta || 0) * RAD;
+    var a = (e.alpha || 0) * RAD, b = (e.beta || 0) * RAD, g = (e.gamma || 0) * RAD;
+    if (cam) { // the back camera looks along the device's −Z axis
+      var cx = -(Math.cos(g) * Math.sin(a) * Math.sin(b) + Math.cos(a) * Math.sin(g)), cy = -(Math.sin(a) * Math.sin(g) - Math.cos(a) * Math.cos(g) * Math.sin(b)), cz = -Math.cos(b) * Math.cos(g);
+      var calt = Math.asin(Math.max(-1, Math.min(1, cz))) / RAD, caz;
+      if (e.webkitCompassHeading != null && !isNaN(e.webkitCompassHeading)) caz = e.webkitCompassHeading; // iOS: to check on a phone held upright
+      else if (e.absolute || e.type === "deviceorientationabsolute") caz = mnorm(Math.atan2(cx, cy) / RAD);
+      else return null;
+      return { az: caz, alt: calt };
+    }
     // device +Y axis in the earth frame (x east, y north, z up): Ry(γ) leaves it alone
     var yx = -Math.cos(b) * Math.sin(a), yy = Math.cos(b) * Math.cos(a), yz = Math.sin(b);
     var alt = Math.asin(Math.max(-1, Math.min(1, yz))) / RAD;
@@ -4450,6 +4461,10 @@
     var body = $("findBody");
     body.classList.remove("noloc");
     body.innerHTML =
+      '<div class="find-aim"><span>Aim with</span><span class="mode-seg" role="group" aria-label="Aim with">' +
+        '<button type="button" data-aim="top"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="9" rx="2" transform="skewX(-12) translate(3 0)"/><path d="M12 8V2M9 5l3-3 3 3"/></svg>Top edge</button>' +
+        '<button type="button" data-aim="camera"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><circle cx="12" cy="8" r="2"/></svg>Camera</button>' +
+      '</span></div>' +
       '<div class="find-target" id="findTarget"></div>' +
       '<div class="find-view" id="findView">' +
         '<svg class="fv-ring" viewBox="0 0 260 260" aria-hidden="true"><line x1="130" y1="0" x2="130" y2="260"/><line x1="0" y1="130" x2="260" y2="130"/><circle cx="130" cy="130" r="40"/><circle cx="130" cy="130" r="90"/></svg>' +
@@ -4465,6 +4480,7 @@
     // fix first: the Moon's bearing and height, and the compass correction, depend on it.
     findUI = { loc: null, got: false, onTarget: false, rawAz: null, lastAz: null, lastAlt: null, raf: 0, pend: null, timer: 0, off: 0 };
     try { localStorage.removeItem("bw-compass"); } catch (_) {} // the earlier manual calibration, superseded
+    findAimSet(findAim, true);
     findLocate();
     els.findBackdrop.classList.remove("hidden");
     // iOS 13+: sensors need a permission granted from a user gesture (this tap)
@@ -4507,6 +4523,18 @@
       findRefreshTarget();
     }, fail, { maximumAge: 600000, timeout: 15000 });
   }
+  // How you hold it: the top edge as a pointer (phone flat), or the back camera, as for a photo.
+  var findAim = (function () { try { return localStorage.getItem("bw-find-aim") === "top" ? "top" : "camera"; } catch (e) { return "camera"; } })();
+  var FIND_HOW_AIM = {
+    top: "Hold the phone flat, screen up, and aim its top edge like a pointer: swing it to turn, raise it to tilt. Follow the two cards; the ring lights up when you’re on it.",
+    camera: "Hold the phone up as if taking a photo and point the camera on the back toward the sky. Follow the two cards; the ring lights up when you’re on it."
+  };
+  function findAimSet(m, quiet) {
+    findAim = m; if (!quiet) { try { localStorage.setItem("bw-find-aim", m); } catch (e) { /* ignore */ } }
+    document.querySelectorAll("#findBody .find-aim button").forEach(function (b) { var on = b.dataset.aim === m; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+    if (findUI && !findUI.failed) { findUI.rawAz = null; findMessage(FIND_HOW_AIM[m] + " A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight."); }
+  }
+  $("findBody").addEventListener("click", function (e) { var b = e.target.closest(".find-aim button"); if (b) findAimSet(b.dataset.aim); });
   function findMessage(text, warn) { var m = $("findMsg"); if (m) { m.textContent = text; m.classList.toggle("warn", !!warn); } }
   // Where the Moon is right now (not the scrubbed hour — you're pointing a phone in real time)
   function findRefreshTarget() {
@@ -4526,7 +4554,7 @@
   }
   function findFrame() {
     var U = findUI; if (!U) return; U.raf = 0;
-    var p = pointingFrom(U.pend); U.pend = null;
+    var p = pointingFrom(U.pend, findAim === "camera"); U.pend = null;
     if (!p) return;
     if (!U.got) { U.got = true; clearTimeout(U.timer); }
     if (!U.loc) return; // no target until we know where you are
@@ -4557,7 +4585,7 @@
     if (on && !U.onTarget && navigator.vibrate) { try { navigator.vibrate(60); } catch (_) {} }
     U.onTarget = on;
     var ta = Math.round(U.lastAlt);
-    $("findLive").textContent = "Phone facing " + compassName(U.lastAz) + " " + Math.round(U.lastAz) + "° · tilted " + Math.abs(ta) + "°" + (ta >= 0 ? " up" : " down");
+    $("findLive").textContent = (findAim === "camera" ? "Camera facing " : "Phone facing ") + compassName(U.lastAz) + " " + Math.round(U.lastAz) + "° · tilted " + Math.abs(ta) + "°" + (ta >= 0 ? " up" : " down");
   }
   function closeFind() {
     var U = findUI; findUI = null;
