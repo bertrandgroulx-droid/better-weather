@@ -365,6 +365,7 @@
   .find-view { position: relative; width: 260px; height: 260px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, #0a1a30 0, #040a16 70%);
     border: 1.6px solid rgba(255,255,255,0.14); overflow: hidden; transition: box-shadow .3s, border-color .3s; }
   .find-view.wait { opacity: 0.35; }
+  .loc-btn { display: block; margin: 12px auto 2px; appearance: none; border: 0; border-radius: 999px; padding: 10px 22px; background: var(--accent); color: #14181f; font: inherit; font-size: 1rem; font-weight: 400; cursor: pointer; }
   .find-aim { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 10px; font-size: 0.85rem; color: var(--muted); }
   .find-aim .mode-seg button { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; padding: 6px 13px; }
   .find-aim svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -4501,27 +4502,56 @@
     } else start();
     findUI.tick = setInterval(function () { if (findUI && findUI.loc) findRefreshTarget(); }, 10000); // the Moon moves ~¼° a minute
   }
+  // Where to turn location on, in this browser's own words.
+  function locHelp() {
+    var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    return ios
+      ? "In Safari, tap the page menu (aA) beside the address → Website Settings → Location → Allow; if that’s already on, check Settings → Privacy & Security → Location Services → Safari Websites."
+      : "Tap the icon to the left of the address → Permissions → Location → Allow, and make sure Location is turned on in your phone’s quick settings.";
+  }
   function findLocate() {
-    var U = findUI, view = $("findView");
-    view.classList.add("wait");
+    var U = findUI, view = $("findView"), body = $("findBody");
+    view.classList.add("wait"); body.classList.add("noloc"); U.failed = false;
     $("findTarget").textContent = "Finding where you are…";
-    var fail = function () {
+    findMessage(FIND_HOW_AIM[findAim] + " A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight.");
+    // a slow fix (indoors, or GPS warming up) says so instead of sitting silent
+    var slow = setTimeout(function () {
+      if (findUI !== U || U.loc || U.failed) return;
+      $("findTarget").textContent = "Still finding where you are…";
+      findMessage("This can take a few seconds, faster by a window or outdoors. Make sure Location is turned on for your phone.");
+    }, 5000);
+    var fail = function (err) {
+      clearTimeout(slow);
       if (findUI !== U) return;
-      U.failed = true; $("findBody").classList.add("noloc"); // no target, so no cards or readings either
-      $("findTarget").innerHTML = "<b>Find the Moon needs your location</b>";
+      U.failed = true; // no target, so no cards or readings either
+      var denied = !navigator.geolocation || (err && err.code === 1);
+      $("findTarget").innerHTML = denied ? "<b>Find the Moon needs your location</b>" : "<b>Couldn’t get your location</b>";
       $("findDecl").textContent = "";
-      findMessage("It aims from where you’re standing, so it needs to know where that is. In Safari, tap the page menu (aA) beside the address → Website Settings → Location → Allow; if that’s already on, check Settings → Privacy & Security → Location Services → Safari Websites. Then close this and tap Find the Moon again.", true);
+      var m = $("findMsg"); m.classList.add("warn");
+      m.innerHTML = (denied ? "It aims from where you’re standing, so it needs to know where that is. " + locHelp() + " Then try again."
+        : "Your phone didn’t give a location in time. Make sure Location is turned on, then try again.") +
+        '<button type="button" class="loc-btn" id="findRetry">Try again</button>';
+      $("findRetry").addEventListener("click", findLocate);
     };
     if (!navigator.geolocation) { fail(); return; }
     navigator.geolocation.getCurrentPosition(function (p) {
+      clearTimeout(slow);
       if (findUI !== U) return;
       U.loc = { lat: p.coords.latitude, lon: p.coords.longitude };
       // phones report magnetic headings; correct to true north with the World Magnetic Model
       U.off = magDecl(U.loc.lat, U.loc.lon, new Date());
       $("findDecl").textContent = "Compass corrected for magnetic north " + (U.off >= 0 ? "+" : "−") + Math.abs(Math.round(U.off)) + "° here";
-      view.classList.remove("wait");
-      findRefreshTarget();
-    }, fail, { maximumAge: 600000, timeout: 15000 });
+      view.classList.remove("wait"); body.classList.remove("noloc");
+      findMessage(FIND_HOW_AIM[findAim] + " A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight.");
+      findRefreshTarget(); findRedraw();
+      // that may be the phone's last known fix; take a fresh one too, quietly (25 km moves the Moon ~0.2°)
+      if (p.timestamp && Date.now() - p.timestamp > 120000) navigator.geolocation.getCurrentPosition(function (q) {
+        if (findUI !== U) return;
+        U.loc = { lat: q.coords.latitude, lon: q.coords.longitude }; U.off = magDecl(U.loc.lat, U.loc.lon, new Date());
+        $("findDecl").textContent = "Compass corrected for magnetic north " + (U.off >= 0 ? "+" : "−") + Math.abs(Math.round(U.off)) + "° here";
+        findRefreshTarget(); findRedraw();
+      }, function () {}, { maximumAge: 0, timeout: 30000 });
+    }, fail, { maximumAge: 1800000, timeout: 20000 });
   }
   // How you hold it: the top edge as a pointer (phone flat), or the back camera, as for a photo.
   var findAim = (function () { try { return localStorage.getItem("bw-find-aim") === "top" ? "top" : "camera"; } catch (e) { return "camera"; } })();
@@ -4532,7 +4562,7 @@
   function findAimSet(m, quiet) {
     findAim = m; if (!quiet) { try { localStorage.setItem("bw-find-aim", m); } catch (e) { /* ignore */ } }
     document.querySelectorAll("#findBody .find-aim button").forEach(function (b) { var on = b.dataset.aim === m; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
-    if (findUI && !findUI.failed) { findUI.rawAz = null; findMessage(FIND_HOW_AIM[m] + " A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight."); }
+    if (findUI && !findUI.failed) { findUI.rawAz = null; findRedraw(); findMessage(FIND_HOW_AIM[m] + " A few degrees of compass error is normal — if the reading drifts, wave the phone in a figure eight."); }
   }
   $("findBody").addEventListener("click", function (e) { var b = e.target.closest(".find-aim button"); if (b) findAimSet(b.dataset.aim); });
   function findMessage(text, warn) { var m = $("findMsg"); if (m) { m.textContent = text; m.classList.toggle("warn", !!warn); } }
@@ -4554,7 +4584,8 @@
   }
   function findFrame() {
     var U = findUI; if (!U) return; U.raf = 0;
-    var p = pointingFrom(U.pend, findAim === "camera"); U.pend = null;
+    if (U.pend) U.lastEv = U.pend; // Android Chrome only sends a reading when the phone moves: keep the last one
+    var p = U.lastEv && pointingFrom(U.lastEv, findAim === "camera"); U.pend = null;
     if (!p) return;
     if (!U.got) { U.got = true; clearTimeout(U.timer); }
     if (!U.loc) return; // no target until we know where you are
@@ -4587,6 +4618,9 @@
     var ta = Math.round(U.lastAlt);
     $("findLive").textContent = (findAim === "camera" ? "Camera facing " : "Phone facing ") + compassName(U.lastAz) + " " + Math.round(U.lastAz) + "° · tilted " + Math.abs(ta) + "°" + (ta >= 0 ? " up" : " down");
   }
+  // Redraw from the last reading (when the location arrives, or the way of aiming changes),
+  // rather than waiting for the phone to move.
+  function findRedraw() { var U = findUI; if (U && U.lastEv && !U.raf) U.raf = requestAnimationFrame(findFrame); }
   function closeFind() {
     var U = findUI; findUI = null;
     if (U) {

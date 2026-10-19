@@ -268,10 +268,25 @@ async function run() {
   await page.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok, err) => setTimeout(() => err({ code: 1 }), 50); });
   await page.click("#moFind"); await page.waitForTimeout(400);
   const noLoc = await page.$eval("#findBody", (e) => e.textContent);
-  assert(/needs your location/.test(noLoc) && /Website Settings → Location → Allow/.test(noLoc), `Find without location explains, got "${noLoc.slice(0, 160)}"`);
+  assert(/needs your location/.test(noLoc) && /(Website Settings|Permissions) → Location → Allow/.test(noLoc) && await page.$("#findRetry"), `Find without location explains, got "${noLoc.slice(0, 160)}"`);
   assert(await page.$eval(".find-guide", (g) => getComputedStyle(g).display === "none") && await page.$eval("#findView", (v) => v.classList.contains("wait")), "no turn/tilt guidance without a location");
   await page.waitForTimeout(2700);
   { const m = await page.$eval("#findMsg", (e) => e.textContent); assert(/needs to know where/.test(m), `the no-compass notice doesn't replace the location one, got "${m.slice(0, 80)}"`); }
+  // no fix in time (location off, no signal) is told apart from blocked, with Try again
+  await page.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok, err) => setTimeout(() => err({ code: 3 }), 50); });
+  await page.click("#findRetry"); await page.waitForTimeout(300);
+  assert(/Couldn’t get your location/.test(await page.$eval("#findTarget", (e) => e.textContent)) && await page.$("#findRetry"), "a timed-out fix says so and offers Try again");
+  // a slow fix says so after 5 s, instead of sitting silent
+  await page.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok) => { window.__fix = ok; }; });
+  await page.click("#findRetry"); await page.waitForTimeout(5400);
+  assert(/Still finding/.test(await page.$eval("#findTarget", (e) => e.textContent)), "a slow fix says it's still finding");
+  // the phone held still sends one reading (Android Chrome only sends on movement): when the
+  // location then arrives, the guidance appears from that reading, without a tap or a nudge
+  await page.evaluate(() => { const ev = new Event(("ondeviceorientationabsolute" in window) ? "deviceorientationabsolute" : "deviceorientation"); Object.defineProperty(ev, "webkitCompassHeading", { value: 100 }); Object.defineProperty(ev, "alpha", { value: null }); Object.defineProperty(ev, "beta", { value: 90 }); Object.defineProperty(ev, "gamma", { value: 0 }); window.dispatchEvent(ev); });
+  await page.waitForTimeout(100);
+  await page.evaluate(() => window.__fix({ coords: { latitude: 51.05, longitude: -114.07 }, timestamp: Date.now() }));
+  await page.waitForTimeout(300);
+  assert(/(left|right|on it)/.test(await page.$eval("#fgTurn", (e) => e.textContent)) && /^Camera facing/.test(await page.$eval("#findLive", (e) => e.textContent)), "guidance appears from the last reading once located");
   await page.evaluate(() => { navigator.geolocation.getCurrentPosition = window.__gcp; });
   await page.click("#findClose");
   // hero's third line: the Moon's place in the sky at the scrubbed hour, or not visible
