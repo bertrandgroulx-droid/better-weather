@@ -253,7 +253,7 @@ async function run() {
   assert(/camera on the back/.test(await page.$eval("#findMsg", (e) => e.textContent)), "Camera instructions say point the back camera");
   await aim(mag(tgt.az), 90 + tgt.alt);
   assert(await page.$eval("#findView", (v) => v.classList.contains("on")) && /^Camera facing/.test(await page.$eval("#findLive", (e) => e.textContent)), "Camera mode: held up at the Moon's height, the ring lights");
-  await aim(mag(tgt.az), tgt.alt); // flat-ish: the camera points at the ground
+  await aim(mag(tgt.az), 0); // flat: the camera points straight down (the Moon is never below −70° here)
   assert(!(await page.$eval("#findView", (v) => v.classList.contains("on"))), "Camera mode: the top-edge pose doesn't count");
   await page.click("#findClose");
   assert(await page.$eval("#findBackdrop", (e) => e.classList.contains("hidden")) && !(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "closing Find returns to the Moon panel");
@@ -355,8 +355,14 @@ async function run() {
     await page.click("#hNow"); await page.waitForTimeout(900);
     assert(await page.$eval("#hNow", (b) => getComputedStyle(b).display === "none"), "tapping the strip NOW pill brings Now back");
   }
-  // 2) Tabs switch
+  // 2) Tabs switch — the map is the same size as the forecast, even when the forecast runs
+  // taller than the screen (simulated with a spacer), so the Weather/Map buttons stay put
+  await page.evaluate(() => { const d = document.createElement("div"); d.id = "tallSpacer"; d.style.height = "300px"; document.getElementById("result").appendChild(d); });
+  const before = await page.evaluate(() => ({ h: document.getElementById("result").offsetHeight, tabs: document.querySelector(".tabbar").getBoundingClientRect().top + scrollY }));
   await page.click("#tabRadar");
+  const after = await page.evaluate(() => ({ h: document.getElementById("radar").offsetHeight, tabs: document.querySelector(".tabbar").getBoundingClientRect().top + scrollY }));
+  assert(after.h === before.h && Math.abs(after.tabs - before.tabs) < 1, `map tab is the forecast's size, got ${JSON.stringify([before, after])}`);
+  await page.evaluate(() => document.getElementById("tallSpacer").remove());
   assert(await page.$eval("#radar", (e) => !e.classList.contains("hidden")), "radar shown");
   assert(await page.$eval("#result", (e) => e.classList.contains("hidden")), "weather hidden on map");
   assert((await page.getAttribute("#tabRadar", "aria-selected")) === "true", "aria-selected on map tab");

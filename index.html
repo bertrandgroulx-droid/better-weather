@@ -4381,6 +4381,10 @@
     els.tabWeather.setAttribute("aria-selected", isMap ? "false" : "true");
     els.radar.classList.toggle("hidden", !isMap);
     if (isMap) {
+      // The forecast can run a little taller than the screen (the page then scrolls); give the
+      // map the same height so the two tabs are the same size, the buttons in the same place.
+      var rh = els.result.classList.contains("hidden") ? 0 : els.result.offsetHeight;
+      if (rh) els.radar.style.minHeight = rh + "px";
       els.result.classList.add("hidden");
       els.status.classList.add("hidden");
       radar.open();
@@ -4397,6 +4401,9 @@
       }
     }
   }
+
+  // a rotation or resize changes the forecast's height: let the map fit the screen until next switch
+  window.addEventListener("resize", function () { if (currentTab === "radar") els.radar.style.minHeight = ""; });
 
   // ---- events ----
   els.cityPill.addEventListener("click", openModal);
