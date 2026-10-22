@@ -851,6 +851,37 @@ async function run() {
     await wctx.close();
   }
 
+  // 11b) Each daily icon follows the amounts in its own hours: snow before dawn belongs to the
+  // night before (6 PM–9 AM) and doesn't make the day's icon "rain and snow"; a night's icon
+  // weighs its amount like a day's (5 cm isn't heavy, whatever one hour's label says).
+  {
+    const f = buildForecast(), H = f.hourly, D = f.daily;
+    H.rain = H.precipitation.slice(); H.showers = H.time.map(() => 0); H.snowfall = H.time.map(() => 0);
+    D.rain_sum = D.precipitation_sum.slice(); D.showers_sum = D.time.map(() => 0); D.snowfall_sum = D.time.map(() => 0);
+    const di = D.time.indexOf(f.current.time.slice(0, 10)), d1 = D.time[di + 1], d2 = D.time[di + 2];
+    const set = (d, hr, o) => { const i = H.time.indexOf(d + "T" + String(hr).padStart(2, "0") + ":00"); for (const k in o) H[k][i] = o[k]; };
+    for (const d of [d1, d2]) for (let hr = 0; hr < 24; hr++) set(d, hr, { precipitation: 0, rain: 0, weather_code: 2 });
+    for (let hr = 2; hr <= 6; hr++) set(d2, hr, { snowfall: 1, precipitation: 1.43, weather_code: hr === 4 ? 75 : 73 });
+    for (let hr = 10; hr <= 17; hr++) set(d2, hr, { rain: 1.625, precipitation: 1.625, weather_code: 63 });
+    D.precipitation_sum[di + 2] = 20.15; D.rain_sum[di + 2] = 13; D.snowfall_sum[di + 2] = 5; D.weather_code[di + 2] = 75;
+    D.precipitation_sum[di + 1] = 0; D.rain_sum[di + 1] = 0;
+    const ictx = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const ipage = await ictx.newPage();
+    await ipage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await ipage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(f)));
+    await ipage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await ipage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await ipage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await ipage.goto(URL);
+    await ipage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    const dayIc = await ipage.$eval(`#daily .cell[data-day="${d2}"] > .ic`, (e) => ({ mix: !!e.querySelector(".mix"), text: e.textContent }));
+    assert(!dayIc.mix && dayIc.text === "🌧️", `a day with snow only before dawn shows its daytime rain, got ${JSON.stringify(dayIc)}`);
+    const nightIc = await ipage.$eval(`#daily .cell[data-day="${d1}"] .night .ic`, (e) => ({ snow: !!e.querySelector(".snow"), text: e.textContent }));
+    assert(nightIc.snow && !/❄/.test(nightIc.text), `the night before shows that snow, light (5 cm), got ${JSON.stringify(nightIc)}`);
+    assert(/5 cm/.test(await ipage.$eval(`#daily .cell[data-day="${d2}"]`, (e) => e.textContent)), "the day's bar keeps its calendar-day total");
+    await ictx.close();
+  }
+
   // 12) Snow: rain and snow are told apart. Snow is labelled in cm of snow (white, stacked
   // above any rain), an hour/day with both gets the rain-and-snow glyph and wording, freezing
   // rain gets its own glyph, and Conditions reads out Rain and Snow separately.

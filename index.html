@@ -1019,7 +1019,7 @@
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast; the one in a panel (Moon, Daylight, Wind, Air Quality, Conditions, or Both) opens that panel at the moment you’re looking at. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
-        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount shown.</span></span></li>
+        <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. A label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount. On the daily strip each icon reads its own hours — the day’s icon its daylight hours, the night’s 6 PM to 9 AM — so snow before dawn shows on the night before, while the bars total each calendar day.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
         <li><span class="i">🔀</span><span><b>Temp, Wind or Both.</b> <span class="d">The switch at the top of the Conditions and Wind panels moves between them at the same hour, and the Wind or Temp line in each readout jumps across too. Both shows temperature and wind as two equal charts, one above the other, sized to fit your screen, each with its own title, scale and key, read by the same centre line. The panel opens the way you last used it.</span></span></li>
         <li><span class="i">🛰️</span><span><b>Your location.</b> <span class="d">Used for the weather where you are and to aim Find the Moon from where you’re standing (it works only with location on). It’s sent only to look up that forecast and the place’s name; the app keeps it only on your phone. The browser’s prompt names the website, shozbot.com. To stop it asking each time: in Safari on iPhone, tap the page menu (aA) beside the address → Website Settings → Location → Allow; in Chrome on Android, tap the icon to the left of the address → Permissions → Location → Allow.</span></span></li>
@@ -3902,6 +3902,19 @@
     }
     return codes.length ? summarizeDayCode(codes) : fallback;
   }
+  // Rain and snow over a stretch of hours (from ≤ time ≤ to; daylight hours only if `day`), for
+  // the icon of that stretch: the day icon covers the day's daylight hours, the night icon 6 PM
+  // to 9 AM. Null where the hourly data doesn't cover it (the day's totals are used instead).
+  function spanSplit(h, from, to, day) {
+    if (!h || !h.time || !h.precipitation || !h.time.length || h.time[0] > from || h.time[h.time.length - 1] < to) return null;
+    var t = 0, r = 0, sh = 0, sn = 0;
+    for (var k = 0; k < h.time.length; k++) {
+      if (h.time[k] < from || h.time[k] > to || (day && h.is_day && h.is_day[k] !== 1)) continue;
+      t += h.precipitation[k] || 0; r += h.rain ? h.rain[k] || 0 : 0; sh += h.showers ? h.showers[k] || 0 : 0; sn += h.snowfall ? h.snowfall[k] || 0 : 0;
+    }
+    var sp = precipSplit(t, h.rain ? r : null, h.showers ? sh : null, h.snowfall ? sn : null);
+    sp.daily = true; return sp; // a stretch of hours: the day thresholds for light/heavy
+  }
   function renderDaily(d) {
     var dd = d.daily, ti = todayIndex(d), scale = eventScale(precipScaleD(), 0, dd.time.length, function (k) { return [dd.precipitation_sum[k], daySplit(dd, k)]; });
     var dayCode = daylightCodeByDate(d);
@@ -3918,10 +3931,10 @@
         '<div class="cell tapcell' + (isToday ? " today" : "") + deepSnowCls(amt, scale, sp) + '" data-day="' + dd.time[i] + '" role="button" tabindex="0" aria-label="Open conditions for this day">' +
           waterHtml(amt, scale, pop, sp) +
           '<div class="lbl">' + name + '</div>' +
-          '<div class="ic">' + condIcon(code, 1, sp) + '</div>' +
+          '<div class="ic">' + condIcon(code, 1, spanSplit(d.hourly, dd.time[i] + "T00:00", dd.time[i] + "T23:00", true) || sp) + '</div>' +
           '<div class="big">' + Math.round(dd.temperature_2m_max[i]) + '°</div>' +
           '<div class="night">' + // that night: its own weather and its low, in a darker band
-            '<div class="ic sm">' + condIcon(nightCode(d, i, code), 0, null) + '</div>' +
+            '<div class="ic sm">' + condIcon(nightCode(d, i, code), 0, dd.time[i + 1] ? spanSplit(d.hourly, dd.time[i] + "T18:00", dd.time[i + 1] + "T09:00") : null) + '</div>' +
             '<div class="big" style="font-weight: 400">' + Math.round(nightLow(d, i)) + '°</div>' +
           '</div>' +
           (amt > 0 ? pamtHtml(sp, true) : '') +
