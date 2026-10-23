@@ -355,6 +355,8 @@ async function run() {
     await page.click("#hNow"); await page.waitForTimeout(900);
     assert(await page.$eval("#hNow", (b) => getComputedStyle(b).display === "none"), "tapping the strip NOW pill brings Now back");
   }
+  // amounts sit on a dark chip in a readable size, whatever is under them
+  assert(await page.$$eval(".cell .pamt > span", (e) => e.length > 0 && e.every((x) => { const cs = getComputedStyle(x); return cs.backgroundColor !== "rgba(0, 0, 0, 0)" && parseFloat(cs.fontSize) >= 11.5; })), "precip amounts are on a chip, at a readable size");
   // 2) Tabs switch — the map is the same size as the forecast, even when the forecast runs
   // taller than the screen (simulated with a spacer), so the Weather/Map buttons stay put
   await page.evaluate(() => { const d = document.createElement("div"); d.id = "tallSpacer"; d.style.height = "300px"; document.getElementById("result").appendChild(d); });
