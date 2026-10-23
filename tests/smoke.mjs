@@ -859,6 +859,43 @@ async function run() {
     await wctx.close();
   }
 
+  // 11c) "When the app opens" (top of search): last place viewed, my current location, or a saved place
+  {
+    const mk = async (init, arg) => {
+      const c = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+      const pg = await c.newPage();
+      await pg.addInitScript(init, arg);
+      await pg.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+      await pg.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+      await pg.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+      await pg.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+      await pg.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+      await pg.goto(URL); await pg.waitForSelector("#result:not(.hidden)", { timeout: 20000 }); await pg.waitForTimeout(400);
+      return { c, pg };
+    };
+    const edm = { name: "Edmonton", sub: "Alberta, Canada", lat: 53.55, lon: -113.49, cc: "CA" }, ott = { name: "Ottawa", sub: "Ontario, Canada", lat: 45.42, lon: -75.7, cc: "CA" };
+    // a chosen place wins over the last place viewed
+    let { c, pg } = await mk(([e, o]) => { localStorage.setItem("bw-recents", JSON.stringify([e, o])); localStorage.setItem("bw-last-loc", JSON.stringify(o)); localStorage.setItem("bw-open", JSON.stringify({ mode: "place", place: e })); }, [edm, ott]);
+    assert((await pg.$eval("#cityName", (e) => e.textContent)) === "Edmonton", "opens on the chosen place");
+    // the setting: three choices, the chosen one ticked; picking "My current location" is saved
+    await pg.click("#cityPill"); await pg.waitForTimeout(200);
+    assert(await pg.$eval("#openPref input[value=place]", (i) => i.checked) && (await pg.$eval("#openPlace", (s) => s.options[s.selectedIndex].text)) === "Edmonton", "the setting shows the chosen place");
+    await pg.click("#openPref input[value=here]");
+    assert(JSON.parse(await pg.evaluate(() => localStorage.getItem("bw-open"))).mode === "here", "choosing My current location is saved");
+    await pg.fill("#searchInput", "Ott"); await pg.waitForTimeout(600);
+    assert(await pg.$eval("#openPref", (e) => e.classList.contains("hidden")), "the setting steps aside while searching");
+    await c.close();
+    // "My current location": opens where the phone is, not on the last place viewed
+    ({ c, pg } = await mk(([o]) => { localStorage.setItem("bw-last-loc", JSON.stringify(o)); localStorage.setItem("bw-open", JSON.stringify({ mode: "here" })); }, [ott]));
+    await pg.waitForTimeout(600);
+    assert((await pg.$eval("#cityName", (e) => e.textContent)) === "Calgary", "opens on the current location");
+    await c.close();
+    // default: the last place viewed, as before
+    ({ c, pg } = await mk(([o]) => { localStorage.setItem("bw-last-loc", JSON.stringify(o)); }, [ott]));
+    assert((await pg.$eval("#cityName", (e) => e.textContent)) === "Ottawa", "by default it reopens the last place viewed");
+    await c.close();
+  }
+
   // 11b) Each daily icon follows the amounts in its own hours: snow before dawn belongs to the
   // night before (6 PM–9 AM) and doesn't make the day's icon "rain and snow"; a night's icon
   // weighs its amount like a day's (5 cm isn't heavy, whatever one hour's label says).

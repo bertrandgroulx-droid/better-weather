@@ -796,6 +796,14 @@
     border-radius: 10px; padding: 0.7rem 0.85rem; font-size: 1rem; cursor: pointer;
   }
   .results { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
+  /* "When the app opens": last place viewed, your current location, or a saved place */
+  .open-pref { margin: 4px 2px 10px; padding: 10px 12px 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .open-pref.hidden { display: none; }
+  .open-pref h4 { margin: 0 0 4px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 400; }
+  .open-pref label { display: flex; align-items: center; justify-content: flex-start; text-align: left; gap: 10px; padding: 7px 0; font-size: 0.95rem; cursor: pointer; }
+  .open-pref label.off { color: var(--muted); cursor: default; }
+  .open-pref input { accent-color: #ffd166; width: 18px !important; height: 18px; margin: 0; padding: 0 !important; flex: none !important; }
+  .open-pref select { margin-left: auto; max-width: 55%; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; font: inherit; font-size: 0.85rem; }
   .results li { padding: 0.7rem 0.6rem; border-radius: 10px; cursor: pointer; }
   .results li:hover, .results li.hi { background: var(--card-2); }
   .results .sub { color: var(--muted); font-size: 0.82rem; }
@@ -999,6 +1007,7 @@
         <input id="searchInput" type="text" placeholder="Search a city or address…" autocomplete="off" />
         <button class="close" id="closeModal" type="button" aria-label="Close">✕</button>
       </div>
+      <div class="open-pref" id="openPref"></div>
       <ul class="results" id="results"></ul>
     </div>
   </div>
@@ -1016,7 +1025,7 @@
         <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low and the icon beside it, in the darker band, are the night that follows it, evening to the next morning.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
-        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast; the one in a panel (Moon, Daylight, Wind, Air Quality, Conditions, or Both) opens that panel at the moment you’re looking at. It reopens the last place you viewed, and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
+        <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast; the one in a panel (Moon, Daylight, Wind, Air Quality, Conditions, or Both) opens that panel at the moment you’re looking at. It reopens the last place you viewed — or, under “When the app opens” at the top of search, always on your current location or a saved place you pick — and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
         <li><span class="i">👆</span><span><b>Tap for more.</b> <span class="d">A small + in the margin marks the summary lines you can open — Wind, Air Quality, Moon, and Daylight.</span></span></li>
         <li><span class="i">💧</span><span><b>Precipitation you can see.</b> <span class="d">Flat bars on one straight scale — twice the amount, twice the height — so bars compare at a glance, and bars with the same label are the same height. The scale stays fixed so heights mean the same every day; only when an extreme event goes past its top does that strip stretch to fit it. Rain is blue, labelled in mm, and fainter when it’s less likely; snow is always white, labelled in centimetres of fresh snow (about 7 cm per 10 mm of water). A day with both stacks them, rain under snow, with both amounts. Each amount sits on a small dark tag, so it reads the same over snow, rain or the background; a label too big for a short bar sits just above it. Snow, freezing rain and rain-and-snow get their own icons, and an icon’s strength (light or heavy) follows the amount. On the daily strip each icon reads its own hours — the day’s icon its daylight hours, the night’s 6 PM to 9 AM — so snow before dawn shows on the night before, while the bars total each calendar day.</span></span></li>
         <li><span class="i">🌬️</span><span><b>Wind &amp; gusts.</b> <span class="d">The summary shows the current wind and gust with an arrow pointing the way it blows. Tap the “Wind” line for an hourly graph from two days back to 16 days ahead — slide it under the fixed centre line, like the Conditions chart, with Light→Severe bands, direction arrows, a day picker, a readout of wind, direction and gust for the hour under the line, and a yellow ← NOW button to jump back.</span></span></li>
@@ -1133,7 +1142,7 @@
     cityPill: $("cityPill"), cityName: $("cityName"),
     unitC: $("unitC"), unitF: $("unitF"),
     backdrop: $("backdrop"), searchInput: $("searchInput"),
-    closeModal: $("closeModal"), results: $("results"),
+    closeModal: $("closeModal"), results: $("results"), openPref: $("openPref"),
     aboutBtn: $("aboutBtn"), shareBtn: $("shareBtn"), aboutBackdrop: $("aboutBackdrop"), aboutClose: $("aboutClose"),
     airBackdrop: $("airBackdrop"), airClose: $("airClose"), airBody: $("airBody"),
     moonBackdrop: $("moonBackdrop"), moonClose: $("moonClose"), moonBody: $("moonBody"),
@@ -4177,7 +4186,35 @@
     document.body.classList.remove("searching");
   }
 
+  // ---- where the app opens ----
+  // { mode: "last" } reopens the last place viewed (the default); "here" opens on wherever the
+  // phone is; "place" on one chosen place, kept here so removing it from the list doesn't lose it.
+  function getOpenPref() {
+    try { var o = JSON.parse(localStorage.getItem("bw-open") || "null"); if (o && (o.mode === "here" || (o.mode === "place" && o.place))) return o; } catch (e) { /* ignore */ }
+    return { mode: "last" };
+  }
+  function setOpenPref(o) { try { localStorage.setItem("bw-open", JSON.stringify(o)); } catch (e) { /* ignore */ } }
+  function renderOpenPref() {
+    var o = getOpenPref(), recents = getRecents(), opts = recents.slice();
+    if (o.mode === "place" && !opts.some(function (r) { return locKey(r) === locKey(o.place); })) opts.unshift(o.place);
+    var sel = o.mode === "place" ? locKey(o.place) : null;
+    els.openPref.innerHTML = '<h4>When the app opens</h4>' +
+      '<label><input type="radio" name="openAt" value="last"' + (o.mode === "last" ? " checked" : "") + '> Last place you viewed</label>' +
+      '<label><input type="radio" name="openAt" value="here"' + (o.mode === "here" ? " checked" : "") + '> My current location</label>' +
+      '<label' + (opts.length ? "" : ' class="off"') + '><input type="radio" name="openAt" value="place"' + (o.mode === "place" ? " checked" : "") + (opts.length ? "" : " disabled") + '> A saved place' +
+        (opts.length ? '<select id="openPlace" aria-label="Saved place">' + opts.map(function (r, i) { return '<option value="' + i + '"' + (locKey(r) === sel ? " selected" : "") + '>' + esc(r.name) + '</option>'; }).join("") + '</select>'
+          : ' <small style="margin-left:auto">save one below first</small>') + '</label>';
+    els.openPref._opts = opts;
+    els.openPref.classList.remove("hidden");
+  }
+  function saveOpenPrefFromUI() {
+    var m = (els.openPref.querySelector("input[name=openAt]:checked") || {}).value || "last", s = $("openPlace");
+    if (m === "place" && s) setOpenPref({ mode: "place", place: els.openPref._opts[+s.value] });
+    else setOpenPref({ mode: m === "here" ? "here" : "last" });
+  }
+
   function renderRecents() {
+    renderOpenPref();
     searchSeq++; // any in-flight search is now stale — don't let it overwrite recents
     var recents = getRecents();
     var html = GEO_LI;
@@ -4190,6 +4227,7 @@
   }
 
   function renderResults(list) {
+    els.openPref.classList.add("hidden"); // while searching, just the results
     var html = GEO_LI;
     if (!list.length) html += '<li class="empty">No matches — try another spelling.</li>';
     else list.forEach(function (loc, i) { html += itemHtml(loc, i); });
@@ -4407,6 +4445,10 @@
 
   // ---- events ----
   els.cityPill.addEventListener("click", openModal);
+  els.openPref.addEventListener("change", function (e) {
+    if (e.target.id === "openPlace") { var r = els.openPref.querySelector("input[value=place]"); if (r) r.checked = true; }
+    saveOpenPrefFromUI();
+  });
   // Tap the error message to retry the last location.
   els.status.addEventListener("click", function () {
     if (els.status.classList.contains("error") && lastLoc) show(lastLoc);
@@ -4890,8 +4932,20 @@
   // Deep links: ?place=Edmonton, or ?lat=53.55&lon=-113.49 (&name=Cabin), open that place's
   // forecast (shown, not added to saved places); #moon, #daylight, #wind, #air or #radar then
   // opens that panel. Without them, the app opens as usual.
-  var link = readDeepLink(), startLoc = loadLoc();
-  if (link.lat != null || link.place) {
+  // Where to open (search panel → "When the app opens"): a chosen place, wherever the phone is,
+  // or (default) the last place viewed. A deep link to a place still wins.
+  var link = readDeepLink(), startLoc = loadLoc(), openPref = getOpenPref();
+  if (openPref.mode === "place") startLoc = openPref.place;
+  if (!(link.lat != null || link.place) && openPref.mode === "here" && navigator.geolocation) {
+    // open on the last known spot at once (if any), then move to where the phone is now —
+    // unless you've gone somewhere else in the meantime
+    var hereStart = geoLoc ? show(geoLoc) : (setStatus("Finding your location…"), Promise.resolve()), shown = geoLoc;
+    hereStart.then(function () { openDeepPanel(link.panel); });
+    locateMe(function (loc) {
+      if (lastLoc && lastLoc !== shown) return;
+      if (!shown || distKm(loc, shown) > 1) show(loc);
+    }, function () { if (!shown) (startLoc ? show(startLoc) : fallbackCity()); });
+  } else if (link.lat != null || link.place) {
     resolveDeepLink(link).then(function (loc) {
       return loc ? show(loc) : (startLoc ? show(startLoc) : useLocation());
     }).then(function () { openDeepPanel(link.panel); });
