@@ -896,6 +896,35 @@ async function run() {
     await c.close();
   }
 
+  // 11d) Times follow the phone's time-zone rules, not Open-Meteo's local clock: the forecast
+  // comes as exact moments (timeformat=unixtime) and its utc_offset_seconds may lag a rule change
+  // (Alberta, Nov 2026). Here Open-Meteo says UTC−7 for America/Regina, which is UTC−6: a
+  // sunrise at 13:29 UTC must read 7:29, as the phone's clock would, not 6:29.
+  {
+    const f = buildForecast("America/Regina"), H = f.hourly, D = f.daily, OFF = 6 * 3600;
+    const unix = (s) => Date.parse(s + ":00Z") / 1000 + OFF; // the fixture's wall times, read as Regina time
+    H.time = H.time.map(unix); f.current.time = unix(f.current.time);
+    D.sunrise = D.time.map((d) => unix(d + "T07:29")); D.sunset = D.time.map((d) => unix(d + "T17:10"));
+    D.time = D.time.map((d) => Date.parse(d + "T00:00:00Z") / 1000 + 7 * 3600); // Open-Meteo's midnights, at UTC−7
+    f.utc_offset_seconds = -7 * 3600;
+    const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["geolocation"], geolocation: { latitude: 50.45, longitude: -104.61 } });
+    const tpage = await tctx.newPage();
+    let asked = "";
+    await tpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Regina", admin1: "SK", country: "Canada", country_code: "CA", latitude: 50.45, longitude: -104.61 }] })));
+    await tpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => { asked = r.request().url(); r.fulfill(json(f)); });
+    await tpage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
+    await tpage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
+    await tpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await tpage.goto(URL); await tpage.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+    assert(/timeformat=unixtime/.test(asked), "the forecast is asked for as exact moments");
+    const sumTxt = await tpage.$eval("#summary", (e) => e.textContent);
+    assert(/7:29\s*am/i.test(sumTxt) && /5:10\s*pm/i.test(sumTxt), `sunrise/sunset in the phone's rules (7:29 am, 5:10 pm), got "${sumTxt.replace(/\s+/g, " ").slice(0, 160)}"`);
+    const nowIso = await tpage.$eval("#hourly .cell.now", (c) => c.dataset.iso);
+    const want = await tpage.evaluate((t) => { const p = {}; new Intl.DateTimeFormat("en-US", { timeZone: "America/Regina", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit" }).formatToParts(new Date(t * 1000)).forEach((x) => { p[x.type] = x.value; }); return p.year + "-" + p.month + "-" + p.day + "T" + p.hour + ":00"; }, f.current.time);
+    assert(nowIso === want, `Now is the phone's current hour, got ${nowIso}, want ${want}`);
+    await tctx.close();
+  }
+
   // 11b) Each daily icon follows the amounts in its own hours: snow before dawn belongs to the
   // night before (6 PM–9 AM) and doesn't make the day's icon "rain and snow"; a night's icon
   // weighs its amount like a day's (5 cm isn't heavy, whatever one hour's label says).

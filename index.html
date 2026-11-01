@@ -1041,6 +1041,7 @@
         <li><span class="i">📲</span><span><b>Add to your home screen.</b> <span class="d">Runs full-screen like an app, works offline from the last forecast, and quietly updates itself to the latest version.</span></span></li>
         <li class="about-sep">How the forecast works</li>
         <li><span class="i">🌡️</span><span><b>Now vs. the hourly forecast.</b> <span class="d">The big temperature on the card is Open-Meteo’s current estimate, refreshed every 15 minutes — a model’s best guess for right now, not a single weather station’s thermometer. The Now column in Hourly is the forecast for the top of the hour, so on a warming morning or a cooling evening the two can differ by a degree or so.</span></span></li>
+        <li><span class="i">🕑</span><span><b>Local time.</b> <span class="d">Every time shown — sunrise, the hours, the outlook — is the place’s local time by your phone’s own time-zone rules, so it matches your clock and the Daylight and Moon panels, and follows a rule change as soon as your phone does (Alberta stayed on UTC−6 from November 2026).</span></span></li>
         <li><span class="i">🕰️</span><span><b>History.</b> <span class="d">Recent past days are the model’s best estimate; days older than ~5 days switch to observation-based reanalysis — what actually happened. (Chance-of-rain stays model-based.)</span></span></li>
         <li><span class="i">📐</span><span><b>An area, not a pinpoint.</b> <span class="d">Each forecast covers a small area — typically <span class="u-cell">1–3 km</span> across near towns, larger in remote spots — not one exact address. The yellow circle on the Map marks it.</span></span></li>
       </ul>
@@ -1670,8 +1671,26 @@
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,showers_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset" +
       "&temperature_unit=" + tu + "&wind_speed_unit=" + wu + "&precipitation_unit=" + pu +
       "&timezone=auto&past_days=" + CONFIG.pastDays + "&forecast_days=" + CONFIG.forecastDays +
-      "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFetchFuture;
-    return fetchJsonRetry(url);
+      "&past_hours=" + CONFIG.hourlyPast + "&forecast_hours=" + CONFIG.hourlyFetchFuture + "&timeformat=unixtime";
+    return fetchJsonRetry(url).then(localTimes);
+  }
+  // Times come as exact moments (unix seconds) and are turned into the place's wall-clock time
+  // here, with the phone's own time-zone rules — the same ones the Daylight and Moon panels and
+  // the phone's clock use. Open-Meteo's own local times can lag a rule change (Alberta kept
+  // UTC−6 from November 2026; its local times stayed an hour behind). Days stay as Open-Meteo
+  // groups them: each date is read at its midday, so a shifted midnight can't change it.
+  function localTimes(d) {
+    if (!d || !d.hourly || typeof (d.hourly.time || [])[0] !== "number") return d; // already local strings
+    var tz = d.timezone, off = d.utc_offset_seconds || 0, z = function (n) { return (n < 10 ? "0" : "") + n; };
+    var wall = function (sec) { if (sec == null) return sec; var p = tzParts(new Date(sec * 1000), tz); return p.y + "-" + z(p.m) + "-" + z(p.d) + "T" + z(p.h) + ":" + z(p.mi); };
+    d.hourly.time = d.hourly.time.map(wall);
+    if (d.current && d.current.time != null) d.current.time = wall(d.current.time);
+    if (d.daily) {
+      if (d.daily.time) d.daily.time = d.daily.time.map(function (sec) { return new Date((sec + off + 43200) * 1000).toISOString().slice(0, 10); });
+      if (d.daily.sunrise) d.daily.sunrise = d.daily.sunrise.map(wall);
+      if (d.daily.sunset) d.daily.sunset = d.daily.sunset.map(wall);
+    }
+    return d;
   }
 
   // ERA5 reanalysis (observation-assimilated) for the past week. It lags a few
