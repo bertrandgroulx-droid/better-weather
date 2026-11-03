@@ -217,8 +217,8 @@ async function run() {
   {
     const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
     const lpage = await lctx.newPage();
-    // a saved place, so the #moon link opens the panel straight away (a first run asks for location first)
-    await lpage.addInitScript(() => { window.Image = class { set src(v) { /* never arrives */ } }; localStorage.setItem("bw-last-loc", JSON.stringify({ name: "Calgary", sub: "Alberta, Canada", lat: 51.05, lon: -114.07, cc: "CA" })); });
+    // a first visit (nothing saved) through a shared #moon link: the Moon panel still opens
+    await lpage.addInitScript(() => { window.Image = class { set src(v) { /* never arrives */ } }; });
     await lpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
     await lpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
     await lpage.route(/(archive-api|air-quality-api)\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] }, current: { us_aqi: 20 } })));

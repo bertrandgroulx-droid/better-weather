@@ -4375,16 +4375,18 @@
     }
   }
 
-  function useLocation() {
-    if (!navigator.geolocation) { fallbackCity(); return; }
+  // `after` runs once that forecast is on screen (e.g. to open a shared link's panel)
+  function useLocation(after) {
+    var then = function (p) { if (after) Promise.resolve(p).then(after, after); };
+    if (!navigator.geolocation) { then(fallbackCity()); return; }
     // the browser's prompt can only name the website, so say why in the app's words behind it
     setStatus("Better Weather uses your location\nto show the weather where you are.\n\nYou can search for any place instead.");
-    locateMe(function (loc) { show(loc); }, function () { fallbackCity(); });
+    locateMe(function (loc) { then(show(loc)); }, function () { then(fallbackCity()); });
   }
 
   function fallbackCity() {
     // Default to Calgary if we can't use location.
-    show({ lat: 51.05, lon: -114.07, name: "Calgary", sub: "Alberta, Canada" });
+    return show({ lat: 51.05, lon: -114.07, name: "Calgary", sub: "Alberta, Canada" });
   }
 
   function setUnits(u) {
@@ -4978,10 +4980,10 @@
     }, function () { if (!shown) (startLoc ? show(startLoc) : fallbackCity()); });
   } else if (link.lat != null || link.place) {
     resolveDeepLink(link).then(function (loc) {
-      return loc ? show(loc) : (startLoc ? show(startLoc) : useLocation());
+      return loc ? show(loc) : (startLoc ? show(startLoc) : new Promise(function (res) { useLocation(res); }));
     }).then(function () { openDeepPanel(link.panel); });
   } else if (startLoc) { show(startLoc).then(function () { openDeepPanel(link.panel); }); refreshGeoQuietly(); }
-  else useLocation();
+  else useLocation(function () { openDeepPanel(link.panel); }); // first visit: a shared panel link still opens its panel
 })();
 </script>
 
