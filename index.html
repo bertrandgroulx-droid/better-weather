@@ -2229,7 +2229,7 @@
   var moonTex = null, moonTexState = "idle"; // idle | loading | ready | failed
   function loadMoonTexture(onReady) {
     if (moonTexState === "ready") { onReady(); return; }
-    if (moonTexState === "failed") return;
+    if (moonTexState === "failed") { onReady(); return; }
     if (moonTexState === "loading") { moonTexWaiters.push(onReady); return; }
     moonTexState = "loading"; moonTexWaiters = [onReady];
     var img = new Image();
@@ -2239,10 +2239,12 @@
         var g = c.getContext("2d"); g.drawImage(img, 0, 0);
         moonTex = { w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data };
         moonTexState = "ready";
-      } catch (e) { moonTexState = "failed"; return; } // e.g. a tainted canvas on file://
-      moonTexWaiters.forEach(function (f) { f(); }); moonTexWaiters = [];
+      } catch (e) { moonTexState = "failed"; } // e.g. a tainted canvas on file://
+      done();
     };
-    img.onerror = function () { moonTexState = "failed"; };
+    // either way the waiters redraw: the photo once it's ready, the drawn moon if it failed
+    var done = function () { var w = moonTexWaiters; moonTexWaiters = []; w.forEach(function (f) { f(); }); };
+    img.onerror = function () { moonTexState = "failed"; done(); };
     img.src = "moon-texture.jpg";
   }
   var moonTexWaiters = [];
@@ -2323,8 +2325,12 @@
   // Render into #moDisc: the photographic sphere when the texture is ready, else the SVG.
   function renderMoonDisc(date, illum, waxing, size) {
     var host = $("moDisc"); if (!host) return;
+    // Draw the Moon once: the photo when the surface map is ready; until then an empty space of
+    // the same size (not the drawn moon, which used to flash first); the drawn moon only if the
+    // map can't load.
+    if (moonTexState === "failed") { host.innerHTML = bigMoonSVG(illum, waxing, size); return; }
     if (moonTexState !== "ready") {
-      host.innerHTML = bigMoonSVG(illum, waxing, size);
+      if (!host.querySelector(".mo-wait")) host.innerHTML = '<div class="mo-moon mo-wait" aria-hidden="true" style="width:' + size + 'px;height:' + size + 'px"></div>';
       loadMoonTexture(function () { if (moonUI) renderMoonDisc(new Date(moonUI.sel), moonInfo(new Date(moonUI.sel)).illum, waxing, size); });
       return;
     }
@@ -4943,6 +4949,10 @@
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { shareToast("Link copied"); }, function () { shareToast(url); });
     else shareToast(url);
   });
+
+  // Fetch the Moon's surface map shortly after opening (the browser keeps it afterwards), so
+  // the Moon panel can draw the photo straight away.
+  setTimeout(function () { loadMoonTexture(function () {}); }, 1500);
 
   // ---- init ----
   els.unitC.classList.toggle("active", units === "metric");

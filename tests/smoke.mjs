@@ -213,6 +213,20 @@ async function run() {
   await page.click("#summary .moon-line");
   assert(!(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "moon panel opens on tap");
   assert(await page.$("#moDisc .mo-moon"), "moon disc rendered");
+  // while the surface map is still loading, the Moon isn't drawn twice: an empty space, no drawn moon first
+  {
+    const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+    const lpage = await lctx.newPage();
+    // a saved place, so the #moon link opens the panel straight away (a first run asks for location first)
+    await lpage.addInitScript(() => { window.Image = class { set src(v) { /* never arrives */ } }; localStorage.setItem("bw-last-loc", JSON.stringify({ name: "Calgary", sub: "Alberta, Canada", lat: 51.05, lon: -114.07, cc: "CA" })); });
+    await lpage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+    await lpage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+    await lpage.route(/(archive-api|air-quality-api)\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] }, current: { us_aqi: 20 } })));
+    await lpage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+    await lpage.goto(URL + "#moon"); await lpage.waitForSelector("#moonBackdrop:not(.hidden)", { timeout: 20000 }); await lpage.waitForTimeout(300);
+    assert(await lpage.$("#moDisc .mo-wait") && !(await lpage.$("#moDisc svg")), "while the Moon's photo loads, nothing else is drawn first");
+    await lctx.close();
+  }
   const phase = await page.$eval("#moPhase", (e) => e.textContent);
   assert(/^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent)$/.test(phase), `phase name, got "${phase}"`);
   const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
