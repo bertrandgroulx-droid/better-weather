@@ -698,7 +698,8 @@ async function run() {
     const yctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
     const ypage = await yctx.newPage();
     await ypage.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
-    await ypage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+    // Denver, not Edmonton: Alberta stopped changing its clocks in November 2026, and this checks the clock-change markers
+    await ypage.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast("America/Denver"))));
     await ypage.route(/archive-api\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] } })));
     await ypage.route(/air-quality-api\.open-meteo\.com/, (r) => r.fulfill(json({ current: { us_aqi: 20 } })));
     await ypage.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
@@ -720,9 +721,9 @@ async function run() {
     const months = await ypage.$$eval("#dayBody .day-chart text", (ts) => ts.map((t) => t.textContent));
     assert(["J", "F", "M", "A", "S", "O", "N", "D"].every((x) => months.includes(x)), "month labels J..D present");
     // a DST zone shows a clock-change marker at each shift across the two years of data
-    // (a year each way from today): two springs forward, two falls back
+    // (a year each way from today): three or four, depending on where today falls between them
     const dstN = await ypage.$$eval("#dayBody .dst-line", (e) => e.length);
-    assert(dstN === 4, `four DST markers across two years for a daylight-saving zone, got ${dstN}`);
+    assert(dstN === 3 || dstN === 4, `three or four DST markers across two years for a daylight-saving zone, got ${dstN}`);
     const dstLbls = await ypage.$$eval("#dayBody .dst-lbl", (e) => e.map((t) => t.textContent));
     assert(dstLbls.some((s) => /^\+1h$/.test(s)) && dstLbls.some((s) => /^−1h$/.test(s)), `DST labels are +1h and -1h, got ${JSON.stringify(dstLbls)}`);
     // season markers: two years of data hold two of each solstice (dots) and equinox (rings)

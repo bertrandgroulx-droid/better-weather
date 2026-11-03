@@ -2274,7 +2274,9 @@
   // (per-channel factor), all eased in by how lit the pixel is.
   function moonGrade(c, tint, lit) {
     c /= 255;
-    var d = (c * 1.25 - 0.42) * 1.35 + 0.42;
+    // lift, stretch, then a gamma that brings up the maria and crater floors more than the
+    // bright highlands, so the lit side reads bright without washing out its detail
+    var d = Math.pow(Math.max(0, (c * 1.35 - 0.42) * 1.3 + 0.42), 0.6);
     c += (d - c) * lit;
     return Math.max(0, Math.min(255, c * (1 + (tint - 1) * lit) * 255));
   }
