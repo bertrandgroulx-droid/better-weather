@@ -1679,10 +1679,19 @@
   // the phone's clock use. Open-Meteo's own local times can lag a rule change (Alberta kept
   // UTC−6 from November 2026; its local times stayed an hour behind). Days stay as Open-Meteo
   // groups them: each date is read at its midday, so a shifted midnight can't change it.
+  function wallIso(ms, tz) {
+    var p = tzParts(new Date(ms), tz), z = function (n) { return (n < 10 ? "0" : "") + n; };
+    return p.y + "-" + z(p.m) + "-" + z(p.d) + "T" + z(p.h) + ":" + z(p.mi);
+  }
+  // Now at the place, for placing Now and Today: the actual time there by the phone's clock.
+  // Open-Meteo's "current" time is the start of its latest quarter-hour and can trail the clock
+  // (and a forecast loaded a while ago trails it further), which put Now an hour behind.
+  function placeNow(d) { return d.clockNow ? wallIso(Date.now(), d.timezone) : d.current.time; }
   function localTimes(d) {
     if (!d || !d.hourly || typeof (d.hourly.time || [])[0] !== "number") return d; // already local strings
-    var tz = d.timezone, off = d.utc_offset_seconds || 0, z = function (n) { return (n < 10 ? "0" : "") + n; };
-    var wall = function (sec) { if (sec == null) return sec; var p = tzParts(new Date(sec * 1000), tz); return p.y + "-" + z(p.m) + "-" + z(p.d) + "T" + z(p.h) + ":" + z(p.mi); };
+    var tz = d.timezone, off = d.utc_offset_seconds || 0;
+    var wall = function (sec) { return sec == null ? sec : wallIso(sec * 1000, tz); };
+    d.clockNow = true; // "now" on the strips is the real time there (placeNow), not the data's
     d.hourly.time = d.hourly.time.map(wall);
     if (d.current && d.current.time != null) d.current.time = wall(d.current.time);
     if (d.daily) {
@@ -1837,7 +1846,7 @@
     if (!arch || !arch.daily || !arch.daily.time) return;
     var a = arch.daily, idx = {};
     for (var i = 0; i < a.time.length; i++) idx[a.time[i]] = i;
-    var dd = d.daily, today = d.current.time.slice(0, 10);
+    var dd = d.daily, today = placeNow(d).slice(0, 10);
     for (var j = 0; j < dd.time.length; j++) {
       if (dd.time[j] >= today) continue;          // past days only
       var k = idx[dd.time[j]];
@@ -1861,7 +1870,7 @@
   // ================= rendering =================
 
   function todayIndex(d) {
-    var date = d.current.time.slice(0, 10);
+    var date = placeNow(d).slice(0, 10);
     var i = d.daily.time.indexOf(date);
     return i < 0 ? 0 : i;
   }
@@ -2956,7 +2965,7 @@
     var h = d && d.hourly;
     if (!h || !h.time || !h.wind_speed_10m || h.time.length < 2) return false;
     var t = h.time, ws = h.wind_speed_10m, wg = h.wind_gusts_10m || [], wd = h.wind_direction_10m || [];
-    var N = t.length, i0 = hourIdx(t, d.current.time);
+    var N = t.length, i0 = hourIdx(t, placeNow(d));
     if (i0 < 0) i0 = 0;
 
     // geometry: identical to the Conditions chart (15 px/hour, lead/trail room so the
@@ -3118,7 +3127,7 @@
     var t = h.time, ta = h.temperature_2m, tf = h.apparent_temperature || [];
     var N = t.length;
 
-    var nowIso = d.current.time;
+    var nowIso = placeNow(d);
     var nowIdx = hourIdx(t, nowIso);
 
     // geometry (pixel space; the track scrolls under a fixed centre cursor, so
@@ -3533,7 +3542,7 @@
   function precipOutlook(d) {
     var h = d.hourly;
     if (!h || !h.time || !h.time.length) return null;
-    var now = d.current.time;
+    var now = placeNow(d);
     var i0 = hourIdx(h.time, now);
     if (i0 < 0) return null;
     var wetAmt = units === "imperial" ? 0.004 : 0.1; // ignore a bare trace
@@ -3838,7 +3847,7 @@
     return i;
   }
   function renderHourly(d) {
-    var h = d.hourly, now = d.current.time;
+    var h = d.hourly, now = placeNow(d);
     // Window: up to 48h of history and 72h into the future.
     var nowIdx = hourIdx(h.time, now);
     if (nowIdx < 0) nowIdx = 0;

@@ -74,7 +74,8 @@ async function run() {
   browser.newContext = async (opts) => { const c = await newContext(opts); await c.route(/shozbot\.com\/(kit|assets)|gc\.zgo\.at/, (r) => r.abort()); return c; };
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, // a phone: Find the Moon is offered on touch devices
-    permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 }
+    // newer Chromium (153+) asks for motion-sensor permission before Find the Moon gets readings, as iPhones do
+    permissions: ["geolocation", "accelerometer", "gyroscope", "magnetometer"], geolocation: { latitude: 51.05, longitude: -114.07 }
   });
   const page = await ctx.newPage();
   const errors = [];
@@ -918,7 +919,8 @@ async function run() {
   {
     const f = buildForecast("America/Regina"), H = f.hourly, D = f.daily, OFF = 6 * 3600;
     const unix = (s) => Date.parse(s + ":00Z") / 1000 + OFF; // the fixture's wall times, read as Regina time
-    H.time = H.time.map(unix); f.current.time = unix(f.current.time);
+    H.time = H.time.map(unix);
+    f.current.time = Math.floor(Date.now() / 1000) - 50 * 60; // Open-Meteo's "current" can trail the clock
     D.sunrise = D.time.map((d) => unix(d + "T07:29")); D.sunset = D.time.map((d) => unix(d + "T17:10"));
     D.time = D.time.map((d) => Date.parse(d + "T00:00:00Z") / 1000 + 7 * 3600); // Open-Meteo's midnights, at UTC−7
     f.utc_offset_seconds = -7 * 3600;
@@ -935,8 +937,9 @@ async function run() {
     const sumTxt = await tpage.$eval("#summary", (e) => e.textContent);
     assert(/7:29\s*am/i.test(sumTxt) && /5:10\s*pm/i.test(sumTxt), `sunrise/sunset in the phone's rules (7:29 am, 5:10 pm), got "${sumTxt.replace(/\s+/g, " ").slice(0, 160)}"`);
     const nowIso = await tpage.$eval("#hourly .cell.now", (c) => c.dataset.iso);
-    const want = await tpage.evaluate((t) => { const p = {}; new Intl.DateTimeFormat("en-US", { timeZone: "America/Regina", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit" }).formatToParts(new Date(t * 1000)).forEach((x) => { p[x.type] = x.value; }); return p.year + "-" + p.month + "-" + p.day + "T" + p.hour + ":00"; }, f.current.time);
-    assert(nowIso === want, `Now is the phone's current hour, got ${nowIso}, want ${want}`);
+    // Now is the hour on the clock there, even though the data's "current" time is 50 minutes old
+    const want = await tpage.evaluate(() => { const p = {}; new Intl.DateTimeFormat("en-US", { timeZone: "America/Regina", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit" }).formatToParts(new Date()).forEach((x) => { p[x.type] = x.value; }); return p.year + "-" + p.month + "-" + p.day + "T" + p.hour + ":00"; });
+    assert(nowIso === want, `Now is the clock's hour there, got ${nowIso}, want ${want}`);
     await tctx.close();
   }
 
