@@ -943,6 +943,29 @@ async function run() {
     await tctx.close();
   }
 
+  // 11e) Chinook: east of the Rockies, Oct–Apr, a fast warm-up on a strong west wind takes the outlook line
+  {
+    const f = buildForecast(), H = f.hourly, ni = H.time.indexOf(f.current.time.slice(0, 13) + ":00");
+    for (let k = 0; k <= 72 && ni + k < H.time.length; k++) { const i = ni + k; H.temperature_2m[i] = -12; H.wind_direction_10m[i] = 20; H.wind_gusts_10m[i] = 18; }
+    for (let k = 0; k <= 12; k++) { const i = ni + 20 + k, r = Math.min(1, k / 6); H.temperature_2m[i] = -12 + 16 * r; H.wind_direction_10m[i] = k ? 265 : 20; H.wind_gusts_10m[i] = k ? 75 : 18; }
+    const ck = async (lat, lon) => {
+      const c = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["geolocation"], geolocation: { latitude: lat, longitude: lon } });
+      const pg = await c.newPage();
+      await pg.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Here", admin1: "", country: "Canada", country_code: "CA", latitude: lat, longitude: lon }] })));
+      await pg.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(f)));
+      await pg.route(/(archive-api|air-quality-api)\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] }, current: { us_aqi: 20 } })));
+      await pg.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+      await pg.goto(URL); await pg.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+      const t = await pg.$eval("#summary", (e) => { const x = e.querySelector(".fcast.chinook"); return x ? x.textContent : ""; });
+      await c.close(); return t;
+    };
+    const m = +f.current.time.slice(5, 7), season = m >= 10 || m <= 4;
+    const yyc = await ck(51.05, -114.07);
+    if (season) assert(/Chinook likely .+: up 16° in 6 h, west gusts to 75 km\/h/.test(yyc), `Calgary gets the chinook line, got "${yyc}"`);
+    else assert(!yyc, `no chinook line outside October–April, got "${yyc}"`);
+    assert(!(await ck(43.65, -79.38)), "no chinook line away from the Rockies (Toronto)");
+  }
+
   // 11b) Each daily icon follows the amounts in its own hours: snow before dawn belongs to the
   // night before (6 PM–9 AM) and doesn't make the day's icon "rain and snow"; a night's icon
   // weighs its amount like a day's (5 cm isn't heavy, whatever one hour's label says).
