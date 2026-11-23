@@ -237,6 +237,31 @@
   .fcast { grid-column: 1 / -1; grid-row: 4; font-size: 0.82rem; font-weight: 400; line-height: 1.32; margin: 6px 0 10px; white-space: normal; text-align: center; }
   .fcast.rain { color: #d4ecff; } /* bright, faint-blue tint keeps the rain cue */
   .fcast.dry { color: #eaf1fb; }  /* bright near-white */
+  /* add to the home screen: a button on the info page, a sheet of steps, a one-time banner */
+  .ih-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--accent); background: none; color: var(--accent); font: inherit; font-size: 0.88rem; cursor: pointer; }
+  .ih-back { position: fixed; inset: 0; z-index: 3000; background: rgba(4, 12, 24, 0.6); display: flex; align-items: flex-end; justify-content: center; }
+  .ih-back.hidden, .ih-banner.hidden, .ih-banner.off-tab, .ih-install.hidden, .ih-btn.hidden { display: none; }
+  .ih-sheet { position: relative; width: 100%; max-width: 640px; background: #0e2440; border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 16px 18px calc(env(safe-area-inset-bottom) + 22px); box-shadow: 0 -18px 50px rgba(0,0,0,0.5); }
+  .ih-sheet h3 { margin: 0 44px 4px 0; font-size: 1.15rem; font-weight: 400; }
+  .ih-sheet .ih-close { position: absolute; top: 12px; right: 12px; }
+  .ih-sheet .sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; }
+  .ih-tabs { display: flex; gap: 6px; margin: 0 0 10px; }
+  .ih-tabs button { appearance: none; padding: 5px 12px; border-radius: 999px; font: inherit; font-size: 0.85rem; color: var(--muted); background: none; border: 1px solid var(--border); cursor: pointer; }
+  .ih-tabs button.on { background: var(--accent); color: #14181f; border-color: var(--accent); }
+  .ih-os { display: none; } .ih-os.on { display: block; }
+  .ih-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 0.98rem; }
+  .ih-step .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #14181f; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+  .ih-step .g { flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--card-2); display: flex; align-items: center; justify-content: center; }
+  .ih-step .g svg { width: 20px; height: 20px; fill: none; stroke: #4cc9f0; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ih-step .g circle { fill: #4cc9f0; stroke: none; }
+  .ih-w { color: #fff; font-weight: 400; }
+  .ih-install { display: block; width: 100%; margin: 4px 0 10px; border: 0; border-radius: 999px; background: var(--accent); color: #14181f; padding: 11px; font: inherit; font-size: 1rem; cursor: pointer; }
+  .ih-why { color: var(--muted); font-size: 0.82rem; margin: 12px 0 0; line-height: 1.4; }
+  .ih-banner { position: fixed; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 74px); z-index: 2500; max-width: 624px; margin: 0 auto; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(14,36,64,0.97); border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.45); font-size: 0.9rem; }
+  .ih-banner img { width: 34px; height: 34px; border-radius: 8px; flex: none; }
+  .ih-banner .t { flex: 1; line-height: 1.3; } .ih-banner .t small { display: block; color: var(--muted); font-size: 0.78rem; }
+  .ih-banner .go { border: 0; border-radius: 999px; background: var(--accent); color: #14181f; padding: 7px 12px; font: inherit; font-size: 0.85rem; cursor: pointer; }
+  .ih-banner .x { border: 0; background: none; color: var(--muted); font-size: 1rem; padding: 4px; cursor: pointer; }
   .fcast.chinook { color: #ffd9a8; } /* warm amber: a chinook is a warm wind */
   .fcast .ck-ic { font-size: 0.9em; }
   .fcast { width: 0; min-width: 100%; } /* a long line wraps rather than widening the card (its columns size to content) */
@@ -1016,6 +1041,33 @@
   </div>
 
   <!-- about panel -->
+  <!-- add to the home screen: the instructions (from the info page or the banner) -->
+  <div class="ih-back hidden" id="installBackdrop">
+    <div class="ih-sheet" role="dialog" aria-modal="true" aria-label="Add Better Weather to your home screen">
+      <button class="close ih-close" id="installClose" type="button" aria-label="Close">✕</button>
+      <h3>Add Better Weather to your home screen</h3>
+      <p class="sub">It opens full-screen like an app, starts faster, and works offline from the last forecast.</p>
+      <div class="ih-tabs" role="group" aria-label="Phone"><button type="button" data-os="ios">iPhone (Safari)</button><button type="button" data-os="android">Android (Chrome)</button></div>
+      <div class="ih-os" data-os="ios">
+        <div class="ih-step"><span class="n">1</span><span class="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v9h14v-9h-1"/></svg></span><span>Tap <b class="ih-w">Share</b> in Safari (or <b class="ih-w">⋯</b>, then <b class="ih-w">Share</b>)</span></div>
+        <div class="ih-step"><span class="n">2</span><span class="g"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span><span>Scroll down and tap <b class="ih-w">Add to Home Screen</b></span></div>
+        <div class="ih-step"><span class="n">3</span><span class="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span><span>Tap <b class="ih-w">Add</b> — the ⛅ icon appears on your home screen</span></div>
+      </div>
+      <div class="ih-os" data-os="android">
+        <button type="button" class="ih-install hidden" id="installGo">Install Better Weather</button>
+        <div class="ih-step"><span class="n">1</span><span class="g"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></span><span>Tap Chrome’s <b class="ih-w">⋮</b> menu</span></div>
+        <div class="ih-step"><span class="n">2</span><span class="g"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span><span>Tap <b class="ih-w">Add to Home screen</b> (or <b class="ih-w">Install app</b>)</span></div>
+        <div class="ih-step"><span class="n">3</span><span class="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span><span>Tap <b class="ih-w">Install</b> — the ⛅ icon appears on your home screen</span></div>
+      </div>
+      <p class="ih-why">Once it’s on your home screen, open it from there; this button and the reminder go away.</p>
+    </div>
+  </div>
+  <div class="ih-banner hidden" id="installBanner" role="region" aria-label="Add to home screen">
+    <img src="icon-120.png" alt="" width="34" height="34">
+    <span class="t">Use it like an app<small>Add Better Weather to your home screen</small></span>
+    <button type="button" class="go" id="installBannerGo">How</button>
+    <button type="button" class="x" id="installBannerX" aria-label="Don’t show again">✕</button>
+  </div>
   <div class="backdrop hidden" id="aboutBackdrop">
     <div class="modal about-modal" role="dialog" aria-modal="true" aria-label="About Better Weather">
       <div class="modal-head">
@@ -1041,7 +1093,7 @@
         <li><span class="i">☀️</span><span><b>Daylight through the year.</b> <span class="d">Tap the “Daylight” line for the daylight band widening toward summer and pinching toward winter — a full year on screen, slidable a year back or ahead, with a yellow ← NOW button to jump back. Dots mark the solstices, rings the equinoxes, dotted lines the clock changes, and a brighter band inside shows the vitamin D hours (Sun above 45°) — a one-line key sits under the chart, and “More” opens the details. The readout gives sunrise and sunset with their compass bearings, day length, the vitamin D window, and the change from the day before; a card beneath shows where the Sun is overhead and how high it climbs at noon here. Sun times are computed on-device, so it works offline for any place.</span></span></li>
         <li><span class="i">🗺️</span><span><b>Live radar map.</b> <span class="d">Animated precipitation you can slide back through time. Rain runs green to red and snow pale blue to violet, using RainViewer’s snow estimate; place names sit above the radar.</span></span></li>
         <li><span class="i">🔓</span><span><b>Free &amp; private.</b> <span class="d">Powered by Open-Meteo — no keys, no tracking, no sign-in.</span></span></li>
-        <li><span class="i">📲</span><span><b>Add to your home screen.</b> <span class="d">Runs full-screen like an app, works offline from the last forecast, and quietly updates itself to the latest version.</span></span></li>
+        <li><span class="i">📲</span><span><b>Add to your home screen.</b> <span class="d">Runs full-screen like an app, works offline from the last forecast, and quietly updates itself to the latest version.<br><button type="button" class="ih-btn" id="installHow">📲 How to add it</button></span></span></li>
         <li class="about-sep">How the forecast works</li>
         <li><span class="i">🌡️</span><span><b>Now vs. the hourly forecast.</b> <span class="d">The big temperature on the card is Open-Meteo’s current estimate, refreshed every 15 minutes — a model’s best guess for right now, not a single weather station’s thermometer. The Now column in Hourly is the forecast for the top of the hour, so on a warming morning or a cooling evening the two can differ by a degree or so.</span></span></li>
         <li><span class="i">🕑</span><span><b>Local time.</b> <span class="d">Every time shown — sunrise, the hours, the outlook — is the place’s local time by your phone’s own time-zone rules, so it matches your clock and the Daylight and Moon panels, and follows a rule change as soon as your phone does (Alberta stayed on UTC−6 from November 2026). Now and Today are placed by the actual time there, so they stay right even if the forecast was loaded a while ago.</span></span></li>
@@ -4494,6 +4546,7 @@
     els.tabRadar.setAttribute("aria-selected", isMap ? "true" : "false");
     els.tabWeather.setAttribute("aria-selected", isMap ? "false" : "true");
     els.radar.classList.toggle("hidden", !isMap);
+    var ib = $("installBanner"); if (ib) ib.classList.toggle("off-tab", isMap); // the reminder belongs to the forecast
     if (isMap) {
       // The forecast can run a little taller than the screen (the page then scrolls); give the
       // map the same height so the two tabs are the same size, the buttons in the same place.
@@ -4998,6 +5051,44 @@
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { shareToast("Link copied"); }, function () { shareToast(url); });
     else shareToast(url);
   });
+
+  // ---- add to the home screen ----
+  // Nothing shows once it runs from the home screen. Android Chrome lets the page offer its own
+  // Install button (beforeinstallprompt); Safari doesn't, so iPhones get the steps. The banner
+  // shows once, from the third visit, until How or ✕ is tapped.
+  var installed = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  var installEvt = null;
+  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); installEvt = e; $("installGo").classList.remove("hidden"); });
+  function installOs(os) {
+    document.querySelectorAll("#installBackdrop [data-os]").forEach(function (x) { x.classList.toggle("on", x.dataset.os === os); });
+  }
+  function openInstall() {
+    var ua = navigator.userAgent;
+    installOs(/Android/.test(ua) ? "android" : "ios");
+    $("installBackdrop").classList.remove("hidden");
+  }
+  function closeInstall() { $("installBackdrop").classList.add("hidden"); }
+  function bannerDone() { $("installBanner").classList.add("hidden"); try { localStorage.setItem("bw-install-banner", "done"); } catch (e) { /* ignore */ } }
+  $("installHow").addEventListener("click", function () { closeAbout(); openInstall(); });
+  $("installClose").addEventListener("click", closeInstall);
+  $("installBackdrop").addEventListener("click", function (e) {
+    if (e.target.id === "installBackdrop") closeInstall();
+    var t = e.target.closest(".ih-tabs button"); if (t) installOs(t.dataset.os);
+  });
+  $("installGo").addEventListener("click", function () {
+    if (!installEvt) return;
+    installEvt.prompt(); installEvt = null; $("installGo").classList.add("hidden"); closeInstall();
+  });
+  $("installBannerGo").addEventListener("click", function () { bannerDone(); openInstall(); });
+  $("installBannerX").addEventListener("click", bannerDone);
+  if (installed) $("installHow").classList.add("hidden");
+  else {
+    try {
+      var visits = (+localStorage.getItem("bw-visits") || 0) + 1;
+      localStorage.setItem("bw-visits", visits);
+      if (visits >= 3 && localStorage.getItem("bw-install-banner") !== "done") setTimeout(function () { if (currentTab === "weather" && loaded) $("installBanner").classList.remove("hidden"); }, 2500);
+    } catch (e) { /* no storage: no reminder */ }
+  }
 
   // Fetch the Moon's surface map shortly after opening (the browser keeps it afterwards), so
   // the Moon panel can draw the photo straight away.

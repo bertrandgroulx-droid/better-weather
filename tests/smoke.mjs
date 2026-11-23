@@ -943,6 +943,44 @@ async function run() {
     await tctx.close();
   }
 
+  // 11f) Add to the home screen: a button on the info page opens the steps; a reminder shows once,
+  // from the third visit; nothing shows when it already runs from the home screen
+  {
+    const mk = async (init) => {
+      const c = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
+      const pg = await c.newPage(); if (init) await pg.addInitScript(init);
+      await pg.route(/geocoding-api\.open-meteo\.com\/v1\/reverse/, (r) => r.fulfill(json({ results: [{ name: "Calgary", admin1: "AB", country: "Canada", country_code: "CA", latitude: 51.05, longitude: -114.07 }] })));
+      await pg.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => r.fulfill(json(buildForecast())));
+      await pg.route(/(archive-api|air-quality-api)\.open-meteo\.com/, (r) => r.fulfill(json({ daily: { time: [] }, current: { us_aqi: 20 } })));
+      await pg.route(/(api\.rainviewer\.com|tilecache\.rainviewer\.com|api\.mapbox\.com|tile\.openstreetmap\.org|cdnjs\.cloudflare\.com)/, (r) => r.abort());
+      await pg.goto(URL); await pg.waitForSelector("#result:not(.hidden)", { timeout: 20000 });
+      return { c, pg };
+    };
+    let { c, pg } = await mk(null);
+    await pg.click("#aboutBtn"); await pg.click("#installHow"); await pg.waitForTimeout(200);
+    const sheet = await pg.$eval("#installBackdrop", (e) => !e.classList.contains("hidden") && e.querySelector(".ih-os.on").textContent);
+    assert(sheet && /Add to Home Screen/.test(sheet) && await pg.$eval('.ih-tabs button[data-os="ios"]', (b) => b.classList.contains("on")), "How to add it opens the iPhone steps on an iPhone");
+    await pg.click('.ih-tabs button[data-os="android"]');
+    assert(/Install app|Add to Home screen/.test(await pg.$eval("#installBackdrop .ih-os.on", (e) => e.textContent)), "the Android tab shows Chrome's steps");
+    await pg.click("#installClose");
+    assert(await pg.$eval("#installBanner", (e) => e.classList.contains("hidden")), "no reminder on a first visit");
+    await c.close();
+    // third visit: the reminder shows; ✕ hides it for good
+    ({ c, pg } = await mk(() => { if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("bw-visits", "2"); } }));
+    await pg.waitForTimeout(3000);
+    assert(await pg.$eval("#installBanner", (e) => !e.classList.contains("hidden")), "the reminder shows on the third visit");
+    await pg.click("#installBannerX");
+    assert(await pg.evaluate(() => localStorage.getItem("bw-install-banner")) === "done", "✕ hides the reminder for good");
+    await pg.reload(); await pg.waitForSelector("#result:not(.hidden)"); await pg.waitForTimeout(3000);
+    assert(await pg.$eval("#installBanner", (e) => e.classList.contains("hidden")), "the reminder stays away after ✕");
+    await c.close();
+    // already on the home screen: no button, no reminder
+    ({ c, pg } = await mk(() => { Object.defineProperty(navigator, "standalone", { value: true }); localStorage.setItem("bw-visits", "5"); }));
+    await pg.waitForTimeout(3000);
+    assert(await pg.$eval("#installHow", (e) => e.classList.contains("hidden")) && await pg.$eval("#installBanner", (e) => e.classList.contains("hidden")), "nothing about installing once it runs from the home screen");
+    await c.close();
+  }
+
   // 11e) Chinook: east of the Rockies, Oct–Apr, a fast warm-up on a strong west wind takes the outlook line
   {
     const f = buildForecast(), H = f.hourly, ni = H.time.indexOf(f.current.time.slice(0, 13) + ":00");
