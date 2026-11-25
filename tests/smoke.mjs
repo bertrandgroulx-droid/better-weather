@@ -984,6 +984,8 @@ async function run() {
   // 11e) Chinook: east of the Rockies, Oct–Apr, a fast warm-up on a strong west wind takes the outlook line
   {
     const f = buildForecast(), H = f.hourly, ni = H.time.indexOf(f.current.time.slice(0, 13) + ":00");
+    // the app fetches 16 days of hours; give this test 6 days ahead
+    while (H.time.length < ni + 6 * 24) { const last = H.time.length - 1, t = new Date(new Date(H.time[last]).getTime() + 3600e3); for (const key in H) H[key].push(key === "time" ? fmt(t) : H[key][last]); }
     for (let k = 0; k <= 72 && ni + k < H.time.length; k++) { const i = ni + k; H.temperature_2m[i] = -12; H.wind_direction_10m[i] = 20; H.wind_gusts_10m[i] = 18; }
     for (let k = 0; k <= 12; k++) { const i = ni + 20 + k, r = Math.min(1, k / 6); H.temperature_2m[i] = -12 + 16 * r; H.wind_direction_10m[i] = k ? 265 : 20; H.wind_gusts_10m[i] = k ? 75 : 18; }
     const ck = async (lat, lon) => {
@@ -1002,6 +1004,11 @@ async function run() {
     if (season) assert(/Chinook likely .+: up 16° in 6 h, west gusts to 75 km\/h/.test(yyc), `Calgary gets the chinook line, got "${yyc}"`);
     else assert(!yyc, `no chinook line outside October–April, got "${yyc}"`);
     assert(!(await ck(43.65, -79.38)), "no chinook line away from the Rockies (Toronto)");
+    // 4 days out: "possible", just the day
+    for (let i = ni; i < H.time.length; i++) { H.temperature_2m[i] = -12; H.wind_direction_10m[i] = 20; H.wind_gusts_10m[i] = 18; }
+    for (let k = 0; k <= 12; k++) { const i = ni + 96 + k, r = Math.min(1, k / 6); H.temperature_2m[i] = -12 + 16 * r; H.wind_direction_10m[i] = k ? 265 : 20; H.wind_gusts_10m[i] = k ? 75 : 18; }
+    const far = await ck(51.05, -114.07);
+    if (season) assert(/^\S*\s*Chinook possible [A-Z][a-z]+day: a warm west wind$/.test(far.trim()), `4 days out reads "possible" with just the day, got "${far}"`);
   }
 
   // 11b) Each daily icon follows the amounts in its own hours: snow before dawn belongs to the

@@ -1077,7 +1077,7 @@
       <p class="sub">A phone-first weather app built to answer “what do I actually need to know?” at a glance — one screen, no clutter, no account, no ads.</p>
       <ul class="about-list">
         <li><span class="i">📱</span><span><b>One screen, portrait-first.</b> <span class="d">The whole picture fits without scrolling.</span></span></li>
-        <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”. East of the Rockies (Calgary, Lethbridge, the foothills), from October to April, a chinook on the way takes the line instead — e.g. “Chinook likely tomorrow evening: up 16° in 7 h, west gusts to 75 km/h” — spotted in the hourly forecast as a fast warm-up on a strong west or southwest wind as the air dries.</span></span></li>
+        <li><span class="i">🗣️</span><span><b>Plain-language outlook.</b> <span class="d">“Rain likely around 3 PM,” from the hourly data. When it’s dry, it counts days until rain returns — the next day with a ≥50% chance or ≥<span class="u-pmin">1 mm</span> total. A “+” (e.g. “6+ days”) means that day has ≥<span class="u-pmin">1 mm</span> but under 50% chance, so it likely stays dry longer. It names the type — rain, snow or both — and says when it changes over, e.g. “Rain turning to snow, easing by 9 AM”. East of the Rockies (Calgary, Lethbridge, the foothills), from October to April, a chinook on the way takes the line instead — e.g. “Chinook likely tomorrow evening: up 16° in 7 h, west gusts to 75 km/h” up to 3 days ahead, or “Chinook possible Sunday” 4–5 days out, when the timing and size aren’t reliable yet — spotted in the hourly forecast as a fast warm-up on a strong west or southwest wind as the air dries.</span></span></li>
         <li><span class="i">↔️</span><span><b>Swipe through time.</b> <span class="d">Hourly (48 h back, 72 h ahead) and daily (7 days back, 16 ahead) strips — swipe on a phone, or click-and-drag on a desktop. Once Now or Today is off-screen, a yellow NOW button above the scroll bar brings you back. Each day’s low and the icon beside it, in the darker band, are the night that follows it, evening to the next morning.</span></span></li>
         <li><span class="i">📈</span><span><b>Tap an hour or a day.</b> <span class="d">Opens a Conditions chart — that day’s hourly temperature and feels-like as two lines, with a day picker to swipe across the full 16-day forecast (and two days back). A fixed centre cursor reads the exact temperature, feels-like, and precipitation (rain in mm, snow in cm, and the chance) for the hour under it, with a yellow ← NOW button to jump back; a precip band sits below.</span></span></li>
         <li><span class="i">📍</span><span><b>Find any place.</b> <span class="d">Search a city or street address, or open the map and tap anywhere to forecast that exact spot. The share icon on the card sends a link that opens this exact forecast; the one in a panel (Moon, Daylight, Wind, Air Quality, Conditions, or Both) opens that panel at the moment you’re looking at — for anyone, even on their first visit. It reopens the last place you viewed — or, under “When the app opens” at the top of search, always on your current location or a saved place you pick — and once you’ve saved a few places, swipe the summary card sideways to slide the whole forecast to the next place (it’s already loaded, so it follows your finger); its name sits at the top of the card, with dots under it showing which of your places you’re on. To change the order, press a saved place in the search panel and drag it up or down. Once you’ve used “my current location”, it joins the list too — first, with a ring-shaped dot — whenever you’re more than 25 km from every saved place.</span></span></li>
@@ -3597,6 +3597,7 @@
   // Chinook: a warm, dry west wind down the east slopes of the Rockies. No forecast labels one,
   // so look for its signature in the hourly data: a fast warm-up (8°+ within 6 h) on a west or
   // southwest wind with strong gusts, as the air dries; only east of the Rockies, October–April.
+  // It looks 5 days ahead; past 3 days (`far`) the timing and size aren't reliable enough to give.
   function chinookOutlook(d, loc) {
     var h = d.hourly; if (!h || !h.time || !h.temperature_2m || !loc) return null;
     if (!(loc.lat > 48.5 && loc.lat < 56.5 && loc.lon > -118 && loc.lon < -109.5)) return null;
@@ -3604,7 +3605,7 @@
     var T = h.temperature_2m, G = h.wind_gusts_10m || [], W = h.wind_direction_10m || [], RH = h.relative_humidity_2m || [];
     var gustMin = units === "imperial" ? 28 : 45; // mph : km/h
     var riseMin = units === "imperial" ? 14 : 8;  // °F : °C
-    var i0 = Math.max(0, hourIdx(h.time, now)), end = Math.min(h.time.length - 1, i0 + 72);
+    var i0 = Math.max(0, hourIdx(h.time, now)), end = Math.min(h.time.length - 1, i0 + 120); // 5 days
     for (var i = i0; i < end; i++) for (var j = 1; j <= 6 && i + j <= end; j++) {
       var k = i + j, dir = W[k];
       if (T[i] == null || T[k] == null || T[k] - T[i] < riseMin || !(dir >= 200 && dir <= 300) || !((G[k] || 0) >= gustMin)) continue;
@@ -3614,13 +3615,15 @@
       var top = k, q;
       for (q = k + 1; q <= Math.min(end, i + 12); q++) { if (T[q] > T[top]) top = q; else if (T[q] < T[top] - 1) break; }
       var gust = 0; for (q = i; q <= Math.min(end, top + 6); q++) gust = Math.max(gust, G[q] || 0);
-      return { at: h.time[i + 1], rise: Math.round(T[top] - T[i]), hours: top - i, gust: Math.round(gust), dir: dir < 248 ? "southwest" : "west" };
+      return { far: i + 1 - i0 > 72, at: h.time[i + 1], rise: Math.round(T[top] - T[i]), hours: top - i, gust: Math.round(gust), dir: dir < 248 ? "southwest" : "west" };
     }
     return null;
   }
   // "Chinook likely tomorrow evening: up 16° in 7 h, west gusts to 75 km/h"
   function chinookText(c, d) {
     var now = placeNow(d), today = now.slice(0, 10), day = c.at.slice(0, 10), hr = +c.at.slice(11, 13);
+    // 4–5 days out: "possible", and just the day
+    if (c.far) return "Chinook possible " + new Date(day + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" }) + ": a warm west wind";
     var part = hr < 5 ? "overnight" : hr < 12 ? "morning" : hr < 17 ? "afternoon" : hr < 21 ? "evening" : "night";
     var tomorrow = new Date(Date.parse(today + "T12:00:00Z") + 86400000).toISOString().slice(0, 10), when;
     if (day === today) when = (part === "evening" || part === "night") ? "tonight" : part === "overnight" ? "overnight" : "this " + part;
