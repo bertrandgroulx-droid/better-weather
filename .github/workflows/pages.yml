@@ -40,6 +40,11 @@ jobs:
           # The whole repo is the site — index.html lives at the root.
           path: .
 
+      # GitHub lists a just-uploaded artifact a few seconds late; asking at once found
+      # "0 artifacts" three times in Nov 2026 although the upload had succeeded.
+      - name: Wait for the upload to be listed
+        run: sleep 20
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
