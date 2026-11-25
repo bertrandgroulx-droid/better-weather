@@ -1004,6 +1004,11 @@ async function run() {
     if (season) assert(/Chinook likely .+: up 16° in 6 h, west gusts to 75 km\/h/.test(yyc), `Calgary gets the chinook line, got "${yyc}"`);
     else assert(!yyc, `no chinook line outside October–April, got "${yyc}"`);
     assert(!(await ck(43.65, -79.38)), "no chinook line away from the Rockies (Toronto)");
+    if (season) {
+      assert(await ck(47.5, -111.3), "Great Falls, MT is in the chinook area");
+      assert(!(await ck(49.51, -115.77)), "Cranbrook (west of the Divide) is not");
+      assert(!(await ck(54.72, -113.29)), "Athabasca (north of Edmonton) is not");
+    }
     // 4 days out: "possible", just the day
     for (let i = ni; i < H.time.length; i++) { H.temperature_2m[i] = -12; H.wind_direction_10m[i] = 20; H.wind_gusts_10m[i] = 18; }
     for (let k = 0; k <= 12; k++) { const i = ni + 96 + k, r = Math.min(1, k / 6); H.temperature_2m[i] = -12 + 16 * r; H.wind_direction_10m[i] = k ? 265 : 20; H.wind_gusts_10m[i] = k ? 75 : 18; }
