@@ -214,6 +214,7 @@ async function run() {
   await page.click("#summary .moon-line");
   assert(!(await page.$eval("#moonBackdrop", (e) => e.classList.contains("hidden"))), "moon panel opens on tap");
   assert(await page.$("#moDisc .mo-moon"), "moon disc rendered");
+  assert(/^[A-Z][a-z]+( [A-Z][a-z]+)? \((\d|[1-9]\d|100)%\)$/.test(await page.$eval("#moPhase", (e) => e.textContent.trim())), "the phase shows its illumination, e.g. Waning Gibbous (93%)");
   // while the surface map is still loading, the Moon isn't drawn twice: an empty space, no drawn moon first
   {
     const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, permissions: ["geolocation"], geolocation: { latitude: 51.05, longitude: -114.07 } });
