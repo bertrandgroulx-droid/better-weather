@@ -230,7 +230,7 @@ async function run() {
     await lctx.close();
   }
   const phase = await page.$eval("#moPhase", (e) => e.textContent);
-  assert(/^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent)$/.test(phase), `phase name, got "${phase}"`);
+  assert(/^(New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent) \((\d|[1-9]\d|100)%\)$/.test(phase), `phase name, got "${phase}"`);
   const stats = await page.$$eval("#moStats .mo-row", (e) => e.map((x) => x.textContent));
   assert(!stats.some((t) => /^Illumination/.test(t)), "no Illumination row (the scrubber band shows it)");
   assert(stats.some((t) => /^(Moonrise|Moonset)/.test(t)) || stats.some((t) => /none today/.test(t)), "moonrise/moonset rows");
